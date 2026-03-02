@@ -1,0 +1,31 @@
+name: Build Mod Menu
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup NDK
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r25b
+
+      - name: Build with ndk-build
+        run: |
+          # Эта команда сама найдет папку jni и запустит сборку там
+          JNI_PATH=$(find . -name "jni" -type d -print -quit)
+          if [ -z "$JNI_PATH" ]; then
+            echo "Ошибка: папка jni не найдена в репозитории!"
+            exit 1
+          fi
+          echo "Папка найдена: $JNI_PATH"
+          cd "$JNI_PATH"
+          ndk-build
+
+      - name: Upload Result
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-mod-library
+          # Ищем готовые .so файлы в папке libs, где бы они ни создались
+          path: "**/libs/*"
