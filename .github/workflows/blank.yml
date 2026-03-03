@@ -1,0 +1,29 @@
+name: Build_Simple_Memory_Tool
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Clone Tool
+        run: |
+          # Клонируем облегченную версию инструмента для работы с памятью
+          git clone https://github.com/RikkaApps/Shizuku-API.git project
+          
+      - name: Build
+        working-directory: ./project
+        run: |
+          chmod +x gradlew
+          ./gradlew :sample:assembleDebug
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: Memory_Tool_Basic
+          path: project/sample/build/outputs/apk/debug/*.apk
