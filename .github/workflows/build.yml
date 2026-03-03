@@ -1,0 +1,35 @@
+name: Build_Shizuku_ModMenu_2026
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-runs-on: ubuntu-latest
+    steps:
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Clone Project
+        run: |
+          # Клонируем проект Shizuku
+          git clone https://github.com/RikkaApps/Shizuku-API.git project
+
+      - name: Accept Android Licenses
+        # Эта команда "нажимает Да" во всех лицензионных соглашениях Google
+        run: yes | sdkmanager --licenses || true
+
+      - name: Grant execute permission
+        run: chmod +x project/gradlew
+
+      - name: Build APK
+        working-directory: ./project
+        # Собираем модуль :demo — это полноценное приложение, работающее с Shizuku
+        run: ./gradlew :demo:assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Shizuku_Tool_Ready
+          path: project/demo/build/outputs/apk/debug/*.apk
