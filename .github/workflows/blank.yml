@@ -1,0 +1,141 @@
+name: KUSMAN_V1_RECOVERY
+on: [push, workflow_dispatch]
+
+jobs:
+  fabric-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Generate Project Structure
+        run: |
+          mkdir -p src/main/java/com/kusman/mixin
+          mkdir -p src/main/resources
+          
+          # 1. Исправленный build.gradle с указанием репозитория плагинов
+          cat <<EOF > build.gradle
+          plugins {
+              id 'fabric-loom' version '1.2-SNAPSHOT'
+          }
+          
+          repositories {
+              maven { url = "https://maven.fabricmc.net/" }
+              mavenCentral()
+          }
+
+          dependencies {
+              minecraft "com.mojang:minecraft:1.20.1"
+              mappings "net.fabricmc:yarn:1.20.1+build.10:v2"
+              modImplementation "net.fabricmc:fabric-loader:0.14.21"
+              modImplementation "net.fabricmc.fabric-api:fabric-api:0.83.0+1.20.1"
+          }
+          EOF
+
+          # 2. Файл настроек для корректного поиска плагинов
+          cat <<EOF > settings.gradle
+          pluginManagement {
+              repositories {
+                  maven { url = "https://maven.fabricmc.net/" }
+                  gradlePluginPortal()
+              }
+          }
+          EOF
+
+          # 3. Манифест мода
+          cat <<EOF > src/main/resources/fabric.mod.json
+          {
+            "schemaVersion": 1,
+            "id": "kusman_core",
+            "version": "1.0.0",
+            "name": "Kusman Core",
+            "entrypoints": { "client": [ "com.kusman.KusmanClient" ] },
+            "mixins": [ "kusman.mixins.json" ],
+            "depends": { "fabricloader": ">=0.14.21", "minecraft": "~1.20.1" }
+          }
+          EOF
+
+          # 4. Конфиг миксинов
+          cat <<EOF > src/main/resources/kusman.mixins.json
+          {
+            "required": true,
+            "minCompatibilityLevel": "JAVA_17",
+            "package": "com.kusman.mixin",
+            "compatibilityLevel": "JAVA_17",
+            "mixins": [ "XRayMixin" ],
+            "injectors": { "defaultRequire": 1 }
+          }
+          EOF
+
+          # 5. Код KillAura
+          cat <<EOF > src/main/java/com/kusman/KusmanClient.java
+          package com.kusman;
+          import net.fabricmc.api.ClientModInitializer;
+          import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+          import net.minecraft.client.MinecraftClient;
+          import net.minecraft.entity.player.PlayerEntity;
+          import net.minecraft.network.packet.c2s.play.PlayerInteractEntityC2SPacket;
+          import net.minecraft.util.Hand;
+
+          public class KusmanClient implements ClientModInitializer {
+              @Override
+              public void onInitializeClient() {
+                  ClientTickEvents.END_CLIENT_TICK.register(client -> {
+                      if (client.player != null) {
+                          for (PlayerEntity target : client.world.getPlayers()) {
+                              if (target != client.player && !target.isDead() && client.player.distanceTo(target) <= 4.5) {
+                                  if (client.player.getAttackCooldownProgress(0) >= 1.0f) {
+                                      client.getNetworkHandler().sendPacket(PlayerInteractEntityC2SPacket.attack(target, false));
+                                      client.player.swingHand(Hand.MAIN_HAND);
+                                  }
+                              }
+                          }
+                      }
+                  });
+              }
+          }
+          EOF
+
+          # 6. Код X-Ray
+          cat <<EOF > src/main/java/com/kusman/mixin/XRayMixin.java
+          package com.kusman.mixin;
+          import net.minecraft.block.*;
+          import net.minecraft.util.math.BlockPos;
+          import net.minecraft.util.math.Direction;
+          import net.minecraft.world.BlockView;
+          import org.spongepowered.asm.mixin.Mixin;
+          import org.spongepowered.asm.mixin.injection.At;
+          import org.spongepowered.asm.mixin.injection.Inject;
+          import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+          @Mixin(AbstractBlock.class)
+          public abstract class XRayMixin {
+              @Inject(method = "getAmbientOcclusionLightValue", at = @At("HEAD"), cancellable = true)
+              private void onLight(BlockState state, BlockView world, BlockPos pos, CallbackInfoReturnable<Float> cir) {
+                  cir.setReturnValue(1.0f);
+              }
+              @Inject(method = "isSideInvisible", at = @At("HEAD"), cancellable = true)
+              private void onSide(BlockState state, BlockState stateFrom, Direction direction, CallbackInfoReturnable<Boolean> cir) {
+                  boolean isOre = state.getBlock() instanceof OreBlock || state.getBlock() == Blocks.DIAMOND_BLOCK;
+                  cir.setReturnValue(!isOre);
+              }
+          }
+          EOF
+
+      - name: Build with Gradle
+        run: |
+          # Инициализируем gradle wrapper, чтобы избежать ошибок отсутствия gradlew
+          gradle wrapper
+          ./gradlew build --no-daemon
+
+      - name: Upload Mod JAR
+        uses: artifacts/upload-artifact@v4
+        with:
+          name: Kusman-Final-Mod
+          path: build/libs/*.jar
