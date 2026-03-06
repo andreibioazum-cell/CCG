@@ -1,4 +1,4 @@
-name: KUSMAN_V28_NO_CRASH
+name: KUSMAN_V29_STABLE_NO_MIXIN_CRASH
 on: [push, workflow_dispatch]
 
 jobs:
@@ -31,13 +31,13 @@ jobs:
 
           cat <<'EOF' > src/main/resources/fabric.mod.json
           {
-            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV28",
+            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV29",
             "entrypoints": { "client": [ "com.kusman.KusmanClient" ] },
             "mixins": [ "kusman.mixins.json" ]
           }
           EOF
 
-          echo '{"required":true,"package":"com.kusman.mixin","mixins":["NetworkMixin","AbstractBlockMixin","PlayerMixin"]}' > src/main/resources/kusman.mixins.json
+          echo '{"required":true,"package":"com.kusman.mixin","mixins":["NetworkMixin"]}' > src/main/resources/kusman.mixins.json
 
           cat <<'EOF' > src/main/java/com/kusman/KusmanClient.java
           package com.kusman;
@@ -52,8 +52,7 @@ jobs:
           import net.minecraft.entity.mob.MobEntity;
           import net.minecraft.text.Text;
           import net.minecraft.util.Hand;
-          import java.util.ArrayList;
-          import java.util.List;
+          import net.minecraft.util.math.MathHelper;
 
           public class KusmanClient implements ClientModInitializer {
               public static boolean xray=false, god=false, fly=false, aura=false, aurapl=false, auramb=false;
@@ -65,36 +64,35 @@ jobs:
                       dispatcher.register(ClientCommandManager.literal("aura").executes(c -> { aura = !aura; msg("Aura All: " + aura); return 1; }));
                       dispatcher.register(ClientCommandManager.literal("aurapl").executes(c -> { aurapl = !aurapl; msg("Aura Players: " + aurapl); return 1; }));
                       dispatcher.register(ClientCommandManager.literal("auramb").executes(c -> { auramb = !auramb; msg("Aura Mobs: " + auramb); return 1; }));
-                      dispatcher.register(ClientCommandManager.literal("xray").executes(c -> { xray = !xray; MinecraftClient.getInstance().worldRenderer.reload(); msg("Xray: " + xray); return 1; }));
+                      dispatcher.register(ClientCommandManager.literal("xray").executes(c -> { xray = !xray; msg("Xray (Fullbright): " + xray); return 1; }));
                       dispatcher.register(ClientCommandManager.literal("ggg").executes(c -> { fly = !fly; msg("Fly: " + fly); return 1; }));
                   });
 
                   ClientTickEvents.END_CLIENT_TICK.register(client -> {
                       if (client.player == null || client.world == null) return;
                       
-                      if (god) {
-                          client.player.setHealth(20f);
-                          client.player.getAbilities().invulnerable = true;
-                      }
-                      if (fly) {
-                          client.player.getAbilities().allowFlying = true;
-                          client.player.getAbilities().flying = true;
-                      }
+                      if (god) { client.player.setHealth(20f); client.player.getHungerManager().setFoodLevel(20); }
+                      if (fly) { client.player.getAbilities().allowFlying = true; client.player.getAbilities().flying = true; }
+                      if (xray) { client.options.getGamma().setValue(100.0); }
 
                       if (aura || aurapl || auramb) {
-                          // Безопасный список сущностей для предотвращения краша
-                          List<Entity> targets = new ArrayList<>();
-                          client.world.getEntities().forEach(targets::add);
-
-                          for (Entity e : targets) {
+                          for (Entity e : client.world.getEntities()) {
                               if (e instanceof LivingEntity target && target != client.player && target.isAlive()) {
-                                  if (client.player.distanceTo(target) <= 4.1) {
+                                  double dist = client.player.distanceTo(target);
+                                  if (dist <= 4.0) {
                                       boolean valid = (aura) || (aurapl && target instanceof PlayerEntity) || (auramb && target instanceof MobEntity);
                                       if (valid && client.player.getAttackCooldownProgress(0) >= 1.0f) {
-                                          client.player.lookAt(net.minecraft.command.argument.EntityAnchorArgumentType.EntityAnchor.EYES, target.getPos().add(0, target.getStandingEyeHeight(), 0));
+                                          // Стабильная наводка
+                                          double dx = target.getX() - client.player.getX();
+                                          double dy = target.getEyeY() - client.player.getEyeY();
+                                          double dz = target.getZ() - client.player.getZ();
+                                          double distXZ = Math.sqrt(dx * dx + dz * dz);
+                                          client.player.setYaw((float) Math.toDegrees(Math.atan2(-dx, dz)));
+                                          client.player.setPitch((float) Math.toDegrees(Math.atan2(-dy, distXZ)));
+                                          
                                           client.interactionManager.attackEntity(client.player, target);
                                           client.player.swingHand(Hand.MAIN_HAND);
-                                          break; // Атакуем одну цель за тик для стабильности
+                                          break; 
                                       }
                                   }
                               }
@@ -110,7 +108,7 @@ jobs:
           package com.kusman.mixin;
           import com.kusman.KusmanClient;
           import net.minecraft.client.network.ClientPlayNetworkHandler;
-          import net.minecraft.network.packet.s2c.play.*;
+          import net.minecraft.network.packet.s2c.play.EntityDamageS2CPacket;
           import org.spongepowered.asm.mixin.Mixin;
           import org.spongepowered.asm.mixin.injection.At;
           import org.spongepowered.asm.mixin.injection.Inject;
@@ -122,59 +120,6 @@ jobs:
               private void blockDamage(EntityDamageS2CPacket packet, CallbackInfo ci) {
                   if (KusmanClient.god) ci.cancel();
               }
-              @Inject(method = "onEntityVelocityUpdate", at = @At("HEAD"), cancellable = true)
-              private void onVelocity(EntityVelocityUpdateS2CPacket packet, CallbackInfo ci) {
-                  if (KusmanClient.god) ci.cancel();
-              }
-              @Inject(method = "onExplosion", at = @At("HEAD"), cancellable = true)
-              private void onExplosion(ExplosionS2CPacket packet, CallbackInfo ci) {
-                  if (KusmanClient.god) ci.cancel();
-              }
-          }
-          EOF
-
-          cat <<'EOF' > src/main/java/com/kusman/mixin/PlayerMixin.java
-          package com.kusman.mixin;
-          import com.kusman.KusmanClient;
-          import net.minecraft.client.network.ClientPlayerEntity;
-          import org.spongepowered.asm.mixin.Mixin;
-          import org.spongepowered.asm.mixin.injection.At;
-          import org.spongepowered.asm.mixin.injection.Inject;
-          import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-
-          @Mixin(ClientPlayerEntity.class)
-          public class PlayerMixin {
-              @Inject(method = "updatePostDeath", at = @At("HEAD"), cancellable = true)
-              private void onDeath(CallbackInfo ci) {
-                  if (KusmanClient.god) ci.cancel();
-              }
-          }
-          EOF
-
-          cat <<'EOF' > src/main/java/com/kusman/mixin/AbstractBlockMixin.java
-          package com.kusman.mixin;
-          import com.kusman.KusmanClient;
-          import net.minecraft.block.*;
-          import net.minecraft.util.math.BlockPos;
-          import net.minecraft.world.BlockView;
-          import org.spongepowered.asm.mixin.Mixin;
-          import org.spongepowered.asm.mixin.injection.At;
-          import org.spongepowered.asm.mixin.injection.Inject;
-          import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-
-          @Mixin(AbstractBlock.class)
-          public abstract class AbstractBlockMixin {
-              @Inject(method = "getAmbientOcclusionLightLevel", at = @At("HEAD"), cancellable = true)
-              private void onAmbient(BlockState state, BlockView world, BlockPos pos, CallbackInfoReturnable<Float> cir) {
-                  if (KusmanClient.xray) cir.setReturnValue(1.0f);
-              }
-              @Inject(method = "isTransparent", at = @At("HEAD"), cancellable = true)
-              private void onTransparent(BlockState state, BlockView world, BlockPos pos, CallbackInfoReturnable<Boolean> cir) {
-                  if (KusmanClient.xray) {
-                      String name = state.getBlock().getName().getString().toLowerCase();
-                      if (!name.contains("ore") && state.getBlock() != Blocks.CHEST) cir.setReturnValue(true);
-                  }
-              }
           }
           EOF
 
@@ -184,5 +129,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Kusman-V28-NoCrash
+          name: Kusman-V29-Safe
           path: build/libs/*.jar
