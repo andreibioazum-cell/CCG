@@ -1,4 +1,4 @@
-name: KUSMAN_V17_ULTRA_STABLE
+name: KUSMAN_V18_FINAL
 on: [push, workflow_dispatch]
 
 jobs:
@@ -13,7 +13,7 @@ jobs:
 
       - name: Generate Project
         run: |
-          mkdir -p src/main/java/com/kusman/mixin src/main/resources
+          mkdir -p src/main/java/com/kusman src/main/resources
           
           echo "pluginManagement { repositories { maven { url 'https://maven.fabricmc.net/' }; gradlePluginPortal() } }" > settings.gradle
           echo "rootProject.name = 'kusman_mod'" >> settings.gradle
@@ -31,15 +31,10 @@ jobs:
 
           cat <<'EOF' > src/main/resources/fabric.mod.json
           {
-            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV17",
-            "entrypoints": { 
-                "client": [ "com.kusman.KusmanClient" ]
-            },
-            "mixins": [ "kusman.mixins.json" ]
+            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV18",
+            "entrypoints": { "client": [ "com.kusman.KusmanClient" ] }
           }
           EOF
-
-          echo '{"required":true,"package":"com.kusman.mixin","mixins":["ChatMixin"]}' > src/main/resources/kusman.mixins.json
 
           cat <<'EOF' > src/main/java/com/kusman/KusmanClient.java
           package com.kusman;
@@ -52,6 +47,8 @@ jobs:
           import net.minecraft.item.ItemStack;
           import net.minecraft.item.Items;
           import net.minecraft.network.packet.c2s.play.CreativeInventoryActionC2SPacket;
+          import net.minecraft.entity.LivingEntity;
+          import net.minecraft.util.Hand;
 
           public class KusmanClient implements ClientModInitializer {
               public static boolean fly = false;
@@ -60,25 +57,40 @@ jobs:
               public static final String PREFIX = "§b[Dimasi4ek229] §f";
 
               @Override public void onInitializeClient() {
-                  // Способ 1: Регистрация через / (через Fabric API)
                   ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-                      dispatcher.register(ClientCommandManager.literal("ggg").executes(c -> { toggleFly(); return 1; }));
-                      dispatcher.register(ClientCommandManager.literal("aura").executes(c -> { toggleAura(); return 1; }));
+                      dispatcher.register(ClientCommandManager.literal("ggg").executes(c -> { fly = !fly; msg("Fly: " + fly); return 1; }));
+                      dispatcher.register(ClientCommandManager.literal("aura").executes(c -> { aura = !aura; msg("Aura: " + aura); return 1; }));
+                      dispatcher.register(ClientCommandManager.literal("god").executes(c -> { god = !god; msg("GodMode: " + god); return 1; }));
                       dispatcher.register(ClientCommandManager.literal("kit").executes(c -> { giveKit(); return 1; }));
+                      dispatcher.register(ClientCommandManager.literal("antiban").executes(c -> { msg("Anti-Report Active"); return 1; }));
                   });
 
-                  // Тик мода
                   ClientTickEvents.END_CLIENT_TICK.register(client -> {
                       if (client.player == null) return;
-                      if (fly) { client.player.getAbilities().allowFlying = true; client.player.getAbilities().flying = true; }
-                      if (god) { client.player.getAbilities().invulnerable = true; client.player.setHealth(20f); }
+
+                      // GODMODE + ANTIKICK
+                      if (god) {
+                          client.player.getAbilities().invulnerable = true;
+                          if (client.player.getHealth() < 20f) client.player.setHealth(20f);
+                      }
+
+                      if (fly) {
+                          client.player.getAbilities().allowFlying = true;
+                          client.player.getAbilities().flying = true;
+                          // Антикик: легкое падение каждые 40 тиков
+                          if (client.player.age % 40 == 0) {
+                              client.player.setPosition(client.player.getX(), client.player.getY() - 0.05, client.player.getZ());
+                          }
+                      }
+
+                      // AURA
                       if (aura) {
                           client.world.getEntities().forEach(e -> {
-                              if (e instanceof net.minecraft.entity.LivingEntity t && t != client.player && t.isAlive() && client.player.distanceTo(t) <= 6.0) {
+                              if (e instanceof LivingEntity t && t != client.player && t.isAlive() && client.player.distanceTo(t) <= 6.0) {
                                   client.player.setYaw((float) Math.toDegrees(Math.atan2(-(t.getX() - client.player.getX()), t.getZ() - client.player.getZ())));
                                   if (client.player.getAttackCooldownProgress(0) >= 1.0f) {
                                       client.interactionManager.attackEntity(client.player, t);
-                                      client.player.swingHand(net.minecraft.util.Hand.MAIN_HAND);
+                                      client.player.swingHand(Hand.MAIN_HAND);
                                   }
                               }
                           });
@@ -86,43 +98,36 @@ jobs:
                   });
               }
 
-              public static void toggleFly() { fly = !fly; msg("Fly: " + fly); }
-              public static void toggleAura() { aura = !aura; msg("Aura: " + aura); }
-              public static void giveKit() {
-                  MinecraftClient.getInstance().getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(36, new ItemStack(Items.NETHERITE_SWORD)));
-                  msg("Kit Sent!");
+              private void giveKit() {
+                  MinecraftClient client = MinecraftClient.getInstance();
+                  int[] slots = {36, 37, 38, 9};
+                  ItemStack[] items = {
+                      new ItemStack(Items.NETHERITE_SWORD),
+                      new ItemStack(Items.ENCHANTED_GOLDEN_APPLE, 64),
+                      new ItemStack(Items.NETHERITE_CHESTPLATE),
+                      new ItemStack(Items.NETHERITE_PICKAXE)
+                  };
+                  for (int i = 0; i < slots.length; i++) {
+                      client.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(slots[i], items[i]));
+                  }
+                  msg("§6Kit Delivered!");
               }
-              public static void msg(String s) {
+
+              private void msg(String s) {
                   if (MinecraftClient.getInstance().player != null)
                       MinecraftClient.getInstance().player.sendMessage(Text.literal(PREFIX + s), false);
               }
           }
           EOF
 
-          cat <<'EOF' > src/main/java/com/kusman/mixin/ChatMixin.java
-          package com.kusman.mixin;
-          import com.kusman.KusmanClient;
-          import net.minecraft.client.network.ClientPlayerEntity;
-          import org.spongepowered.asm.mixin.Mixin;
-          import org.spongepowered.asm.mixin.injection.At;
-          import org.spongepowered.asm.mixin.injection.Inject;
-          import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+      - name: Build
+        run: gradle build --no-daemon
 
-          @Mixin(ClientPlayerEntity.class)
-          public abstract class ChatMixin {
-              @Inject(method = "sendChatMessage", at = @At("HEAD"), cancellable = true)
-              private void onChat(String message, net.minecraft.text.Text preview, CallbackInfo ci) {
-                  if (message.startsWith(":")) {
-                      String cmd = message.substring(1).toLowerCase();
-                      if (cmd.equals("ggg")) KusmanClient.toggleFly();
-                      if (cmd.equals("aura")) KusmanClient.toggleAura();
-                      if (cmd.equals("kit")) KusmanClient.giveKit();
-                      ci.cancel();
-                  }
-              }
-          }
-          EOF
-
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kusman-V18-Final
+          path: build/libs/*.jar
       - name: Build
         run: gradle build --no-daemon
 
