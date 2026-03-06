@@ -1,4 +1,4 @@
-name: KUSMAN_V11_FIXED
+name: KUSMAN_V12_1_21_1_FIXED
 on: [push, workflow_dispatch]
 
 jobs:
@@ -31,7 +31,7 @@ jobs:
 
           cat <<'EOF' > src/main/resources/fabric.mod.json
           {
-            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV11",
+            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV12",
             "entrypoints": { "client": [ "com.kusman.KusmanClient" ] }
           }
           EOF
@@ -46,50 +46,52 @@ jobs:
           import net.minecraft.entity.LivingEntity;
           import net.minecraft.network.packet.c2s.play.PlayerInteractEntityC2SPacket;
           import net.minecraft.text.Text;
-          import net.minecraft.world.GameMode;
           import net.minecraft.util.Hand;
           import net.minecraft.client.MinecraftClient;
 
           public class KusmanClient implements ClientModInitializer {
               public static boolean fly = false;
               public static boolean aura = false;
+              public static boolean godMode = false;
               private static final String PREFIX = "§b[Mod by Dimasi4ek229] §f";
 
               @Override public void onInitializeClient() {
                   ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-                      // Полет
+                      // ПОЛЕТ
                       dispatcher.register(ClientCommandManager.literal("ggg").executes(context -> {
                           fly = !fly;
                           context.getSource().sendFeedback(Text.literal(PREFIX + "Fly: " + (fly ? "§aON" : "§cOFF")));
                           return 1;
                       }));
 
-                      // Аура
+                      // АУРА
                       dispatcher.register(ClientCommandManager.literal("aura").executes(context -> {
                           aura = !aura;
-                          context.getSource().sendFeedback(Text.literal(PREFIX + "Aura (All): " + (aura ? "§aON" : "§cOFF")));
+                          context.getSource().sendFeedback(Text.literal(PREFIX + "Aura: " + (aura ? "§aON" : "§cOFF")));
                           return 1;
                       }));
 
-                      // Динамит (исправленный для 1.21.1)
+                      // ВЗРЫВНОЙ ДИНАМИТ (TNT)
                       dispatcher.register(ClientCommandManager.literal("boom").executes(context -> {
                           MinecraftClient client = MinecraftClient.getInstance();
                           if (client.player != null && client.world != null) {
                               TntEntity tnt = new TntEntity(client.world, client.player.getX(), client.player.getY(), client.player.getZ(), client.player);
-                              tnt.setFuse(60); 
-                              client.world.addEntity(tnt); // Исправлено: теперь без ID
+                              tnt.setFuse(40); // 2 секунды до БА-БАХ
+                              client.world.addEntity(tnt); 
                               context.getSource().sendFeedback(Text.literal(PREFIX + "§4TNT Spawned!"));
                           }
                           return 1;
                       }));
 
-                      // Креатив
+                      // РАБОЧИЙ КРЕАТИВ (GodMode + Creative Menu)
                       dispatcher.register(ClientCommandManager.literal("gm").executes(context -> {
+                          godMode = !godMode;
                           MinecraftClient client = MinecraftClient.getInstance();
-                          if (client.interactionManager != null) {
-                              GameMode current = client.interactionManager.getCurrentGameMode();
-                              client.interactionManager.setGameMode(current == GameMode.CREATIVE ? GameMode.SURVIVAL : GameMode.CREATIVE);
-                              context.getSource().sendFeedback(Text.literal(PREFIX + "Visual GM Switched!"));
+                          if (client.player != null) {
+                              client.player.getAbilities().creativeMode = godMode;
+                              client.player.getAbilities().invulnerable = godMode;
+                              client.player.sendAbilitiesUpdate();
+                              context.getSource().sendFeedback(Text.literal(PREFIX + "Creative Mode: " + (godMode ? "§aON" : "§cOFF")));
                           }
                           return 1;
                       }));
@@ -98,14 +100,13 @@ jobs:
                   ClientTickEvents.END_CLIENT_TICK.register(client -> {
                       if (client.player == null) return;
                       
-                      if (fly) {
+                      // Обновление способностей (Fly/Creative)
+                      if (fly || godMode) {
                           client.player.getAbilities().flying = true;
-                          // Анти-кик
-                          if (client.player.age % 40 == 0) {
-                              client.player.setPos(client.player.getX(), client.player.getY() - 0.001, client.player.getZ());
-                          }
+                          client.player.getAbilities().allowFlying = true;
                       }
 
+                      // Аура (бьет всех вокруг)
                       if (aura) {
                           client.world.getEntities().forEach(entity -> {
                               if (entity instanceof LivingEntity target && target != client.player && target.isAlive() && client.player.distanceTo(target) <= 5.0) {
@@ -127,5 +128,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Kusman-V11-1-21-1
+          name: Kusman-V12-1-21-1
           path: build/libs/*.jar
