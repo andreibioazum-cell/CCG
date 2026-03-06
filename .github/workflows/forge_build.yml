@@ -1,4 +1,4 @@
-name: KUSMAN_V21_XRAY_EDITION
+name: KUSMAN_V22_GOD_XRAY_FIXED
 on: [push, workflow_dispatch]
 
 jobs:
@@ -31,13 +31,13 @@ jobs:
 
           cat <<'EOF' > src/main/resources/fabric.mod.json
           {
-            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV21",
+            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV22",
             "entrypoints": { "client": [ "com.kusman.KusmanClient" ] },
             "mixins": [ "kusman.mixins.json" ]
           }
           EOF
 
-          echo '{"required":true,"package":"com.kusman.mixin","mixins":["BlockMixin"]}' > src/main/resources/kusman.mixins.json
+          echo '{"required":true,"package":"com.kusman.mixin","mixins":["AbstractBlockMixin"]}' > src/main/resources/kusman.mixins.json
 
           cat <<'EOF' > src/main/java/com/kusman/KusmanClient.java
           package com.kusman;
@@ -49,7 +49,7 @@ jobs:
           import net.minecraft.text.Text;
 
           public class KusmanClient implements ClientModInitializer {
-              public static boolean xray = false, fly = false, aura = false, aurapl = false, god = false;
+              public static boolean xray = false, fly = false, god = false, speed = false;
               public static final String PREFIX = "§b[Dimasi4ek229] §f";
 
               @Override public void onInitializeClient() {
@@ -60,29 +60,48 @@ jobs:
                           msg("X-Ray: " + (xray ? "§aON" : "§cOFF"));
                           return 1;
                       }));
-                      // ОСТАЛЬНЫЕ КОМАНДЫ (ggg, aura, god, boomall)
+                      dispatcher.register(ClientCommandManager.literal("god").executes(c -> {
+                          god = !god;
+                          msg("GodMode: " + (god ? "§aON" : "§cOFF"));
+                          return 1;
+                      }));
                       dispatcher.register(ClientCommandManager.literal("ggg").executes(c -> { fly = !fly; msg("Fly: " + fly); return 1; }));
-                      dispatcher.register(ClientCommandManager.literal("god").executes(c -> { god = !god; msg("God: " + god); return 1; }));
+                      dispatcher.register(ClientCommandManager.literal("speed").executes(c -> { speed = !speed; msg("Speed: " + speed); return 1; }));
                   });
 
                   ClientTickEvents.END_CLIENT_TICK.register(client -> {
                       if (client.player == null) return;
-                      if (god) { client.player.getAbilities().invulnerable = true; client.player.setHealth(20f); }
-                      if (fly) { client.player.getAbilities().allowFlying = true; client.player.getAbilities().flying = true; }
+                      
+                      if (god) {
+                          client.player.getAbilities().invulnerable = true;
+                          client.player.setHealth(20.0f);
+                          client.player.getHungerManager().setFoodLevel(20);
+                          // Отключаем статус смерти клиента
+                          client.player.deathTime = 0;
+                      }
+                      
+                      if (fly) {
+                          client.player.getAbilities().allowFlying = true;
+                          client.player.getAbilities().flying = true;
+                      }
+
+                      if (speed && client.player.input.movementForward > 0) {
+                          client.player.updateVelocity(0.2f, new net.minecraft.util.math.Vec3d(0, 0, 1));
+                      }
                   });
               }
 
-              private void msg(String s) {
+              public static void msg(String s) {
                   if (MinecraftClient.getInstance().player != null)
                       MinecraftClient.getInstance().player.sendMessage(Text.literal(PREFIX + s), false);
               }
           }
           EOF
 
-          cat <<'EOF' > src/main/java/com/kusman/mixin/BlockMixin.java
+          cat <<'EOF' > src/main/java/com/kusman/mixin/AbstractBlockMixin.java
           package com.kusman.mixin;
           import com.kusman.KusmanClient;
-          import net.minecraft.block.Block;
+          import net.minecraft.block.AbstractBlock;
           import net.minecraft.block.BlockState;
           import net.minecraft.block.Blocks;
           import net.minecraft.util.math.BlockPos;
@@ -93,21 +112,20 @@ jobs:
           import org.spongepowered.asm.mixin.injection.Inject;
           import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-          @Mixin(Block.class)
-          public abstract class BlockMixin {
-              @Inject(method = "shouldDrawSide", at = @At("HEAD"), cancellable = true)
-              private static void onShouldDrawSide(BlockState state, BlockView world, BlockPos pos, Direction side, BlockPos blockPos, CallbackInfoReturnable<Boolean> cir) {
-                  if (KusmanClient.xray) {
-                      Block b = state.getBlock();
-                      boolean isOre = b == Blocks.DIAMOND_ORE || b == Blocks.DEEPSLATE_DIAMOND_ORE || 
-                                     b == Blocks.GOLD_ORE || b == Blocks.IRON_ORE || b == Blocks.NETHER_QUARTZ_ORE;
-                      cir.setReturnValue(isOre);
-                  }
-              }
-
+          @Mixin(AbstractBlock.class)
+          public abstract class AbstractBlockMixin {
               @Inject(method = "getAmbientOcclusionLightLevel", at = @At("HEAD"), cancellable = true)
               private void onGetAmbientOcclusionLightLevel(BlockState state, BlockView world, BlockPos pos, CallbackInfoReturnable<Float> cir) {
                   if (KusmanClient.xray) cir.setReturnValue(1.0f);
+              }
+
+              @Inject(method = "isTransparent", at = @At("HEAD"), cancellable = true)
+              private void onIsTransparent(BlockState state, BlockView world, BlockPos pos, CallbackInfoReturnable<Boolean> cir) {
+                  if (KusmanClient.xray) {
+                      boolean isOre = state.getBlock().getName().getString().toLowerCase().contains("ore") || 
+                                     state.getBlock() == Blocks.CHEST || state.getBlock() == Blocks.SPAWNER;
+                      if (!isOre) cir.setReturnValue(true);
+                  }
               }
           }
           EOF
@@ -118,5 +136,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Kusman-V21-Xray
+          name: Kusman-V22-Ultimate
           path: build/libs/*.jar
