@@ -1,0 +1,131 @@
+name: KUSMAN_STABLE_V4
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle 8.10
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10'
+
+      - name: Generate Project Files
+        run: |
+          mkdir -p src/main/java/com/kusman/mixin
+          mkdir -p src/main/resources
+          
+          echo "pluginManagement { repositories { maven { url 'https://maven.fabricmc.net/' }; gradlePluginPortal() } }" > settings.gradle
+          echo "rootProject.name = 'kusman_mod'" >> settings.gradle
+
+          cat <<'EOF' > build.gradle
+          plugins { id 'fabric-loom' version '1.7-SNAPSHOT' }
+          repositories { mavenCentral(); maven { url "https://maven.fabricmc.net/" } }
+          dependencies {
+              minecraft "com.mojang:minecraft:1.20.1"
+              mappings "net.fabricmc:yarn:1.20.1+build.10:v2"
+              modImplementation "net.fabricmc:fabric-loader:0.15.11"
+              modImplementation "net.fabricmc.fabric-api:fabric-api:0.92.0+1.20.1"
+          }
+          EOF
+
+          cat <<'EOF' > src/main/resources/fabric.mod.json
+          {
+            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV4",
+            "entrypoints": { "client": [ "com.kusman.KusmanClient" ] },
+            "mixins": [ "kusman.mixins.json" ]
+          }
+          EOF
+
+          # Убрали XRayMixin из списка
+          echo '{"required":true,"package":"com.kusman.mixin","mixins":["ChatMixin"]}' > src/main/resources/kusman.mixins.json
+
+          cat <<'EOF' > src/main/java/com/kusman/KusmanClient.java
+          package com.kusman;
+          import net.fabricmc.api.ClientModInitializer;
+          import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+          import net.minecraft.client.MinecraftClient;
+          import net.minecraft.entity.player.PlayerEntity;
+          import net.minecraft.network.packet.c2s.play.PlayerInteractEntityC2SPacket;
+          import net.minecraft.text.Text;
+          import net.minecraft.util.Hand;
+
+          public class KusmanClient implements ClientModInitializer {
+              public static boolean aura = false, fly = false;
+
+              @Override public void onInitializeClient() {
+                  ClientTickEvents.END_CLIENT_TICK.register(client -> {
+                      if (client.player == null) return;
+                      
+                      // KillAura Logic
+                      if (aura) {
+                          for (PlayerEntity target : client.world.getPlayers()) {
+                              if (target != client.player && !target.isDead() && client.player.distanceTo(target) <= 4.5) {
+                                  if (client.player.getAttackCooldownProgress(0) >= 1.0f) {
+                                      client.getNetworkHandler().sendPacket(PlayerInteractEntityC2SPacket.attack(target, false));
+                                      client.player.swingHand(Hand.MAIN_HAND);
+                                  }
+                              }
+                          }
+                      }
+                      
+                      // Fly Logic
+                      if (fly) {
+                          client.player.getAbilities().flying = true;
+                      } else if (!client.player.isCreative()) {
+                          client.player.getAbilities().flying = false;
+                      }
+                  });
+              }
+
+              public static void exec(String msg) {
+                  MinecraftClient mc = MinecraftClient.getInstance();
+                  if (msg.startsWith(".aura")) {
+                      aura = !aura;
+                      mc.player.sendMessage(Text.literal("§6[K] §fAura: " + (aura ? "§aON" : "§cOFF")), false);
+                  } else if (msg.startsWith(".fly")) {
+                      fly = !fly;
+                      mc.player.sendMessage(Text.literal("§6[K] §fFly: " + (fly ? "§aON" : "§cOFF")), false);
+                  }
+              }
+          }
+          EOF
+
+          cat <<'EOF' > src/main/java/com/kusman/mixin/ChatMixin.java
+          package com.kusman.mixin;
+          import com.kusman.KusmanClient;
+          import net.minecraft.client.network.ClientPlayerEntity;
+          import org.spongepowered.asm.mixin.Mixin;
+          import org.spongepowered.asm.mixin.injection.At;
+          import org.spongepowered.asm.mixin.injection.Inject;
+          import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+          @Mixin(ClientPlayerEntity.class)
+          public class ChatMixin {
+              // Исправленный метод для 1.20.1
+              @Inject(method = "sendChatMessage", at = @At("HEAD"), cancellable = true)
+              private void onSend(String content, net.minecraft.text.Text preview, CallbackInfo ci) {
+                  if (content.startsWith(".")) {
+                      KusmanClient.exec(content);
+                      ci.cancel();
+                  }
+              }
+          }
+          EOF
+
+      - name: Build Mod
+        run: gradle build --no-daemon
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kusman-V4-Stable
+          path: build/libs/*.jar
