@@ -1,4 +1,4 @@
-name: KUSMAN_V9_DIMASI4EK
+name: KUSMAN_V10_1_21_1
 on: [push, workflow_dispatch]
 
 jobs:
@@ -7,7 +7,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
-        with: { java-version: '17', distribution: 'temurin' }
+        with: { java-version: '21', distribution: 'temurin' } # Для 1.21.1 нужна Java 21
       - uses: gradle/actions/setup-gradle@v4
         with: { gradle-version: '8.10' }
 
@@ -22,16 +22,16 @@ jobs:
           plugins { id 'fabric-loom' version '1.7-SNAPSHOT' }
           repositories { mavenCentral(); maven { url "https://maven.fabricmc.net/" } }
           dependencies {
-              minecraft "com.mojang:minecraft:1.20.1"
-              mappings "net.fabricmc:yarn:1.20.1+build.10:v2"
-              modImplementation "net.fabricmc:fabric-loader:0.15.11"
-              modImplementation "net.fabricmc.fabric-api:fabric-api:0.92.0+1.20.1"
+              minecraft "com.mojang:minecraft:1.21.1"
+              mappings "net.fabricmc:yarn:1.21.1+build.3:v2"
+              modImplementation "net.fabricmc:fabric-loader:0.16.0"
+              modImplementation "net.fabricmc.fabric-api:fabric-api:0.102.0+1.21.1"
           }
           EOF
 
           cat <<'EOF' > src/main/resources/fabric.mod.json
           {
-            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV9",
+            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV10",
             "entrypoints": { "client": [ "com.kusman.KusmanClient" ] }
           }
           EOF
@@ -44,7 +44,6 @@ jobs:
           import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
           import net.minecraft.entity.TntEntity;
           import net.minecraft.entity.LivingEntity;
-          import net.minecraft.entity.player.PlayerEntity;
           import net.minecraft.network.packet.c2s.play.PlayerInteractEntityC2SPacket;
           import net.minecraft.text.Text;
           import net.minecraft.world.GameMode;
@@ -54,45 +53,39 @@ jobs:
           public class KusmanClient implements ClientModInitializer {
               public static boolean fly = false;
               public static boolean aura = false;
-              public static boolean antikick = true;
               private static final String PREFIX = "§b[Mod by Dimasi4ek229] §f";
 
               @Override public void onInitializeClient() {
                   ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-                      // Полет
                       dispatcher.register(ClientCommandManager.literal("ggg").executes(context -> {
                           fly = !fly;
                           context.getSource().sendFeedback(Text.literal(PREFIX + "Fly: " + (fly ? "§aON" : "§cOFF")));
                           return 1;
                       }));
 
-                      // Аура (теперь на всех мобов)
                       dispatcher.register(ClientCommandManager.literal("aura").executes(context -> {
                           aura = !aura;
-                          context.getSource().sendFeedback(Text.literal(PREFIX + "Aura (All Entities): " + (aura ? "§aON" : "§cOFF")));
+                          context.getSource().sendFeedback(Text.literal(PREFIX + "Aura (All): " + (aura ? "§aON" : "§cOFF")));
                           return 1;
                       }));
 
-                      // Рабочий динамит
                       dispatcher.register(ClientCommandManager.literal("boom").executes(context -> {
                           MinecraftClient client = MinecraftClient.getInstance();
                           if (client.player != null) {
                               TntEntity tnt = new TntEntity(client.world, client.player.getX(), client.player.getY(), client.player.getZ(), client.player);
-                              tnt.setFuse(80); // 4 секунды до взрыва
+                              tnt.setFuse(60); 
                               client.world.addEntity(tnt.getId(), tnt);
-                              context.getSource().sendFeedback(Text.literal(PREFIX + "§4TNT Activated!"));
+                              context.getSource().sendFeedback(Text.literal(PREFIX + "§4TNT Spawned!"));
                           }
                           return 1;
                       }));
 
-                      // Клиентский креатив
                       dispatcher.register(ClientCommandManager.literal("gm").executes(context -> {
                           MinecraftClient client = MinecraftClient.getInstance();
-                          if (client.player != null) {
-                              client.interactionManager.setGameMode(
-                                  client.interactionManager.getCurrentGameMode() == GameMode.CREATIVE ? GameMode.SURVIVAL : GameMode.CREATIVE
-                              );
-                              context.getSource().sendFeedback(Text.literal(PREFIX + "Visual GameMode Switched!"));
+                          if (client.interactionManager != null) {
+                              GameMode current = client.interactionManager.getCurrentGameMode();
+                              client.interactionManager.setGameMode(current == GameMode.CREATIVE ? GameMode.SURVIVAL : GameMode.CREATIVE);
+                              context.getSource().sendFeedback(Text.literal(PREFIX + "Visual GM Switched!"));
                           }
                           return 1;
                       }));
@@ -103,20 +96,21 @@ jobs:
                       
                       if (fly) {
                           client.player.getAbilities().flying = true;
-                          if (antikick && client.player.age % 40 == 0) {
-                              client.player.setPos(client.player.getX(), client.player.getY() - 0.01, client.player.getZ());
+                          // Анти-кик: небольшое движение каждые 2 секунды
+                          if (client.player.age % 40 == 0) {
+                              client.player.setPos(client.player.getX(), client.player.getY() - 0.001, client.player.getZ());
                           }
                       }
 
                       if (aura) {
-                          for (var entity : client.world.getEntities()) {
-                              if (entity instanceof LivingEntity target && target != client.player && !target.isDead() && client.player.distanceTo(target) <= 5.0) {
+                          client.world.getEntities().forEach(entity -> {
+                              if (entity instanceof LivingEntity target && target != client.player && target.isAlive() && client.player.distanceTo(target) <= 5.0) {
                                   if (client.player.getAttackCooldownProgress(0) >= 1.0f) {
                                       client.getNetworkHandler().sendPacket(PlayerInteractEntityC2SPacket.attack(target, client.player.isSneaking()));
                                       client.player.swingHand(Hand.MAIN_HAND);
                                   }
                               }
-                          }
+                          });
                       }
                   });
               }
@@ -129,5 +123,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Kusman-V9-Final
+          name: Kusman-V10-1-21-1
           path: build/libs/*.jar
