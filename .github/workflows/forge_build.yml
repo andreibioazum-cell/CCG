@@ -1,4 +1,4 @@
-name: KUSMAN_V24_FULL_HACK
+name: KUSMAN_V25_GOD_AURA_REWORK
 on: [push, workflow_dispatch]
 
 jobs:
@@ -31,13 +31,13 @@ jobs:
 
           cat <<'EOF' > src/main/resources/fabric.mod.json
           {
-            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV24",
+            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV25",
             "entrypoints": { "client": [ "com.kusman.KusmanClient" ] },
             "mixins": [ "kusman.mixins.json" ]
           }
           EOF
 
-          echo '{"required":true,"package":"com.kusman.mixin","mixins":["AbstractBlockMixin"]}' > src/main/resources/kusman.mixins.json
+          echo '{"required":true,"package":"com.kusman.mixin","mixins":["AbstractBlockMixin","NetworkMixin"]}' > src/main/resources/kusman.mixins.json
 
           cat <<'EOF' > src/main/java/com/kusman/KusmanClient.java
           package com.kusman;
@@ -45,42 +45,25 @@ jobs:
           import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
           import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
           import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
-          import com.mojang.brigadier.arguments.StringArgumentType;
           import net.minecraft.client.MinecraftClient;
           import net.minecraft.entity.LivingEntity;
           import net.minecraft.entity.player.PlayerEntity;
           import net.minecraft.entity.mob.MobEntity;
           import net.minecraft.text.Text;
           import net.minecraft.util.Hand;
+          import net.minecraft.util.math.Vec3d;
 
           public class KusmanClient implements ClientModInitializer {
-              public static boolean xray=false, god=false, fly=false, aura=false, aurapl=false, auramb=false, speed=false;
-              public static String killTarget = "";
+              public static boolean xray=false, god=false, fly=false, aura=false, aurapl=false, auramb=false;
               public static final String PREFIX = "§b[Dimasi4ek229] §f";
 
               @Override public void onInitializeClient() {
                   ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
                       dispatcher.register(ClientCommandManager.literal("god").executes(c -> { god = !god; msg("God: " + god); return 1; }));
-                      dispatcher.register(ClientCommandManager.literal("xray").executes(c -> { xray = !xray; MinecraftClient.getInstance().worldRenderer.reload(); msg("Xray: " + xray); return 1; }));
-                      dispatcher.register(ClientCommandManager.literal("ggg").executes(c -> { fly = !fly; msg("Fly: " + fly); return 1; }));
                       dispatcher.register(ClientCommandManager.literal("aura").executes(c -> { aura = !aura; msg("Aura All: " + aura); return 1; }));
                       dispatcher.register(ClientCommandManager.literal("aurapl").executes(c -> { aurapl = !aurapl; msg("Aura Players: " + aurapl); return 1; }));
                       dispatcher.register(ClientCommandManager.literal("auramb").executes(c -> { auramb = !auramb; msg("Aura Mobs: " + auramb); return 1; }));
-                      dispatcher.register(ClientCommandManager.literal("speed").executes(c -> { speed = !speed; msg("Speed: " + speed); return 1; }));
-                      
-                      dispatcher.register(ClientCommandManager.literal("tpk").then(ClientCommandManager.argument("name", StringArgumentType.string()).executes(c -> {
-                          String name = StringArgumentType.getString(c, "name");
-                          MinecraftClient.getInstance().world.getPlayers().forEach(p -> {
-                              if (p.getName().getString().equalsIgnoreCase(name)) MinecraftClient.getInstance().player.setPosition(p.getPos());
-                          });
-                          return 1;
-                      })));
-
-                      dispatcher.register(ClientCommandManager.literal("kl").then(ClientCommandManager.argument("name", StringArgumentType.string()).executes(c -> {
-                          killTarget = StringArgumentType.getString(c, "name");
-                          msg("Targeting: " + killTarget);
-                          return 1;
-                      })));
+                      dispatcher.register(ClientCommandManager.literal("xray").executes(c -> { xray = !xray; MinecraftClient.getInstance().worldRenderer.reload(); msg("Xray: " + xray); return 1; }));
                   });
 
                   ClientTickEvents.END_CLIENT_TICK.register(client -> {
@@ -88,25 +71,53 @@ jobs:
                       
                       if (god) { client.player.setHealth(20f); client.player.getAbilities().invulnerable = true; }
                       if (fly) { client.player.getAbilities().allowFlying = true; client.player.getAbilities().flying = true; }
-                      if (speed && client.player.input.movementForward > 0) client.player.updateVelocity(0.2f, new net.minecraft.util.math.Vec3d(0,0,1));
 
                       client.world.getEntities().forEach(e -> {
-                          if (e instanceof LivingEntity target && target != client.player && target.isAlive() && client.player.distanceTo(target) <= 6.0) {
-                              boolean attack = false;
-                              if (aura) attack = true;
-                              if (aurapl && target instanceof PlayerEntity) attack = true;
-                              if (auramb && target instanceof MobEntity) attack = true;
-                              if (!killTarget.isEmpty() && target.getName().getString().equalsIgnoreCase(killTarget)) attack = true;
+                          if (e instanceof LivingEntity target && target != client.player && target.isAlive()) {
+                              double dist = client.player.distanceTo(target);
+                              if (dist <= 4.5) { // Дистанция срабатывания
+                                  boolean shouldAttack = (aura) || (aurapl && target instanceof PlayerEntity) || (auramb && target instanceof MobEntity);
+                                  
+                                  if (shouldAttack) {
+                                      // Наводка (Look)
+                                      Vec3d diff = target.getPos().add(0, target.getEyeHeight(target.getPose()) / 2, 0).subtract(client.player.getEyePos());
+                                      double diffXZ = Math.sqrt(diff.x * diff.x + diff.z * diff.z);
+                                      client.player.setYaw((float) Math.toDegrees(Math.atan2(-diff.x, diff.z)));
+                                      client.player.setPitch((float) Math.toDegrees(Math.atan2(-diff.y, diffXZ)));
 
-                              if (attack && client.player.getAttackCooldownProgress(0) >= 1.0f) {
-                                  client.interactionManager.attackEntity(client.player, target);
-                                  client.player.swingHand(Hand.MAIN_HAND);
+                                      // Удар только если дистанция >= 3.0 (чтобы не били нас)
+                                      if (client.player.getAttackCooldownProgress(0) >= 1.0f && dist <= 4.0) {
+                                          client.interactionManager.attackEntity(client.player, target);
+                                          client.player.swingHand(Hand.MAIN_HAND);
+                                      }
+                                  }
                               }
                           }
                       });
                   });
               }
               private void msg(String s) { if (MinecraftClient.getInstance().player != null) MinecraftClient.getInstance().player.sendMessage(Text.literal(PREFIX + s), false); }
+          }
+          EOF
+
+          cat <<'EOF' > src/main/java/com/kusman/mixin/NetworkMixin.java
+          package com.kusman.mixin;
+          import com.kusman.KusmanClient;
+          import net.minecraft.client.network.ClientPlayNetworkHandler;
+          import net.minecraft.network.packet.s2c.play.EntityDamageS2CPacket;
+          import org.spongepowered.asm.mixin.Mixin;
+          import org.spongepowered.asm.mixin.injection.At;
+          import org.spongepowered.asm.mixin.injection.Inject;
+          import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+          @Mixin(ClientPlayNetworkHandler.class)
+          public class NetworkMixin {
+              @Inject(method = "onEntityDamage", at = @At("HEAD"), cancellable = true)
+              private void onDamage(EntityDamageS2CPacket packet, CallbackInfo ci) {
+                  if (KusmanClient.god) {
+                      ci.cancel(); // Блокируем пакет урона на уровне сети
+                  }
+              }
           }
           EOF
 
@@ -143,5 +154,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Kusman-V24-Full
+          name: Kusman-V25-AuraFix
           path: build/libs/*.jar
