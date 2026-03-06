@@ -1,4 +1,4 @@
-name: KUSMAN_V8_ULTRA
+name: KUSMAN_V9_DIMASI4EK
 on: [push, workflow_dispatch]
 
 jobs:
@@ -31,7 +31,7 @@ jobs:
 
           cat <<'EOF' > src/main/resources/fabric.mod.json
           {
-            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV8",
+            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV9",
             "entrypoints": { "client": [ "com.kusman.KusmanClient" ] }
           }
           EOF
@@ -43,51 +43,56 @@ jobs:
           import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
           import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
           import net.minecraft.entity.TntEntity;
+          import net.minecraft.entity.LivingEntity;
           import net.minecraft.entity.player.PlayerEntity;
           import net.minecraft.network.packet.c2s.play.PlayerInteractEntityC2SPacket;
           import net.minecraft.text.Text;
           import net.minecraft.world.GameMode;
           import net.minecraft.util.Hand;
+          import net.minecraft.client.MinecraftClient;
 
           public class KusmanClient implements ClientModInitializer {
               public static boolean fly = false;
               public static boolean aura = false;
+              public static boolean antikick = true;
               private static final String PREFIX = "§b[Mod by Dimasi4ek229] §f";
 
               @Override public void onInitializeClient() {
                   ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-                      // Команда Полета
+                      // Полет
                       dispatcher.register(ClientCommandManager.literal("ggg").executes(context -> {
                           fly = !fly;
                           context.getSource().sendFeedback(Text.literal(PREFIX + "Fly: " + (fly ? "§aON" : "§cOFF")));
                           return 1;
                       }));
 
-                      // Команда Киллауры
+                      // Аура (теперь на всех мобов)
                       dispatcher.register(ClientCommandManager.literal("aura").executes(context -> {
                           aura = !aura;
-                          context.getSource().sendFeedback(Text.literal(PREFIX + "Aura: " + (aura ? "§aON" : "§cOFF")));
+                          context.getSource().sendFeedback(Text.literal(PREFIX + "Aura (All Entities): " + (aura ? "§aON" : "§cOFF")));
                           return 1;
                       }));
 
-                      // Команда ТНТ
+                      // Рабочий динамит
                       dispatcher.register(ClientCommandManager.literal("boom").executes(context -> {
-                          var client = net.minecraft.client.MinecraftClient.getInstance();
+                          MinecraftClient client = MinecraftClient.getInstance();
                           if (client.player != null) {
                               TntEntity tnt = new TntEntity(client.world, client.player.getX(), client.player.getY(), client.player.getZ(), client.player);
+                              tnt.setFuse(80); // 4 секунды до взрыва
                               client.world.addEntity(tnt.getId(), tnt);
-                              context.getSource().sendFeedback(Text.literal(PREFIX + "§4TNT Spawned!"));
+                              context.getSource().sendFeedback(Text.literal(PREFIX + "§4TNT Activated!"));
                           }
                           return 1;
                       }));
 
-                      // Команда Креатива
+                      // Клиентский креатив
                       dispatcher.register(ClientCommandManager.literal("gm").executes(context -> {
-                          var client = net.minecraft.client.MinecraftClient.getInstance();
+                          MinecraftClient client = MinecraftClient.getInstance();
                           if (client.player != null) {
-                              boolean isCreative = client.interactionManager.getCurrentGameMode() == GameMode.CREATIVE;
-                              client.player.networkHandler.sendCommand(isCreative ? "gamemode survival" : "gamemode creative");
-                              context.getSource().sendFeedback(Text.literal(PREFIX + "Switching GameMode..."));
+                              client.interactionManager.setGameMode(
+                                  client.interactionManager.getCurrentGameMode() == GameMode.CREATIVE ? GameMode.SURVIVAL : GameMode.CREATIVE
+                              );
+                              context.getSource().sendFeedback(Text.literal(PREFIX + "Visual GameMode Switched!"));
                           }
                           return 1;
                       }));
@@ -96,19 +101,18 @@ jobs:
                   ClientTickEvents.END_CLIENT_TICK.register(client -> {
                       if (client.player == null) return;
                       
-                      // Логика полета
                       if (fly) {
                           client.player.getAbilities().flying = true;
-                      } else if (!client.player.isCreative()) {
-                          client.player.getAbilities().flying = false;
+                          if (antikick && client.player.age % 40 == 0) {
+                              client.player.setPos(client.player.getX(), client.player.getY() - 0.01, client.player.getZ());
+                          }
                       }
 
-                      // Логика ауры
                       if (aura) {
-                          for (PlayerEntity target : client.world.getPlayers()) {
-                              if (target != client.player && !target.isDead() && client.player.distanceTo(target) <= 4.5) {
+                          for (var entity : client.world.getEntities()) {
+                              if (entity instanceof LivingEntity target && target != client.player && !target.isDead() && client.player.distanceTo(target) <= 5.0) {
                                   if (client.player.getAttackCooldownProgress(0) >= 1.0f) {
-                                      client.getNetworkHandler().sendPacket(PlayerInteractEntityC2SPacket.attack(target, false));
+                                      client.getNetworkHandler().sendPacket(PlayerInteractEntityC2SPacket.attack(target, client.player.isSneaking()));
                                       client.player.swingHand(Hand.MAIN_HAND);
                                   }
                               }
@@ -125,5 +129,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Kusman-V8-Dimasi4ek
+          name: Kusman-V9-Final
           path: build/libs/*.jar
