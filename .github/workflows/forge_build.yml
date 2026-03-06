@@ -1,4 +1,4 @@
-name: KUSMAN_V18_FINAL
+name: KUSMAN_V21_XRAY_EDITION
 on: [push, workflow_dispatch]
 
 jobs:
@@ -13,7 +13,7 @@ jobs:
 
       - name: Generate Project
         run: |
-          mkdir -p src/main/java/com/kusman src/main/resources
+          mkdir -p src/main/java/com/kusman/mixin src/main/resources
           
           echo "pluginManagement { repositories { maven { url 'https://maven.fabricmc.net/' }; gradlePluginPortal() } }" > settings.gradle
           echo "rootProject.name = 'kusman_mod'" >> settings.gradle
@@ -31,10 +31,13 @@ jobs:
 
           cat <<'EOF' > src/main/resources/fabric.mod.json
           {
-            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV18",
-            "entrypoints": { "client": [ "com.kusman.KusmanClient" ] }
+            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV21",
+            "entrypoints": { "client": [ "com.kusman.KusmanClient" ] },
+            "mixins": [ "kusman.mixins.json" ]
           }
           EOF
+
+          echo '{"required":true,"package":"com.kusman.mixin","mixins":["BlockMixin"]}' > src/main/resources/kusman.mixins.json
 
           cat <<'EOF' > src/main/java/com/kusman/KusmanClient.java
           package com.kusman;
@@ -44,78 +47,67 @@ jobs:
           import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
           import net.minecraft.client.MinecraftClient;
           import net.minecraft.text.Text;
-          import net.minecraft.item.ItemStack;
-          import net.minecraft.item.Items;
-          import net.minecraft.network.packet.c2s.play.CreativeInventoryActionC2SPacket;
-          import net.minecraft.entity.LivingEntity;
-          import net.minecraft.util.Hand;
 
           public class KusmanClient implements ClientModInitializer {
-              public static boolean fly = false;
-              public static boolean aura = false;
-              public static boolean god = false;
+              public static boolean xray = false, fly = false, aura = false, aurapl = false, god = false;
               public static final String PREFIX = "§b[Dimasi4ek229] §f";
 
               @Override public void onInitializeClient() {
                   ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
+                      dispatcher.register(ClientCommandManager.literal("xray").executes(c -> {
+                          xray = !xray;
+                          MinecraftClient.getInstance().worldRenderer.reload();
+                          msg("X-Ray: " + (xray ? "§aON" : "§cOFF"));
+                          return 1;
+                      }));
+                      // ОСТАЛЬНЫЕ КОМАНДЫ (ggg, aura, god, boomall)
                       dispatcher.register(ClientCommandManager.literal("ggg").executes(c -> { fly = !fly; msg("Fly: " + fly); return 1; }));
-                      dispatcher.register(ClientCommandManager.literal("aura").executes(c -> { aura = !aura; msg("Aura: " + aura); return 1; }));
-                      dispatcher.register(ClientCommandManager.literal("god").executes(c -> { god = !god; msg("GodMode: " + god); return 1; }));
-                      dispatcher.register(ClientCommandManager.literal("kit").executes(c -> { giveKit(); return 1; }));
-                      dispatcher.register(ClientCommandManager.literal("antiban").executes(c -> { msg("Anti-Report Active"); return 1; }));
+                      dispatcher.register(ClientCommandManager.literal("god").executes(c -> { god = !god; msg("God: " + god); return 1; }));
                   });
 
                   ClientTickEvents.END_CLIENT_TICK.register(client -> {
                       if (client.player == null) return;
-
-                      // GODMODE + ANTIKICK
-                      if (god) {
-                          client.player.getAbilities().invulnerable = true;
-                          if (client.player.getHealth() < 20f) client.player.setHealth(20f);
-                      }
-
-                      if (fly) {
-                          client.player.getAbilities().allowFlying = true;
-                          client.player.getAbilities().flying = true;
-                          // Антикик: легкое падение каждые 40 тиков
-                          if (client.player.age % 40 == 0) {
-                              client.player.setPosition(client.player.getX(), client.player.getY() - 0.05, client.player.getZ());
-                          }
-                      }
-
-                      // AURA
-                      if (aura) {
-                          client.world.getEntities().forEach(e -> {
-                              if (e instanceof LivingEntity t && t != client.player && t.isAlive() && client.player.distanceTo(t) <= 6.0) {
-                                  client.player.setYaw((float) Math.toDegrees(Math.atan2(-(t.getX() - client.player.getX()), t.getZ() - client.player.getZ())));
-                                  if (client.player.getAttackCooldownProgress(0) >= 1.0f) {
-                                      client.interactionManager.attackEntity(client.player, t);
-                                      client.player.swingHand(Hand.MAIN_HAND);
-                                  }
-                              }
-                          });
-                      }
+                      if (god) { client.player.getAbilities().invulnerable = true; client.player.setHealth(20f); }
+                      if (fly) { client.player.getAbilities().allowFlying = true; client.player.getAbilities().flying = true; }
                   });
-              }
-
-              private void giveKit() {
-                  MinecraftClient client = MinecraftClient.getInstance();
-                  int[] slots = {36, 37, 38, 9};
-                  ItemStack[] items = {
-                      new ItemStack(Items.NETHERITE_SWORD),
-                      new ItemStack(Items.ENCHANTED_GOLDEN_APPLE, 64),
-                      new ItemStack(Items.NETHERITE_CHESTPLATE),
-                      new ItemStack(Items.NETHERITE_PICKAXE)
-                  };
-                  for (int i = 0; i < slots.length; i++) {
-                      client.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(slots[i], items[i]));
-                  }
-                  msg("§6Kit Delivered!");
               }
 
               private void msg(String s) {
                   if (MinecraftClient.getInstance().player != null)
                       MinecraftClient.getInstance().player.sendMessage(Text.literal(PREFIX + s), false);
+              }
+          }
+          EOF
+
+          cat <<'EOF' > src/main/java/com/kusman/mixin/BlockMixin.java
+          package com.kusman.mixin;
+          import com.kusman.KusmanClient;
+          import net.minecraft.block.Block;
+          import net.minecraft.block.BlockState;
+          import net.minecraft.block.Blocks;
+          import net.minecraft.util.math.BlockPos;
+          import net.minecraft.util.math.Direction;
+          import net.minecraft.world.BlockView;
+          import org.spongepowered.asm.mixin.Mixin;
+          import org.spongepowered.asm.mixin.injection.At;
+          import org.spongepowered.asm.mixin.injection.Inject;
+          import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+          @Mixin(Block.class)
+          public abstract class BlockMixin {
+              @Inject(method = "shouldDrawSide", at = @At("HEAD"), cancellable = true)
+              private static void onShouldDrawSide(BlockState state, BlockView world, BlockPos pos, Direction side, BlockPos blockPos, CallbackInfoReturnable<Boolean> cir) {
+                  if (KusmanClient.xray) {
+                      Block b = state.getBlock();
+                      boolean isOre = b == Blocks.DIAMOND_ORE || b == Blocks.DEEPSLATE_DIAMOND_ORE || 
+                                     b == Blocks.GOLD_ORE || b == Blocks.IRON_ORE || b == Blocks.NETHER_QUARTZ_ORE;
+                      cir.setReturnValue(isOre);
+                  }
+              }
+
+              @Inject(method = "getAmbientOcclusionLightLevel", at = @At("HEAD"), cancellable = true)
+              private void onGetAmbientOcclusionLightLevel(BlockState state, BlockView world, BlockPos pos, CallbackInfoReturnable<Float> cir) {
+                  if (KusmanClient.xray) cir.setReturnValue(1.0f);
               }
           }
           EOF
@@ -126,13 +118,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Kusman-V18-Final
-          path: build/libs/*.jar
-      - name: Build
-        run: gradle build --no-daemon
-
-      - name: Upload
-        uses: actions/upload-artifact@v4
-        with:
-          name: Kusman-V17-Stable
+          name: Kusman-V21-Xray
           path: build/libs/*.jar
