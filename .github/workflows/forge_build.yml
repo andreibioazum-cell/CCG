@@ -1,4 +1,4 @@
-name: KUSMAN_V15_GOD_MODE
+name: KUSMAN_V16_PREFIX_FIX
 on: [push, workflow_dispatch]
 
 jobs:
@@ -13,7 +13,7 @@ jobs:
 
       - name: Generate Project
         run: |
-          mkdir -p src/main/java/com/kusman src/main/resources
+          mkdir -p src/main/java/com/kusman/mixin src/main/resources
           
           echo "pluginManagement { repositories { maven { url 'https://maven.fabricmc.net/' }; gradlePluginPortal() } }" > settings.gradle
           echo "rootProject.name = 'kusman_mod'" >> settings.gradle
@@ -31,70 +31,78 @@ jobs:
 
           cat <<'EOF' > src/main/resources/fabric.mod.json
           {
-            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV15",
-            "entrypoints": { "client": [ "com.kusman.KusmanClient" ] }
+            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV16",
+            "entrypoints": { "client": [ "com.kusman.KusmanClient" ] },
+            "mixins": [ "kusman.mixins.json" ]
           }
           EOF
+
+          echo '{"required":true,"package":"com.kusman.mixin","mixins":["ChatMixin"]}' > src/main/resources/kusman.mixins.json
 
           cat <<'EOF' > src/main/java/com/kusman/KusmanClient.java
           package com.kusman;
           import net.fabricmc.api.ClientModInitializer;
           import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-          import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
-          import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
-          import net.minecraft.item.ItemStack;
-          import net.minecraft.item.Items;
-          import net.minecraft.network.packet.c2s.play.CreativeInventoryActionC2SPacket;
-          import net.minecraft.text.Text;
           import net.minecraft.client.MinecraftClient;
+          import net.minecraft.text.Text;
 
           public class KusmanClient implements ClientModInitializer {
               public static boolean fly = false;
               public static boolean aura = false;
               public static boolean god = false;
-              private static final String PREFIX = "§b[Mod by Dimasi4ek229] §f";
+              public static final String PREFIX = "§b[Mod by Dimasi4ek229] §f";
 
               @Override public void onInitializeClient() {
-                  ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-                      
-                      // ФЕЙК ОПЕРАТОР (ДЛЯ ТРОЛЛИНГА)
-                      dispatcher.register(ClientCommandManager.literal("op").executes(context -> {
-                          context.getSource().sendFeedback(Text.literal("§7§o[Server: Made Dimasi4ek229 a server operator]"));
-                          return 1;
-                      }));
-
-                      // НОРМАЛЬНЫЙ КИТСТАРТ
-                      dispatcher.register(ClientCommandManager.literal("kit").executes(context -> {
-                          MinecraftClient client = MinecraftClient.getInstance();
-                          if (client.player != null) {
-                              int[] slots = {36, 37, 38, 39, 40, 9};
-                              ItemStack[] items = {
-                                  new net.minecraft.item.ItemStack(Items.NETHERITE_SWORD),
-                                  new net.minecraft.item.ItemStack(Items.NETHERITE_PICKAXE),
-                                  new net.minecraft.item.ItemStack(Items.ENCHANTED_GOLDEN_APPLE, 64),
-                                  new net.minecraft.item.ItemStack(Items.NETHERITE_CHESTPLATE),
-                                  new net.minecraft.item.ItemStack(Items.NETHERITE_LEGGINGS),
-                                  new net.minecraft.item.ItemStack(Items.NETHERITE_BOOTS)
-                              };
-                              for (int i = 0; i < slots.length; i++) {
-                                  client.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(slots[i], items[i]));
-                              }
-                              context.getSource().sendFeedback(Text.literal(PREFIX + "§6KitStart Delivered!"));
-                          }
-                          return 1;
-                      }));
-
-                      // АНТИБАН (REPORT BLOCKER)
-                      dispatcher.register(ClientCommandManager.literal("antiban").executes(context -> {
-                          context.getSource().sendFeedback(Text.literal(PREFIX + "§aAnti-Report System Active."));
-                          return 1;
-                      }));
-                  });
-
                   ClientTickEvents.END_CLIENT_TICK.register(client -> {
                       if (client.player == null) return;
-                      // Логика GodMode/Fly/Aura остается из V14...
+                      if (fly) { client.player.getAbilities().allowFlying = true; client.player.getAbilities().flying = true; }
+                      if (god) { client.player.getAbilities().invulnerable = true; client.player.setHealth(20f); }
+                      if (aura) {
+                          client.world.getEntities().forEach(e -> {
+                              if (e instanceof net.minecraft.entity.LivingEntity t && t != client.player && t.isAlive() && client.player.distanceTo(t) <= 6.0) {
+                                  client.player.setYaw((float) Math.toDegrees(Math.atan2(-(t.getX() - client.player.getX()), t.getZ() - client.player.getZ())));
+                                  if (client.player.getAttackCooldownProgress(0) >= 1.0f) {
+                                      client.interactionManager.attackEntity(client.player, t);
+                                      client.player.swingHand(net.minecraft.util.Hand.MAIN_HAND);
+                                  }
+                              }
+                          });
+                      }
                   });
+              }
+
+              public static void handleCommand(String msg) {
+                  MinecraftClient client = MinecraftClient.getInstance();
+                  String cmd = msg.substring(1).toLowerCase();
+                  if (cmd.startsWith("ggg")) { fly = !fly; client.player.sendMessage(Text.literal(PREFIX + "Fly: " + fly), false); }
+                  else if (cmd.startsWith("aura")) { aura = !aura; client.player.sendMessage(Text.literal(PREFIX + "Aura: " + aura), false); }
+                  else if (cmd.startsWith("god")) { god = !god; client.player.sendMessage(Text.literal(PREFIX + "God: " + god), false); }
+                  else if (cmd.startsWith("kit")) { 
+                      client.getNetworkHandler().sendPacket(new net.minecraft.network.packet.c2s.play.CreativeInventoryActionC2SPacket(36, new net.minecraft.item.ItemStack(net.minecraft.items.Items.NETHERITE_SWORD)));
+                      client.player.sendMessage(Text.literal(PREFIX + "Kit Sent!"), false);
+                  }
+                  else if (cmd.startsWith("op")) { client.player.sendMessage(Text.literal("§7§o[Server: Made Dimasi4ek229 a server operator]"), false); }
+              }
+          }
+          EOF
+
+          cat <<'EOF' > src/main/java/com/kusman/mixin/ChatMixin.java
+          package com.kusman.mixin;
+          import com.kusman.KusmanClient;
+          import net.minecraft.client.network.ClientPlayerEntity;
+          import org.spongepowered.asm.mixin.Mixin;
+          import org.spongepowered.asm.mixin.injection.At;
+          import org.spongepowered.asm.mixin.injection.Inject;
+          import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+          @Mixin(ClientPlayerEntity.class)
+          public class ChatMixin {
+              @Inject(method = "sendChatMessage", at = @At("HEAD"), cancellable = true)
+              private void onChat(String message, net.minecraft.text.Text preview, CallbackInfo ci) {
+                  if (message.startsWith(":")) {
+                      KusmanClient.handleCommand(message);
+                      ci.cancel();
+                  }
               }
           }
           EOF
@@ -105,5 +113,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Kusman-V15-God
+          name: Kusman-V16-Prefix
           path: build/libs/*.jar
