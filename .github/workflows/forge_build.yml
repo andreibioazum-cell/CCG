@@ -1,4 +1,4 @@
-name: KUSMAN_V10_1_21_1
+name: KUSMAN_V11_FIXED
 on: [push, workflow_dispatch]
 
 jobs:
@@ -7,7 +7,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
-        with: { java-version: '21', distribution: 'temurin' } # Для 1.21.1 нужна Java 21
+        with: { java-version: '21', distribution: 'temurin' }
       - uses: gradle/actions/setup-gradle@v4
         with: { gradle-version: '8.10' }
 
@@ -31,7 +31,7 @@ jobs:
 
           cat <<'EOF' > src/main/resources/fabric.mod.json
           {
-            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV10",
+            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV11",
             "entrypoints": { "client": [ "com.kusman.KusmanClient" ] }
           }
           EOF
@@ -57,29 +57,33 @@ jobs:
 
               @Override public void onInitializeClient() {
                   ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
+                      // Полет
                       dispatcher.register(ClientCommandManager.literal("ggg").executes(context -> {
                           fly = !fly;
                           context.getSource().sendFeedback(Text.literal(PREFIX + "Fly: " + (fly ? "§aON" : "§cOFF")));
                           return 1;
                       }));
 
+                      // Аура
                       dispatcher.register(ClientCommandManager.literal("aura").executes(context -> {
                           aura = !aura;
                           context.getSource().sendFeedback(Text.literal(PREFIX + "Aura (All): " + (aura ? "§aON" : "§cOFF")));
                           return 1;
                       }));
 
+                      // Динамит (исправленный для 1.21.1)
                       dispatcher.register(ClientCommandManager.literal("boom").executes(context -> {
                           MinecraftClient client = MinecraftClient.getInstance();
-                          if (client.player != null) {
+                          if (client.player != null && client.world != null) {
                               TntEntity tnt = new TntEntity(client.world, client.player.getX(), client.player.getY(), client.player.getZ(), client.player);
                               tnt.setFuse(60); 
-                              client.world.addEntity(tnt.getId(), tnt);
+                              client.world.addEntity(tnt); // Исправлено: теперь без ID
                               context.getSource().sendFeedback(Text.literal(PREFIX + "§4TNT Spawned!"));
                           }
                           return 1;
                       }));
 
+                      // Креатив
                       dispatcher.register(ClientCommandManager.literal("gm").executes(context -> {
                           MinecraftClient client = MinecraftClient.getInstance();
                           if (client.interactionManager != null) {
@@ -96,7 +100,7 @@ jobs:
                       
                       if (fly) {
                           client.player.getAbilities().flying = true;
-                          // Анти-кик: небольшое движение каждые 2 секунды
+                          // Анти-кик
                           if (client.player.age % 40 == 0) {
                               client.player.setPos(client.player.getX(), client.player.getY() - 0.001, client.player.getZ());
                           }
@@ -123,5 +127,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Kusman-V10-1-21-1
+          name: Kusman-V11-1-21-1
           path: build/libs/*.jar
