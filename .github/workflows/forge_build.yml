@@ -1,4 +1,4 @@
-name: KUSMAN_V32_HUD_MENU
+name: KUSMAN_V33_FINAL_FIX
 on: [push, workflow_dispatch]
 
 jobs:
@@ -8,15 +8,25 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with: { java-version: '21', distribution: 'temurin' }
-      - uses: gradle/actions/setup-gradle@v4
-        with: { gradle-version: '8.10' }
+      
+      # Полная очистка перед сборкой, чтобы избежать "No build results"
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10'
+          cache-disabled: true 
 
       - name: Generate Project
         run: |
-          mkdir -p src/main/java/com/kusman src/main/resources
+          mkdir -p src/main/java/com/kusman/mixin src/main/resources
           
+          cat <<'EOF' > settings.gradle
+          rootProject.name = 'kusman_mod'
+          EOF
+
           cat <<'EOF' > build.gradle
           plugins { id 'fabric-loom' version '1.7-SNAPSHOT' }
+          repositories { mavenCentral(); maven { url "https://maven.fabricmc.net/" } }
           dependencies {
               minecraft "com.mojang:minecraft:1.21.1"
               mappings "net.fabricmc:yarn:1.21.1+build.3:v2"
@@ -25,67 +35,33 @@ jobs:
           }
           EOF
 
+          cat <<'EOF' > src/main/resources/fabric.mod.json
+          {
+            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV33",
+            "entrypoints": { "client": [ "com.kusman.KusmanClient" ] },
+            "mixins": [ "kusman.mixins.json" ]
+          }
+          EOF
+
+          echo '{"required":true,"package":"com.kusman.mixin","mixins":["InventoryMixin"]}' > src/main/resources/kusman.mixins.json
+
           cat <<'EOF' > src/main/java/com/kusman/KusmanClient.java
           package com.kusman;
-
           import net.fabricmc.api.ClientModInitializer;
           import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-          import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
           import net.minecraft.client.MinecraftClient;
-          import net.minecraft.client.gui.DrawContext;
           import net.minecraft.entity.LivingEntity;
-          import net.minecraft.text.Text;
           import net.minecraft.util.Hand;
 
           public class KusmanClient implements ClientModInitializer {
-              public static boolean god = false, aura = false, fly = false, xray = false;
-              
-              // Названия и координаты кнопок
-              private final String[] modules = {"GOD", "AURA", "FLY", "XRAY"};
-              private final int btnW = 50, btnH = 14;
+              public static boolean god=false, aura=false, fly=false;
 
-              @Override
-              public void onInitializeClient() {
-                  // Отрисовка меню на экране
-                  HudRenderCallback.EVENT.register((context, tickDelta) -> {
-                      MinecraftClient client = MinecraftClient.getInstance();
-                      if (client.player == null) return;
-
-                      context.drawTextWithShadow(client.textRenderer, "§bKUSMAN V32", 5, 5, 0xFFFFFF);
-                      
-                      for (int i = 0; i < modules.size(); i++) {
-                          boolean active = getVal(i);
-                          int color = active ? 0xFF00FF00 : 0xFFFF0000; // Зеленый или Красный
-                          int y = 20 + (i * (btnH + 5));
-                          
-                          context.fill(5, y, 5 + btnW, y + btnH, 0x88000000); // Фон кнопки
-                          context.drawTextWithShadow(client.textRenderer, modules[i], 10, y + 3, color);
-                      }
-                      
-                      // Логика клика (если открыт чат или меню, где видна мышь)
-                      if (client.currentScreen != null) {
-                          // Здесь могла бы быть логика перехвата мыши, но для стабильности 
-                          // в Fabric 1.21 лучше использовать команды, если мышь не в Screen.
-                      }
-                  });
-
-                  // Основной цикл работы читов
+              @Override public void onInitializeClient() {
                   ClientTickEvents.END_CLIENT_TICK.register(client -> {
                       if (client.player == null) return;
-
-                      if (god) {
-                          client.player.setHealth(20f);
-                          client.player.getAbilities().invulnerable = true;
-                      }
+                      if (god) { client.player.setHealth(20f); client.player.getAbilities().invulnerable = true; }
+                      if (fly) { client.player.getAbilities().allowFlying = true; client.player.getAbilities().flying = true; }
                       
-                      if (fly) {
-                          client.player.getAbilities().allowFlying = true;
-                          client.player.getAbilities().flying = true;
-                      } else if (!client.player.isCreative()) {
-                          client.player.getAbilities().allowFlying = false;
-                          client.player.getAbilities().flying = false;
-                      }
-
                       if (aura) {
                           client.world.getEntities().forEach(e -> {
                               if (e instanceof LivingEntity target && target != client.player && target.isAlive() && client.player.distanceTo(target) < 4.5) {
@@ -97,32 +73,40 @@ jobs:
                           });
                       }
                   });
-
-                  // Оставляем команды для быстрого переключения мышкой не открывая меню
-                  net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-                      dispatcher.register(net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.literal("t").then(net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.argument("id", com.mojang.brigadier.arguments.IntegerArgumentType.integer()).executes(c -> {
-                          int id = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(c, "id");
-                          toggle(id);
-                          return 1;
-                      })));
-                  });
-              }
-
-              private boolean getVal(int id) {
-                  return switch (id) {
-                      case 0 -> god;
-                      case 1 -> aura;
-                      case 2 -> fly;
-                      case 3 -> xray;
-                      default -> false;
-                  };
-              }
-
-              private static void toggle(int id) {
-                  if (id == 0) god = !god;
-                  if (id == 1) aura = !aura;
-                  if (id == 2) fly = !fly;
-                  if (id == 3) xray = !xray;
               }
           }
           EOF
+
+          cat <<'EOF' > src/main/java/com/kusman/mixin/InventoryMixin.java
+          package com.kusman.mixin;
+          import com.kusman.KusmanClient;
+          import net.minecraft.client.gui.screen.ingame.InventoryScreen;
+          import net.minecraft.client.gui.widget.ButtonWidget;
+          import net.minecraft.text.Text;
+          import org.spongepowered.asm.mixin.Mixin;
+          import org.spongepowered.asm.mixin.injection.At;
+          import org.spongepowered.asm.mixin.injection.Inject;
+          import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+          @Mixin(InventoryScreen.class)
+          public abstract class InventoryMixin extends net.minecraft.client.gui.screen.Screen {
+              protected InventoryMixin(Text title) { super(title); }
+
+              @Inject(method = "init", at = @At("TAIL"))
+              private void onInit(CallbackInfo ci) {
+                  int x = 5; // Слева на экране при открытом инвентаре
+                  addDrawableChild(ButtonWidget.builder(Text.literal("GOD"), b -> KusmanClient.god = !KusmanClient.god).dimensions(x, 20, 40, 20).build());
+                  addDrawableChild(ButtonWidget.builder(Text.literal("AURA"), b -> KusmanClient.aura = !KusmanClient.aura).dimensions(x, 45, 40, 20).build());
+                  addDrawableChild(ButtonWidget.builder(Text.literal("FLY"), b -> KusmanClient.fly = !KusmanClient.fly).dimensions(x, 70, 40, 20).build());
+              }
+          }
+          EOF
+
+      - name: Build with Gradle
+        run: chmod +x gradlew && ./gradlew build --no-daemon
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kusman-V33-Final
+          path: build/libs/*.jar
