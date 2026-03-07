@@ -1,4 +1,4 @@
-name: KUSMAN_V46_FINAL_STABLE
+name: KUSMAN_V47_STEP_FIX
 on: [push, workflow_dispatch]
 
 jobs:
@@ -8,8 +8,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with: { java-version: '21', distribution: 'temurin' }
-      
-      # Используем твой рабочий метод настройки Gradle
       - uses: gradle/actions/setup-gradle@v4
         with: { gradle-version: '8.10' }
 
@@ -33,7 +31,7 @@ jobs:
 
           cat <<'EOF' > src/main/resources/fabric.mod.json
           {
-            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV46",
+            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV47",
             "entrypoints": { "client": [ "com.kusman.KusmanClient" ] },
             "mixins": [ "kusman.mixins.json" ]
           }
@@ -52,6 +50,8 @@ jobs:
           import net.minecraft.entity.LivingEntity;
           import net.minecraft.entity.player.PlayerEntity;
           import net.minecraft.entity.mob.MobEntity;
+          import net.minecraft.entity.attribute.EntityAttributes;
+          import net.minecraft.entity.attribute.EntityAttributeInstance;
           import net.minecraft.text.Text;
           import net.minecraft.util.Hand;
 
@@ -75,7 +75,12 @@ jobs:
                       
                       if (god) { client.player.setHealth(20f); client.player.getHungerManager().setFoodLevel(20); }
                       if (fly) { client.player.getAbilities().allowFlying = true; client.player.getAbilities().flying = true; }
-                      if (step) { client.player.setStepHeight(1.5f); } else { client.player.setStepHeight(0.6f); }
+                      
+                      // Новый способ изменения высоты шага для 1.21.1
+                      EntityAttributeInstance stepAttr = client.player.getAttributeInstance(EntityAttributes.GENERIC_STEP_HEIGHT);
+                      if (stepAttr != null) {
+                          stepAttr.setBaseValue(step ? 1.5 : 0.6);
+                      }
                       
                       if (speed && (client.player.forwardSpeed != 0 || client.player.sidewaysSpeed != 0)) {
                           client.player.updateVelocity(0.12f, client.player.getRotationVector());
@@ -126,5 +131,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Kusman-V46-Final
+          name: Kusman-V47-Final
           path: build/libs/*.jar
