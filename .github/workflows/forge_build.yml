@@ -1,4 +1,4 @@
-name: KUSMAN_V45_WRAPPER_FIX
+name: KUSMAN_V46_FINAL_STABLE
 on: [push, workflow_dispatch]
 
 jobs:
@@ -9,12 +9,14 @@ jobs:
       - uses: actions/setup-java@v4
         with: { java-version: '21', distribution: 'temurin' }
       
-      - name: Generate Project and Wrapper
+      # Используем твой рабочий метод настройки Gradle
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: '8.10' }
+
+      - name: Generate Project
         run: |
-          # 1. Создаем структуру папок
-          mkdir -p src/main/java/com/kusman src/main/resources
+          mkdir -p src/main/java/com/kusman/mixin src/main/resources
           
-          # 2. Создаем файлы конфигурации
           echo "pluginManagement { repositories { maven { url 'https://maven.fabricmc.net/' }; gradlePluginPortal() } }" > settings.gradle
           echo "rootProject.name = 'kusman_mod'" >> settings.gradle
 
@@ -24,99 +26,105 @@ jobs:
           dependencies {
               minecraft "com.mojang:minecraft:1.21.1"
               mappings "net.fabricmc:yarn:1.21.1+build.3:v2"
-              modImplementation "net.fabricmc:fabric-loader:0.18.4"
+              modImplementation "net.fabricmc:fabric-loader:0.16.0"
               modImplementation "net.fabricmc.fabric-api:fabric-api:0.102.0+1.21.1"
           }
           EOF
 
           cat <<'EOF' > src/main/resources/fabric.mod.json
           {
-            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV45",
-            "entrypoints": { "client": [ "com.kusman.KusmanClient" ] }
+            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV46",
+            "entrypoints": { "client": [ "com.kusman.KusmanClient" ] },
+            "mixins": [ "kusman.mixins.json" ]
           }
           EOF
 
+          echo '{"required":true,"package":"com.kusman.mixin","mixins":["NetworkMixin"]}' > src/main/resources/kusman.mixins.json
+
           cat <<'EOF' > src/main/java/com/kusman/KusmanClient.java
           package com.kusman;
-
           import net.fabricmc.api.ClientModInitializer;
+          import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
           import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
           import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
-          import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+          import net.minecraft.client.MinecraftClient;
+          import net.minecraft.entity.Entity;
           import net.minecraft.entity.LivingEntity;
           import net.minecraft.entity.player.PlayerEntity;
-          import net.minecraft.entity.mob.HostileEntity;
-          import net.minecraft.entity.passive.PassiveEntity;
+          import net.minecraft.entity.mob.MobEntity;
           import net.minecraft.text.Text;
           import net.minecraft.util.Hand;
 
           public class KusmanClient implements ClientModInitializer {
-              public static boolean auraAll = false, auraPlayers = false, auraMobs = false;
-              public static boolean fly = false, god = false, step = false, speed = false;
-              private final String P = "§b[K] §r";
+              public static boolean god=false, fly=false, step=false, speed=false, auraAll=false, auraPl=false, auraMb=false;
+              public static final String PREFIX = "§b[K] §f";
 
-              @Override
-              public void onInitializeClient() {
+              @Override public void onInitializeClient() {
                   ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-                      dispatcher.register(ClientCommandManager.literal("aura").executes(c -> {
-                          auraAll = !auraAll; auraPlayers = false; auraMobs = false;
-                          c.getSource().sendFeedback(Text.literal(P + "§fAura (All): " + (auraAll ? "§aON" : "§cOFF"))); return 1;
-                      }));
-                      dispatcher.register(ClientCommandManager.literal("aurapl").executes(c -> {
-                          auraPlayers = !auraPlayers; auraAll = false;
-                          c.getSource().sendFeedback(Text.literal(P + "§fAura (Players): " + (auraPlayers ? "§aON" : "§cOFF"))); return 1;
-                      }));
-                      dispatcher.register(ClientCommandManager.literal("auramb").executes(c -> {
-                          auraMobs = !auraMobs; auraAll = false;
-                          c.getSource().sendFeedback(Text.literal(P + "§fAura (Mobs): " + (auraMobs ? "§aON" : "§cOFF"))); return 1;
-                      }));
-                      dispatcher.register(ClientCommandManager.literal("fl").executes(c -> {
-                          fly = !fly; c.getSource().sendFeedback(Text.literal(P + "§fFly: " + (fly ? "§aON" : "§cOFF"))); return 1;
-                      }));
-                      dispatcher.register(ClientCommandManager.literal("godm").executes(c -> {
-                          god = !god; c.getSource().sendFeedback(Text.literal(P + "§fGodMode: " + (god ? "§aON" : "§cOFF"))); return 1;
-                      }));
-                      dispatcher.register(ClientCommandManager.literal("step").executes(c -> {
-                          step = !step; c.getSource().sendFeedback(Text.literal(P + "§fStep: " + (step ? "§aON" : "§cOFF"))); return 1;
-                      }));
-                      dispatcher.register(ClientCommandManager.literal("speed").executes(c -> {
-                          speed = !speed; c.getSource().sendFeedback(Text.literal(P + "§fSpeed: " + (speed ? "§aON" : "§cOFF"))); return 1;
-                      }));
+                      dispatcher.register(ClientCommandManager.literal("aura").executes(c -> { auraAll = !auraAll; auraPl=false; auraMb=false; msg("Aura All: " + auraAll); return 1; }));
+                      dispatcher.register(ClientCommandManager.literal("aurapl").executes(c -> { auraPl = !auraPl; auraAll=false; msg("Aura Players: " + auraPl); return 1; }));
+                      dispatcher.register(ClientCommandManager.literal("auramb").executes(c -> { auraMb = !auraMb; auraAll=false; msg("Aura Mobs: " + auraMb); return 1; }));
+                      dispatcher.register(ClientCommandManager.literal("fl").executes(c -> { fly = !fly; msg("Fly: " + fly); return 1; }));
+                      dispatcher.register(ClientCommandManager.literal("godm").executes(c -> { god = !god; msg("GodMode: " + god); return 1; }));
+                      dispatcher.register(ClientCommandManager.literal("step").executes(c -> { step = !step; msg("Step: " + step); return 1; }));
+                      dispatcher.register(ClientCommandManager.literal("speed").executes(c -> { speed = !speed; msg("Speed: " + speed); return 1; }));
                   });
 
                   ClientTickEvents.END_CLIENT_TICK.register(client -> {
-                      if (client.player == null) return;
-                      if (god) { client.player.setHealth(20f); client.player.getAbilities().invulnerable = true; }
+                      if (client.player == null || client.world == null) return;
+                      
+                      if (god) { client.player.setHealth(20f); client.player.getHungerManager().setFoodLevel(20); }
                       if (fly) { client.player.getAbilities().allowFlying = true; client.player.getAbilities().flying = true; }
                       if (step) { client.player.setStepHeight(1.5f); } else { client.player.setStepHeight(0.6f); }
+                      
                       if (speed && (client.player.forwardSpeed != 0 || client.player.sidewaysSpeed != 0)) {
                           client.player.updateVelocity(0.12f, client.player.getRotationVector());
                       }
-                      if (auraAll || auraPlayers || auraMobs) {
-                          client.world.getEntities().forEach(e -> {
-                              if (e instanceof LivingEntity target && target != client.player && target.isAlive() && client.player.distanceTo(target) < 4.5) {
-                                  boolean hit = auraAll || (auraPlayers && target instanceof PlayerEntity) || (auraMobs && (target instanceof HostileEntity || target instanceof PassiveEntity));
-                                  if (hit && client.player.getAttackCooldownProgress(0) >= 0.9f) {
-                                      client.interactionManager.attackEntity(client.player, target);
-                                      client.player.swingHand(Hand.MAIN_HAND);
+
+                      if (auraAll || auraPl || auraMb) {
+                          for (Entity e : client.world.getEntities()) {
+                              if (e instanceof LivingEntity target && target != client.player && target.isAlive()) {
+                                  if (client.player.distanceTo(target) <= 4.0) {
+                                      boolean valid = auraAll || (auraPl && target instanceof PlayerEntity) || (auraMb && target instanceof MobEntity);
+                                      if (valid && client.player.getAttackCooldownProgress(0) >= 1.0f) {
+                                          client.interactionManager.attackEntity(client.player, target);
+                                          client.player.swingHand(Hand.MAIN_HAND);
+                                          break; 
+                                      }
                                   }
                               }
-                          });
+                          }
                       }
                   });
+              }
+              private void msg(String s) { if (MinecraftClient.getInstance().player != null) MinecraftClient.getInstance().player.sendMessage(Text.literal(PREFIX + s), false); }
+          }
+          EOF
+
+          cat <<'EOF' > src/main/java/com/kusman/mixin/NetworkMixin.java
+          package com.kusman.mixin;
+          import com.kusman.KusmanClient;
+          import net.minecraft.client.network.ClientPlayNetworkHandler;
+          import net.minecraft.network.packet.s2c.play.EntityDamageS2CPacket;
+          import org.spongepowered.asm.mixin.Mixin;
+          import org.spongepowered.asm.mixin.injection.At;
+          import org.spongepowered.asm.mixin.injection.Inject;
+          import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+          @Mixin(ClientPlayNetworkHandler.class)
+          public class NetworkMixin {
+              @Inject(method = "onEntityDamage", at = @At("HEAD"), cancellable = true)
+              private void blockDamage(EntityDamageS2CPacket packet, CallbackInfo ci) {
+                  if (KusmanClient.god) ci.cancel();
               }
           }
           EOF
 
-      - name: Setup and Build
-        run: |
-          # Генерируем gradlew если его нет
-          gradle wrapper --gradle-version 8.10
-          chmod +x gradlew
-          ./gradlew build --no-daemon
+      - name: Build
+        run: gradle build --no-daemon
 
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Kusman-V45-Final-Fix
+          name: Kusman-V46-Final
           path: build/libs/*.jar
