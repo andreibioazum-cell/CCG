@@ -1,4 +1,4 @@
-name: KUSMAN_V33_FINAL_FIX
+name: KUSMAN_V34_GRADLE_FIX
 on: [push, workflow_dispatch]
 
 jobs:
@@ -9,20 +9,13 @@ jobs:
       - uses: actions/setup-java@v4
         with: { java-version: '21', distribution: 'temurin' }
       
-      # Полная очистка перед сборкой, чтобы избежать "No build results"
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.10'
-          cache-disabled: true 
-
-      - name: Generate Project
+      - name: Generate Project Files
         run: |
+          # Создаем структуру
           mkdir -p src/main/java/com/kusman/mixin src/main/resources
           
-          cat <<'EOF' > settings.gradle
-          rootProject.name = 'kusman_mod'
-          EOF
+          # Настройки проекта
+          echo "rootProject.name = 'kusman_mod'" > settings.gradle
 
           cat <<'EOF' > build.gradle
           plugins { id 'fabric-loom' version '1.7-SNAPSHOT' }
@@ -37,7 +30,7 @@ jobs:
 
           cat <<'EOF' > src/main/resources/fabric.mod.json
           {
-            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV33",
+            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV34",
             "entrypoints": { "client": [ "com.kusman.KusmanClient" ] },
             "mixins": [ "kusman.mixins.json" ]
           }
@@ -45,6 +38,7 @@ jobs:
 
           echo '{"required":true,"package":"com.kusman.mixin","mixins":["InventoryMixin"]}' > src/main/resources/kusman.mixins.json
 
+          # Основной код мода
           cat <<'EOF' > src/main/java/com/kusman/KusmanClient.java
           package com.kusman;
           import net.fabricmc.api.ClientModInitializer;
@@ -59,7 +53,7 @@ jobs:
               @Override public void onInitializeClient() {
                   ClientTickEvents.END_CLIENT_TICK.register(client -> {
                       if (client.player == null) return;
-                      if (god) { client.player.setHealth(20f); client.player.getAbilities().invulnerable = true; }
+                      if (god) { client.player.setHealth(20.0f); client.player.getAbilities().invulnerable = true; }
                       if (fly) { client.player.getAbilities().allowFlying = true; client.player.getAbilities().flying = true; }
                       
                       if (aura) {
@@ -77,6 +71,7 @@ jobs:
           }
           EOF
 
+          # Код кнопок в инвентаре
           cat <<'EOF' > src/main/java/com/kusman/mixin/InventoryMixin.java
           package com.kusman.mixin;
           import com.kusman.KusmanClient;
@@ -94,19 +89,24 @@ jobs:
 
               @Inject(method = "init", at = @At("TAIL"))
               private void onInit(CallbackInfo ci) {
-                  int x = 5; // Слева на экране при открытом инвентаре
-                  addDrawableChild(ButtonWidget.builder(Text.literal("GOD"), b -> KusmanClient.god = !KusmanClient.god).dimensions(x, 20, 40, 20).build());
-                  addDrawableChild(ButtonWidget.builder(Text.literal("AURA"), b -> KusmanClient.aura = !KusmanClient.aura).dimensions(x, 45, 40, 20).build());
-                  addDrawableChild(ButtonWidget.builder(Text.literal("FLY"), b -> KusmanClient.fly = !KusmanClient.fly).dimensions(x, 70, 40, 20).build());
+                  int x = 10;
+                  addDrawableChild(ButtonWidget.builder(Text.literal("GOD"), b -> { KusmanClient.god = !KusmanClient.god; }).dimensions(x, 30, 50, 20).build());
+                  addDrawableChild(ButtonWidget.builder(Text.literal("AURA"), b -> { KusmanClient.aura = !KusmanClient.aura; }).dimensions(x, 55, 50, 20).build());
+                  addDrawableChild(ButtonWidget.builder(Text.literal("FLY"), b -> { KusmanClient.fly = !KusmanClient.fly; }).dimensions(x, 80, 50, 20).build());
               }
           }
           EOF
 
+      - name: Install Gradle Wrapper
+        run: gradle wrapper --gradle-version 8.10
+
       - name: Build with Gradle
-        run: chmod +x gradlew && ./gradlew build --no-daemon
+        run: |
+          chmod +x gradlew
+          ./gradlew build --no-daemon
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Kusman-V33-Final
-          path: build/libs/*.jar
+          name: Kusman-V34-InventoryMenu
+          path: build/libs/*-dev.jar # Загружаем dev-версию для тестов, если обычная не соберется
