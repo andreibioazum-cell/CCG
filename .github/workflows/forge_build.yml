@@ -1,4 +1,4 @@
-name: KUSMAN_V36_GUI_FINAL
+name: KUSMAN_V39_TOUCH_GUI
 on: [push, workflow_dispatch]
 
 jobs:
@@ -9,14 +9,12 @@ jobs:
       - uses: actions/setup-java@v4
         with: { java-version: '21', distribution: 'temurin' }
       
-      - name: Generate Project Files
+      - name: Generate Project
         run: |
-          mkdir -p src/main/java/com/kusman src/main/resources
+          mkdir -p src/main/java/com/kusman/mixin src/main/resources
           
-          cat <<'EOF' > settings.gradle
-          pluginManagement { repositories { maven { url "https://maven.fabricmc.net/" }; gradlePluginPortal() } }
-          rootProject.name = 'kusman_mod'
-          EOF
+          echo "pluginManagement { repositories { maven { url 'https://maven.fabricmc.net/' }; gradlePluginPortal() } }" > settings.gradle
+          echo "rootProject.name = 'kusman_mod'" >> settings.gradle
 
           cat <<'EOF' > build.gradle
           plugins { id 'fabric-loom' version '1.7-SNAPSHOT' }
@@ -24,48 +22,39 @@ jobs:
           dependencies {
               minecraft "com.mojang:minecraft:1.21.1"
               mappings "net.fabricmc:yarn:1.21.1+build.3:v2"
-              modImplementation "net.fabricmc:fabric-loader:0.16.0"
+              modImplementation "net.fabricmc:fabric-loader:0.18.4"
               modImplementation "net.fabricmc.fabric-api:fabric-api:0.102.0+1.21.1"
           }
           EOF
 
           cat <<'EOF' > src/main/resources/fabric.mod.json
           {
-            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV36",
+            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV39",
             "entrypoints": { "client": [ "com.kusman.KusmanClient" ] },
             "mixins": [ "kusman.mixins.json" ]
           }
           EOF
 
-          # Исправленный конфиг миксинов
-          cat <<'EOF' > src/main/resources/kusman.mixins.json
-          {
-            "required": true,
-            "minVersion": "0.8",
-            "package": "com.kusman",
-            "compatibilityLevel": "JAVA_21",
-            "client": [ "InventoryMixin" ],
-            "injectors": { "defaultRequire": 1 }
-          }
-          EOF
+          echo '{"required":true,"package":"com.kusman.mixin","mixins":["PauseMenuMixin"]}' > src/main/resources/kusman.mixins.json
 
           cat <<'EOF' > src/main/java/com/kusman/KusmanClient.java
           package com.kusman;
           import net.fabricmc.api.ClientModInitializer;
           import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-          import net.minecraft.client.MinecraftClient;
           import net.minecraft.entity.LivingEntity;
           import net.minecraft.util.Hand;
 
           public class KusmanClient implements ClientModInitializer {
-              public static boolean god=false, aura=false, fly=false;
+              public static boolean god=false, aura=false, fly=false, step=false;
 
               @Override public void onInitializeClient() {
-                  System.out.println("[Kusman] MOD LOADED SUCCESSFULLY");
                   ClientTickEvents.END_CLIENT_TICK.register(client -> {
                       if (client.player == null) return;
-                      if (god) { client.player.setHealth(20.0f); client.player.getAbilities().invulnerable = true; }
+                      
+                      if (god) { client.player.setHealth(20f); client.player.getAbilities().invulnerable = true; }
                       if (fly) { client.player.getAbilities().allowFlying = true; client.player.getAbilities().flying = true; }
+                      if (step) { client.player.setStepHeight(1.5f); } else { client.player.setStepHeight(0.6f); }
+
                       if (aura) {
                           client.world.getEntities().forEach(e -> {
                               if (e instanceof LivingEntity target && target != client.player && target.isAlive() && client.player.distanceTo(target) < 4.5) {
@@ -81,9 +70,11 @@ jobs:
           }
           EOF
 
-          cat <<'EOF' > src/main/java/com/kusman/InventoryMixin.java
-          package com.kusman;
-          import net.minecraft.client.gui.screen.ingame.InventoryScreen;
+          cat <<'EOF' > src/main/java/com/kusman/mixin/PauseMenuMixin.java
+          package com.kusman.mixin;
+          import com.kusman.KusmanClient;
+          import net.minecraft.client.gui.screen.GameMenuScreen;
+          import net.minecraft.client.gui.screen.Screen;
           import net.minecraft.client.gui.widget.ButtonWidget;
           import net.minecraft.text.Text;
           import org.spongepowered.asm.mixin.Mixin;
@@ -91,24 +82,37 @@ jobs:
           import org.spongepowered.asm.mixin.injection.Inject;
           import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-          @Mixin(InventoryScreen.class)
-          public abstract class InventoryMixin extends net.minecraft.client.gui.screen.Screen {
-              protected InventoryMixin(Text title) { super(title); }
-              @Inject(method = "init", at = @At("TAIL"))
+          @Mixin(GameMenuScreen.class)
+          public abstract class PauseMenuMixin extends Screen {
+              protected PauseMenuMixin(Text title) { super(title); }
+
+              @Inject(method = "init", at = @At("HEAD"))
               private void onInit(CallbackInfo ci) {
-                  // Кнопки будут слева от персонажа в инвентаре
                   int x = 10;
-                  this.addDrawableChild(ButtonWidget.builder(Text.literal("GOD"), b -> { KusmanClient.god = !KusmanClient.god; }).dimensions(x, 40, 45, 20).build());
-                  this.addDrawableChild(ButtonWidget.builder(Text.literal("AURA"), b -> { KusmanClient.aura = !KusmanClient.aura; }).dimensions(x, 65, 45, 20).build());
-                  this.addDrawableChild(ButtonWidget.builder(Text.literal("FLY"), b -> { KusmanClient.fly = !KusmanClient.fly; }).dimensions(x, 90, 45, 20).build());
+                  int w = 80;
+                  // Добавляем наши кнопки поверх меню паузы
+                  addDrawableChild(ButtonWidget.builder(Text.literal("AURA: " + (KusmanClient.aura ? "ON" : "OFF")), b -> {
+                      KusmanClient.aura = !KusmanClient.aura;
+                      b.setMessage(Text.literal("AURA: " + (KusmanClient.aura ? "ON" : "OFF")));
+                  }).dimensions(x, 10, w, 20).build());
+
+                  addDrawableChild(ButtonWidget.builder(Text.literal("FLY: " + (KusmanClient.fly ? "ON" : "OFF")), b -> {
+                      KusmanClient.fly = !KusmanClient.fly;
+                      b.setMessage(Text.literal("FLY: " + (KusmanClient.fly ? "ON" : "OFF")));
+                  }).dimensions(x, 35, w, 20).build());
+
+                  addDrawableChild(ButtonWidget.builder(Text.literal("STEP: " + (KusmanClient.step ? "ON" : "OFF")), b -> {
+                      KusmanClient.step = !KusmanClient.step;
+                      b.setMessage(Text.literal("STEP: " + (KusmanClient.step ? "ON" : "OFF")));
+                  }).dimensions(x, 60, w, 20).build());
+                  
+                  addDrawableChild(ButtonWidget.builder(Text.literal("GOD: " + (KusmanClient.god ? "ON" : "OFF")), b -> {
+                      KusmanClient.god = !KusmanClient.god;
+                      b.setMessage(Text.literal("GOD: " + (KusmanClient.god ? "ON" : "OFF")));
+                  }).dimensions(x, 85, w, 20).build());
               }
           }
           EOF
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.10.2'
 
       - name: Build
         run: gradle build --no-daemon
@@ -116,5 +120,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Kusman-V36-GUI-FIXED
+          name: Kusman-V39-TouchGUI
           path: build/libs/*.jar
