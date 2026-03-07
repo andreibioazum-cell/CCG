@@ -1,4 +1,4 @@
-name: KUSMAN_V39_TOUCH_GUI
+name: KUSMAN_V40_STABLE_BUILD
 on: [push, workflow_dispatch]
 
 jobs:
@@ -11,8 +11,19 @@ jobs:
       
       - name: Generate Project
         run: |
-          mkdir -p src/main/java/com/kusman/mixin src/main/resources
+          mkdir -p src/main/java/com/kusman/mixin src/main/resources gradle/wrapper
           
+          # Фиксируем версию Gradle, чтобы не было ошибки 9.3.1
+          cat <<'EOF' > gradle/wrapper/gradle-wrapper.properties
+          distributionBase=GRADLE_USER_HOME
+          distributionPath=wrapper/dists
+          distributionUrl=https\://services.gradle.org/distributions/gradle-8.10-bin.zip
+          networkTimeout=10000
+          validateDistributionUrl=true
+          zipStoreBase=GRADLE_USER_HOME
+          zipStorePath=wrapper/dists
+          EOF
+
           echo "pluginManagement { repositories { maven { url 'https://maven.fabricmc.net/' }; gradlePluginPortal() } }" > settings.gradle
           echo "rootProject.name = 'kusman_mod'" >> settings.gradle
 
@@ -29,7 +40,7 @@ jobs:
 
           cat <<'EOF' > src/main/resources/fabric.mod.json
           {
-            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV39",
+            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV40",
             "entrypoints": { "client": [ "com.kusman.KusmanClient" ] },
             "mixins": [ "kusman.mixins.json" ]
           }
@@ -50,11 +61,9 @@ jobs:
               @Override public void onInitializeClient() {
                   ClientTickEvents.END_CLIENT_TICK.register(client -> {
                       if (client.player == null) return;
-                      
                       if (god) { client.player.setHealth(20f); client.player.getAbilities().invulnerable = true; }
                       if (fly) { client.player.getAbilities().allowFlying = true; client.player.getAbilities().flying = true; }
                       if (step) { client.player.setStepHeight(1.5f); } else { client.player.setStepHeight(0.6f); }
-
                       if (aura) {
                           client.world.getEntities().forEach(e -> {
                               if (e instanceof LivingEntity target && target != client.player && target.isAlive() && client.player.distanceTo(target) < 4.5) {
@@ -85,40 +94,33 @@ jobs:
           @Mixin(GameMenuScreen.class)
           public abstract class PauseMenuMixin extends Screen {
               protected PauseMenuMixin(Text title) { super(title); }
-
               @Inject(method = "init", at = @At("HEAD"))
               private void onInit(CallbackInfo ci) {
-                  int x = 10;
-                  int w = 80;
-                  // Добавляем наши кнопки поверх меню паузы
-                  addDrawableChild(ButtonWidget.builder(Text.literal("AURA: " + (KusmanClient.aura ? "ON" : "OFF")), b -> {
-                      KusmanClient.aura = !KusmanClient.aura;
-                      b.setMessage(Text.literal("AURA: " + (KusmanClient.aura ? "ON" : "OFF")));
+                  int x = 10, w = 90;
+                  addDrawableChild(ButtonWidget.builder(Text.literal("AURA: " + (KusmanClient.aura ? "§aON" : "§cOFF")), b -> {
+                      KusmanClient.aura = !KusmanClient.aura; b.setMessage(Text.literal("AURA: " + (KusmanClient.aura ? "§aON" : "§cOFF")));
                   }).dimensions(x, 10, w, 20).build());
-
-                  addDrawableChild(ButtonWidget.builder(Text.literal("FLY: " + (KusmanClient.fly ? "ON" : "OFF")), b -> {
-                      KusmanClient.fly = !KusmanClient.fly;
-                      b.setMessage(Text.literal("FLY: " + (KusmanClient.fly ? "ON" : "OFF")));
+                  addDrawableChild(ButtonWidget.builder(Text.literal("FLY: " + (KusmanClient.fly ? "§aON" : "§cOFF")), b -> {
+                      KusmanClient.fly = !KusmanClient.fly; b.setMessage(Text.literal("FLY: " + (KusmanClient.fly ? "§aON" : "§cOFF")));
                   }).dimensions(x, 35, w, 20).build());
-
-                  addDrawableChild(ButtonWidget.builder(Text.literal("STEP: " + (KusmanClient.step ? "ON" : "OFF")), b -> {
-                      KusmanClient.step = !KusmanClient.step;
-                      b.setMessage(Text.literal("STEP: " + (KusmanClient.step ? "ON" : "OFF")));
+                  addDrawableChild(ButtonWidget.builder(Text.literal("STEP: " + (KusmanClient.step ? "§aON" : "§cOFF")), b -> {
+                      KusmanClient.step = !KusmanClient.step; b.setMessage(Text.literal("STEP: " + (KusmanClient.step ? "§aON" : "§cOFF")));
                   }).dimensions(x, 60, w, 20).build());
-                  
-                  addDrawableChild(ButtonWidget.builder(Text.literal("GOD: " + (KusmanClient.god ? "ON" : "OFF")), b -> {
-                      KusmanClient.god = !KusmanClient.god;
-                      b.setMessage(Text.literal("GOD: " + (KusmanClient.god ? "ON" : "OFF")));
+                  addDrawableChild(ButtonWidget.builder(Text.literal("GOD: " + (KusmanClient.god ? "§aON" : "§cOFF")), b -> {
+                      KusmanClient.god = !KusmanClient.god; b.setMessage(Text.literal("GOD: " + (KusmanClient.god ? "§aON" : "§cOFF")));
                   }).dimensions(x, 85, w, 20).build());
               }
           }
           EOF
 
-      - name: Build
-        run: gradle build --no-daemon
+      - name: Build with Gradle Wrapper
+        run: |
+          gradle wrapper # Генерируем исполняемый файл
+          chmod +x gradlew
+          ./gradlew build --no-daemon
 
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Kusman-V39-TouchGUI
+          name: Kusman-V40-Stable
           path: build/libs/*.jar
