@@ -1,4 +1,4 @@
-name: KUSMAN_V29_STABLE_NO_MIXIN_CRASH
+name: KUSMAN_V32_HUD_MENU
 on: [push, workflow_dispatch]
 
 jobs:
@@ -13,14 +13,10 @@ jobs:
 
       - name: Generate Project
         run: |
-          mkdir -p src/main/java/com/kusman/mixin src/main/resources
+          mkdir -p src/main/java/com/kusman src/main/resources
           
-          echo "pluginManagement { repositories { maven { url 'https://maven.fabricmc.net/' }; gradlePluginPortal() } }" > settings.gradle
-          echo "rootProject.name = 'kusman_mod'" >> settings.gradle
-
           cat <<'EOF' > build.gradle
           plugins { id 'fabric-loom' version '1.7-SNAPSHOT' }
-          repositories { mavenCentral(); maven { url "https://maven.fabricmc.net/" } }
           dependencies {
               minecraft "com.mojang:minecraft:1.21.1"
               mappings "net.fabricmc:yarn:1.21.1+build.3:v2"
@@ -29,105 +25,104 @@ jobs:
           }
           EOF
 
-          cat <<'EOF' > src/main/resources/fabric.mod.json
-          {
-            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV29",
-            "entrypoints": { "client": [ "com.kusman.KusmanClient" ] },
-            "mixins": [ "kusman.mixins.json" ]
-          }
-          EOF
-
-          echo '{"required":true,"package":"com.kusman.mixin","mixins":["NetworkMixin"]}' > src/main/resources/kusman.mixins.json
-
           cat <<'EOF' > src/main/java/com/kusman/KusmanClient.java
           package com.kusman;
+
           import net.fabricmc.api.ClientModInitializer;
           import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-          import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
-          import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
+          import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
           import net.minecraft.client.MinecraftClient;
-          import net.minecraft.entity.Entity;
+          import net.minecraft.client.gui.DrawContext;
           import net.minecraft.entity.LivingEntity;
-          import net.minecraft.entity.player.PlayerEntity;
-          import net.minecraft.entity.mob.MobEntity;
           import net.minecraft.text.Text;
           import net.minecraft.util.Hand;
-          import net.minecraft.util.math.MathHelper;
 
           public class KusmanClient implements ClientModInitializer {
-              public static boolean xray=false, god=false, fly=false, aura=false, aurapl=false, auramb=false;
-              public static final String PREFIX = "§b[Dimasi4ek229] §f";
+              public static boolean god = false, aura = false, fly = false, xray = false;
+              
+              // Названия и координаты кнопок
+              private final String[] modules = {"GOD", "AURA", "FLY", "XRAY"};
+              private final int btnW = 50, btnH = 14;
 
-              @Override public void onInitializeClient() {
-                  ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-                      dispatcher.register(ClientCommandManager.literal("god").executes(c -> { god = !god; msg("God: " + god); return 1; }));
-                      dispatcher.register(ClientCommandManager.literal("aura").executes(c -> { aura = !aura; msg("Aura All: " + aura); return 1; }));
-                      dispatcher.register(ClientCommandManager.literal("aurapl").executes(c -> { aurapl = !aurapl; msg("Aura Players: " + aurapl); return 1; }));
-                      dispatcher.register(ClientCommandManager.literal("auramb").executes(c -> { auramb = !auramb; msg("Aura Mobs: " + auramb); return 1; }));
-                      dispatcher.register(ClientCommandManager.literal("xray").executes(c -> { xray = !xray; msg("Xray (Fullbright): " + xray); return 1; }));
-                      dispatcher.register(ClientCommandManager.literal("ggg").executes(c -> { fly = !fly; msg("Fly: " + fly); return 1; }));
-                  });
+              @Override
+              public void onInitializeClient() {
+                  // Отрисовка меню на экране
+                  HudRenderCallback.EVENT.register((context, tickDelta) -> {
+                      MinecraftClient client = MinecraftClient.getInstance();
+                      if (client.player == null) return;
 
-                  ClientTickEvents.END_CLIENT_TICK.register(client -> {
-                      if (client.player == null || client.world == null) return;
+                      context.drawTextWithShadow(client.textRenderer, "§bKUSMAN V32", 5, 5, 0xFFFFFF);
                       
-                      if (god) { client.player.setHealth(20f); client.player.getHungerManager().setFoodLevel(20); }
-                      if (fly) { client.player.getAbilities().allowFlying = true; client.player.getAbilities().flying = true; }
-                      if (xray) { client.options.getGamma().setValue(100.0); }
-
-                      if (aura || aurapl || auramb) {
-                          for (Entity e : client.world.getEntities()) {
-                              if (e instanceof LivingEntity target && target != client.player && target.isAlive()) {
-                                  double dist = client.player.distanceTo(target);
-                                  if (dist <= 4.0) {
-                                      boolean valid = (aura) || (aurapl && target instanceof PlayerEntity) || (auramb && target instanceof MobEntity);
-                                      if (valid && client.player.getAttackCooldownProgress(0) >= 1.0f) {
-                                          // Стабильная наводка
-                                          double dx = target.getX() - client.player.getX();
-                                          double dy = target.getEyeY() - client.player.getEyeY();
-                                          double dz = target.getZ() - client.player.getZ();
-                                          double distXZ = Math.sqrt(dx * dx + dz * dz);
-                                          client.player.setYaw((float) Math.toDegrees(Math.atan2(-dx, dz)));
-                                          client.player.setPitch((float) Math.toDegrees(Math.atan2(-dy, distXZ)));
-                                          
-                                          client.interactionManager.attackEntity(client.player, target);
-                                          client.player.swingHand(Hand.MAIN_HAND);
-                                          break; 
-                                      }
-                                  }
-                              }
-                          }
+                      for (int i = 0; i < modules.size(); i++) {
+                          boolean active = getVal(i);
+                          int color = active ? 0xFF00FF00 : 0xFFFF0000; // Зеленый или Красный
+                          int y = 20 + (i * (btnH + 5));
+                          
+                          context.fill(5, y, 5 + btnW, y + btnH, 0x88000000); // Фон кнопки
+                          context.drawTextWithShadow(client.textRenderer, modules[i], 10, y + 3, color);
+                      }
+                      
+                      // Логика клика (если открыт чат или меню, где видна мышь)
+                      if (client.currentScreen != null) {
+                          // Здесь могла бы быть логика перехвата мыши, но для стабильности 
+                          // в Fabric 1.21 лучше использовать команды, если мышь не в Screen.
                       }
                   });
+
+                  // Основной цикл работы читов
+                  ClientTickEvents.END_CLIENT_TICK.register(client -> {
+                      if (client.player == null) return;
+
+                      if (god) {
+                          client.player.setHealth(20f);
+                          client.player.getAbilities().invulnerable = true;
+                      }
+                      
+                      if (fly) {
+                          client.player.getAbilities().allowFlying = true;
+                          client.player.getAbilities().flying = true;
+                      } else if (!client.player.isCreative()) {
+                          client.player.getAbilities().allowFlying = false;
+                          client.player.getAbilities().flying = false;
+                      }
+
+                      if (aura) {
+                          client.world.getEntities().forEach(e -> {
+                              if (e instanceof LivingEntity target && target != client.player && target.isAlive() && client.player.distanceTo(target) < 4.5) {
+                                  if (client.player.getAttackCooldownProgress(0) >= 0.9f) {
+                                      client.interactionManager.attackEntity(client.player, target);
+                                      client.player.swingHand(Hand.MAIN_HAND);
+                                  }
+                              }
+                          });
+                      }
+                  });
+
+                  // Оставляем команды для быстрого переключения мышкой не открывая меню
+                  net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
+                      dispatcher.register(net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.literal("t").then(net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.argument("id", com.mojang.brigadier.arguments.IntegerArgumentType.integer()).executes(c -> {
+                          int id = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(c, "id");
+                          toggle(id);
+                          return 1;
+                      })));
+                  });
               }
-              private void msg(String s) { if (MinecraftClient.getInstance().player != null) MinecraftClient.getInstance().player.sendMessage(Text.literal(PREFIX + s), false); }
+
+              private boolean getVal(int id) {
+                  return switch (id) {
+                      case 0 -> god;
+                      case 1 -> aura;
+                      case 2 -> fly;
+                      case 3 -> xray;
+                      default -> false;
+                  };
+              }
+
+              private static void toggle(int id) {
+                  if (id == 0) god = !god;
+                  if (id == 1) aura = !aura;
+                  if (id == 2) fly = !fly;
+                  if (id == 3) xray = !xray;
+              }
           }
           EOF
-
-          cat <<'EOF' > src/main/java/com/kusman/mixin/NetworkMixin.java
-          package com.kusman.mixin;
-          import com.kusman.KusmanClient;
-          import net.minecraft.client.network.ClientPlayNetworkHandler;
-          import net.minecraft.network.packet.s2c.play.EntityDamageS2CPacket;
-          import org.spongepowered.asm.mixin.Mixin;
-          import org.spongepowered.asm.mixin.injection.At;
-          import org.spongepowered.asm.mixin.injection.Inject;
-          import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-
-          @Mixin(ClientPlayNetworkHandler.class)
-          public class NetworkMixin {
-              @Inject(method = "onEntityDamage", at = @At("HEAD"), cancellable = true)
-              private void blockDamage(EntityDamageS2CPacket packet, CallbackInfo ci) {
-                  if (KusmanClient.god) ci.cancel();
-              }
-          }
-          EOF
-
-      - name: Build
-        run: gradle build --no-daemon
-
-      - name: Upload
-        uses: actions/upload-artifact@v4
-        with:
-          name: Kusman-V29-Safe
-          path: build/libs/*.jar
