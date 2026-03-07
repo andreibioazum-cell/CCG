@@ -1,4 +1,4 @@
-name: KUSMAN_V44_AURA_SPLIT
+name: KUSMAN_V45_ULTRA_HYBRID
 on: [push, workflow_dispatch]
 
 jobs:
@@ -28,7 +28,7 @@ jobs:
 
           cat <<'EOF' > src/main/resources/fabric.mod.json
           {
-            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV44",
+            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV45",
             "entrypoints": { "client": [ "com.kusman.KusmanClient" ] }
           }
           EOF
@@ -46,6 +46,7 @@ jobs:
           import net.minecraft.entity.passive.PassiveEntity;
           import net.minecraft.text.Text;
           import net.minecraft.util.Hand;
+          import net.minecraft.command.argument.EntityAnchorArgumentType;
 
           public class KusmanClient implements ClientModInitializer {
               public static boolean auraAll = false, auraPlayers = false, auraMobs = false;
@@ -55,37 +56,13 @@ jobs:
               @Override
               public void onInitializeClient() {
                   ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-                      
-                      dispatcher.register(ClientCommandManager.literal("aura").executes(c -> {
-                          auraAll = !auraAll; auraPlayers = false; auraMobs = false;
-                          c.getSource().sendFeedback(Text.literal(P + "§fAura (All): " + (auraAll ? "§aON" : "§cOFF"))); return 1;
-                      }));
-
-                      dispatcher.register(ClientCommandManager.literal("aurapl").executes(c -> {
-                          auraPlayers = !auraPlayers; auraAll = false;
-                          c.getSource().sendFeedback(Text.literal(P + "§fAura (Players): " + (auraPlayers ? "§aON" : "§cOFF"))); return 1;
-                      }));
-
-                      dispatcher.register(ClientCommandManager.literal("auramb").executes(c -> {
-                          auraMobs = !auraMobs; auraAll = false;
-                          c.getSource().sendFeedback(Text.literal(P + "§fAura (Mobs): " + (auraMobs ? "§aON" : "§cOFF"))); return 1;
-                      }));
-
-                      dispatcher.register(ClientCommandManager.literal("fl").executes(c -> {
-                          fly = !fly; c.getSource().sendFeedback(Text.literal(P + "§fFly: " + (fly ? "§aON" : "§cOFF"))); return 1;
-                      }));
-
-                      dispatcher.register(ClientCommandManager.literal("godm").executes(c -> {
-                          god = !god; c.getSource().sendFeedback(Text.literal(P + "§fGodMode: " + (god ? "§aON" : "§cOFF"))); return 1;
-                      }));
-
-                      dispatcher.register(ClientCommandManager.literal("step").executes(c -> {
-                          step = !step; c.getSource().sendFeedback(Text.literal(P + "§fStep: " + (step ? "§aON" : "§cOFF"))); return 1;
-                      }));
-
-                      dispatcher.register(ClientCommandManager.literal("speed").executes(c -> {
-                          speed = !speed; c.getSource().sendFeedback(Text.literal(P + "§fSpeed: " + (speed ? "§aON" : "§cOFF"))); return 1;
-                      }));
+                      dispatcher.register(ClientCommandManager.literal("aura").executes(c -> { auraAll = !auraAll; auraPlayers = false; auraMobs = false; c.getSource().sendFeedback(Text.literal(P + "§fUltra Aura: " + (auraAll ? "§aON" : "§cOFF"))); return 1; }));
+                      dispatcher.register(ClientCommandManager.literal("aurapl").executes(c -> { auraPlayers = !auraPlayers; auraAll = false; c.getSource().sendFeedback(Text.literal(P + "§fAura Players: " + (auraPlayers ? "§aON" : "§cOFF"))); return 1; }));
+                      dispatcher.register(ClientCommandManager.literal("auramb").executes(c -> { auraMobs = !auraMobs; auraAll = false; c.getSource().sendFeedback(Text.literal(P + "§fAura Mobs: " + (auraMobs ? "§aON" : "§cOFF"))); return 1; }));
+                      dispatcher.register(ClientCommandManager.literal("fl").executes(c -> { fly = !fly; c.getSource().sendFeedback(Text.literal(P + "§fFly: " + (fly ? "§aON" : "§cOFF"))); return 1; }));
+                      dispatcher.register(ClientCommandManager.literal("godm").executes(c -> { god = !god; c.getSource().sendFeedback(Text.literal(P + "§fGodMode: " + (god ? "§aON" : "§cOFF"))); return 1; }));
+                      dispatcher.register(ClientCommandManager.literal("step").executes(c -> { step = !step; c.getSource().sendFeedback(Text.literal(P + "§fStep: " + (step ? "§aON" : "§cOFF"))); return 1; }));
+                      dispatcher.register(ClientCommandManager.literal("speed").executes(c -> { speed = !speed; c.getSource().sendFeedback(Text.literal(P + "§fSpeed: " + (speed ? "§aON" : "§cOFF"))); return 1; }));
                   });
 
                   ClientTickEvents.END_CLIENT_TICK.register(client -> {
@@ -100,15 +77,20 @@ jobs:
 
                       if (auraAll || auraPlayers || auraMobs) {
                           client.world.getEntities().forEach(e -> {
-                              if (e instanceof LivingEntity target && target != client.player && target.isAlive() && client.player.distanceTo(target) < 4.5) {
-                                  boolean shouldHit = false;
-                                  if (auraAll) shouldHit = true;
-                                  else if (auraPlayers && target instanceof PlayerEntity) shouldHit = true;
-                                  else if (auraMobs && (target instanceof HostileEntity || target instanceof PassiveEntity)) shouldHit = true;
-
-                                  if (shouldHit && client.player.getAttackCooldownProgress(0) >= 0.9f) {
-                                      client.interactionManager.attackEntity(client.player, target);
-                                      client.player.swingHand(Hand.MAIN_HAND);
+                              if (e instanceof LivingEntity target && target != client.player && target.isAlive()) {
+                                  double dist = client.player.distanceTo(target);
+                                  if (dist < 4.5) {
+                                      boolean shouldHit = (auraAll) || (auraPlayers && target instanceof PlayerEntity) || (auraMobs && (target instanceof HostileEntity || target instanceof PassiveEntity));
+                                      
+                                      if (shouldHit) {
+                                          // Наводка и криты
+                                          client.player.lookAt(EntityAnchorArgumentType.EntityAnchor.EYES, target.getPos());
+                                          if (client.player.getAttackCooldownProgress(0) >= 0.9f) {
+                                              if (client.player.isOnGround()) client.player.jump();
+                                              client.interactionManager.attackEntity(client.player, target);
+                                              client.player.swingHand(Hand.MAIN_HAND);
+                                          }
+                                      }
                                   }
                               }
                           });
@@ -121,8 +103,13 @@ jobs:
       - name: Build
         run: |
           chmod +x gradlew || true
-          gradle build --no-daemon
+          ./gradlew build --no-daemon
       
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kusman-V45-Ultra
+          path: build/libs/*.jar      
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
