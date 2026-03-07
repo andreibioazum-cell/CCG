@@ -1,4 +1,4 @@
-name: KUSMAN_V47_STEP_FIX
+name: KUSMAN_V48_SUPER_AURA
 on: [push, workflow_dispatch]
 
 jobs:
@@ -31,7 +31,7 @@ jobs:
 
           cat <<'EOF' > src/main/resources/fabric.mod.json
           {
-            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV47",
+            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV48",
             "entrypoints": { "client": [ "com.kusman.KusmanClient" ] },
             "mixins": [ "kusman.mixins.json" ]
           }
@@ -52,18 +52,25 @@ jobs:
           import net.minecraft.entity.mob.MobEntity;
           import net.minecraft.entity.attribute.EntityAttributes;
           import net.minecraft.entity.attribute.EntityAttributeInstance;
+          import net.minecraft.network.packet.c2s.play.PlayerInteractEntityC2SPacket;
           import net.minecraft.text.Text;
           import net.minecraft.util.Hand;
 
           public class KusmanClient implements ClientModInitializer {
-              public static boolean god=false, fly=false, step=false, speed=false, auraAll=false, auraPl=false, auraMb=false;
+              public static boolean god=false, fly=false, step=false, speed=false;
+              public static boolean auraAll=false, auraPl=false, auraMb=false, auraPlS=false, auraMbS=false;
               public static final String PREFIX = "§b[K] §f";
 
               @Override public void onInitializeClient() {
                   ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-                      dispatcher.register(ClientCommandManager.literal("aura").executes(c -> { auraAll = !auraAll; auraPl=false; auraMb=false; msg("Aura All: " + auraAll); return 1; }));
-                      dispatcher.register(ClientCommandManager.literal("aurapl").executes(c -> { auraPl = !auraPl; auraAll=false; msg("Aura Players: " + auraPl); return 1; }));
-                      dispatcher.register(ClientCommandManager.literal("auramb").executes(c -> { auraMb = !auraMb; auraAll=false; msg("Aura Mobs: " + auraMb); return 1; }));
+                      dispatcher.register(ClientCommandManager.literal("aura").executes(c -> { auraAll = !auraAll; msg("Aura All: " + auraAll); return 1; }));
+                      dispatcher.register(ClientCommandManager.literal("aurapl").executes(c -> { auraPl = !auraPl; msg("Aura Players: " + auraPl); return 1; }));
+                      dispatcher.register(ClientCommandManager.literal("auramb").executes(c -> { auraMb = !auraMb; msg("Aura Mobs: " + auraMb); return 1; }));
+                      
+                      // Новые СУПЕР-команды
+                      dispatcher.register(ClientCommandManager.literal("aurapls").executes(c -> { auraPlS = !auraPlS; msg("§dSuper Aura Players: " + auraPlS); return 1; }));
+                      dispatcher.register(ClientCommandManager.literal("aurambs").executes(c -> { auraMbS = !auraMbS; msg("§dSuper Aura Mobs: " + auraMbS); return 1; }));
+                      
                       dispatcher.register(ClientCommandManager.literal("fl").executes(c -> { fly = !fly; msg("Fly: " + fly); return 1; }));
                       dispatcher.register(ClientCommandManager.literal("godm").executes(c -> { god = !god; msg("GodMode: " + god); return 1; }));
                       dispatcher.register(ClientCommandManager.literal("step").executes(c -> { step = !step; msg("Step: " + step); return 1; }));
@@ -76,26 +83,33 @@ jobs:
                       if (god) { client.player.setHealth(20f); client.player.getHungerManager().setFoodLevel(20); }
                       if (fly) { client.player.getAbilities().allowFlying = true; client.player.getAbilities().flying = true; }
                       
-                      // Новый способ изменения высоты шага для 1.21.1
                       EntityAttributeInstance stepAttr = client.player.getAttributeInstance(EntityAttributes.GENERIC_STEP_HEIGHT);
-                      if (stepAttr != null) {
-                          stepAttr.setBaseValue(step ? 1.5 : 0.6);
-                      }
+                      if (stepAttr != null) stepAttr.setBaseValue(step ? 1.5 : 0.6);
                       
                       if (speed && (client.player.forwardSpeed != 0 || client.player.sidewaysSpeed != 0)) {
-                          client.player.updateVelocity(0.12f, client.player.getRotationVector());
+                          client.player.updateVelocity(0.15f, client.player.getRotationVector());
                       }
 
-                      if (auraAll || auraPl || auraMb) {
-                          for (Entity e : client.world.getEntities()) {
-                              if (e instanceof LivingEntity target && target != client.player && target.isAlive()) {
-                                  if (client.player.distanceTo(target) <= 4.0) {
-                                      boolean valid = auraAll || (auraPl && target instanceof PlayerEntity) || (auraMb && target instanceof MobEntity);
-                                      if (valid && client.player.getAttackCooldownProgress(0) >= 1.0f) {
-                                          client.interactionManager.attackEntity(client.player, target);
-                                          client.player.swingHand(Hand.MAIN_HAND);
-                                          break; 
-                                      }
+                      for (Entity e : client.world.getEntities()) {
+                          if (e instanceof LivingEntity target && target != client.player && target.isAlive()) {
+                              double dist = client.player.distanceTo(target);
+                              
+                              // Обычная логика (4 блока, кулдаун)
+                              if (dist <= 4.0) {
+                                  boolean valid = auraAll || (auraPl && target instanceof PlayerEntity) || (auraMb && target instanceof MobEntity);
+                                  if (valid && client.player.getAttackCooldownProgress(0) >= 1.0f) {
+                                      client.interactionManager.attackEntity(client.player, target);
+                                      client.player.swingHand(Hand.MAIN_HAND);
+                                  }
+                              }
+
+                              // СУПЕР логика (10 блоков, без кулдауна)
+                              if (dist <= 10.0) {
+                                  boolean superValid = (auraPlS && target instanceof PlayerEntity) || (auraMbS && target instanceof MobEntity);
+                                  if (superValid) {
+                                      // Шлем пакет атаки напрямую каждую долю секунды
+                                      client.player.networkHandler.sendPacket(PlayerInteractEntityC2SPacket.attack(target, client.player.isSneaking()));
+                                      client.player.swingHand(Hand.MAIN_HAND);
                                   }
                               }
                           }
@@ -131,5 +145,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Kusman-V47-Final
+          name: Kusman-V48-SuperAura
           path: build/libs/*.jar
