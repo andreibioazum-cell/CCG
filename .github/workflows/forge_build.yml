@@ -1,4 +1,4 @@
-name: KUSMAN_V34_GRADLE_FIX
+name: KUSMAN_V35_FINAL_STABLE
 on: [push, workflow_dispatch]
 
 jobs:
@@ -11,15 +11,27 @@ jobs:
       
       - name: Generate Project Files
         run: |
-          # Создаем структуру
           mkdir -p src/main/java/com/kusman/mixin src/main/resources
           
-          # Настройки проекта
-          echo "rootProject.name = 'kusman_mod'" > settings.gradle
+          # ОЧЕНЬ ВАЖНО: Добавляем поиск плагинов Fabric
+          cat <<'EOF' > settings.gradle
+          pluginManagement {
+              repositories {
+                  maven { url "https://maven.fabricmc.net/" }
+                  gradlePluginPortal()
+              }
+          }
+          rootProject.name = 'kusman_mod'
+          EOF
 
           cat <<'EOF' > build.gradle
-          plugins { id 'fabric-loom' version '1.7-SNAPSHOT' }
-          repositories { mavenCentral(); maven { url "https://maven.fabricmc.net/" } }
+          plugins {
+              id 'fabric-loom' version '1.7-SNAPSHOT'
+          }
+          repositories {
+              mavenCentral()
+              maven { url "https://maven.fabricmc.net/" }
+          }
           dependencies {
               minecraft "com.mojang:minecraft:1.21.1"
               mappings "net.fabricmc:yarn:1.21.1+build.3:v2"
@@ -30,7 +42,7 @@ jobs:
 
           cat <<'EOF' > src/main/resources/fabric.mod.json
           {
-            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV34",
+            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV35",
             "entrypoints": { "client": [ "com.kusman.KusmanClient" ] },
             "mixins": [ "kusman.mixins.json" ]
           }
@@ -38,7 +50,6 @@ jobs:
 
           echo '{"required":true,"package":"com.kusman.mixin","mixins":["InventoryMixin"]}' > src/main/resources/kusman.mixins.json
 
-          # Основной код мода
           cat <<'EOF' > src/main/java/com/kusman/KusmanClient.java
           package com.kusman;
           import net.fabricmc.api.ClientModInitializer;
@@ -55,7 +66,6 @@ jobs:
                       if (client.player == null) return;
                       if (god) { client.player.setHealth(20.0f); client.player.getAbilities().invulnerable = true; }
                       if (fly) { client.player.getAbilities().allowFlying = true; client.player.getAbilities().flying = true; }
-                      
                       if (aura) {
                           client.world.getEntities().forEach(e -> {
                               if (e instanceof LivingEntity target && target != client.player && target.isAlive() && client.player.distanceTo(target) < 4.5) {
@@ -71,7 +81,6 @@ jobs:
           }
           EOF
 
-          # Код кнопок в инвентаре
           cat <<'EOF' > src/main/java/com/kusman/mixin/InventoryMixin.java
           package com.kusman.mixin;
           import com.kusman.KusmanClient;
@@ -86,7 +95,6 @@ jobs:
           @Mixin(InventoryScreen.class)
           public abstract class InventoryMixin extends net.minecraft.client.gui.screen.Screen {
               protected InventoryMixin(Text title) { super(title); }
-
               @Inject(method = "init", at = @At("TAIL"))
               private void onInit(CallbackInfo ci) {
                   int x = 10;
@@ -97,16 +105,16 @@ jobs:
           }
           EOF
 
-      - name: Install Gradle Wrapper
-        run: gradle wrapper --gradle-version 8.10
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
 
       - name: Build with Gradle
-        run: |
-          chmod +x gradlew
-          ./gradlew build --no-daemon
+        run: gradle build --no-daemon
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Kusman-V34-InventoryMenu
-          path: build/libs/*-dev.jar # Загружаем dev-версию для тестов, если обычная не соберется
+          name: Kusman-V35-Fixed
+          path: build/libs/*.jar
