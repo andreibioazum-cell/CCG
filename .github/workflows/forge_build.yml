@@ -1,5 +1,8 @@
-name: KUSMAN_V48_SUPER_AURA
-on: [push, workflow_dispatch]
+name: DIAMOND_GOD_MOD_V7
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -11,139 +14,167 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with: { gradle-version: '8.10' }
 
-      - name: Generate Project
+      - name: Generate Advanced God Mod
         run: |
-          mkdir -p src/main/java/com/kusman/mixin src/main/resources
+          mkdir -p src/main/java/com/godmod/mixin
           
-          echo "pluginManagement { repositories { maven { url 'https://maven.fabricmc.net/' }; gradlePluginPortal() } }" > settings.gradle
-          echo "rootProject.name = 'kusman_mod'" >> settings.gradle
+          echo "rootProject.name = 'god_mod'" > settings.gradle
 
           cat <<'EOF' > build.gradle
           plugins { id 'fabric-loom' version '1.7-SNAPSHOT' }
-          repositories { mavenCentral(); maven { url "https://maven.fabricmc.net/" } }
           dependencies {
               minecraft "com.mojang:minecraft:1.21.1"
               mappings "net.fabricmc:yarn:1.21.1+build.3:v2"
-              modImplementation "net.fabricmc:fabric-loader:0.16.0"
+              modImplementation "net.fabricmc:fabric-loader:0.18.4"
               modImplementation "net.fabricmc.fabric-api:fabric-api:0.102.0+1.21.1"
           }
           EOF
 
           cat <<'EOF' > src/main/resources/fabric.mod.json
           {
-            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV48",
-            "entrypoints": { "client": [ "com.kusman.KusmanClient" ] },
-            "mixins": [ "kusman.mixins.json" ]
+            "schemaVersion": 1, "id": "godmod", "version": "7.0.0", "name": "Diamond God",
+            "entrypoints": { "main": [ "com.godmod.GodMod" ] },
+            "mixins": [ "godmod.mixins.json" ],
+            "depends": { "fabricloader": ">=0.18.4", "minecraft": "~1.21", "fabric-api": "*" }
           }
           EOF
 
-          echo '{"required":true,"package":"com.kusman.mixin","mixins":["NetworkMixin"]}' > src/main/resources/kusman.mixins.json
+          cat <<'EOF' > src/main/resources/godmod.mixins.json
+          {
+            "required": true,
+            "minVersion": "0.8",
+            "package": "com.godmod.mixin",
+            "compatibilityLevel": "JAVA_21",
+            "mixins": [ "DiamondBlockMixin" ],
+            "injectors": { "defaultRequire": 1 }
+          }
+          EOF
 
-          cat <<'EOF' > src/main/java/com/kusman/KusmanClient.java
-          package com.kusman;
-          import net.fabricmc.api.ClientModInitializer;
-          import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-          import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
-          import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
-          import net.minecraft.client.MinecraftClient;
-          import net.minecraft.entity.Entity;
+          cat <<'EOF' > src/main/java/com/godmod/GodMod.java
+          package com.godmod;
+
+          import net.fabricmc.api.ModInitializer;
+          import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+          import net.minecraft.block.Blocks;
+          import net.minecraft.entity.EntityType;
+          import net.minecraft.entity.LightningEntity;
           import net.minecraft.entity.LivingEntity;
-          import net.minecraft.entity.player.PlayerEntity;
-          import net.minecraft.entity.mob.MobEntity;
-          import net.minecraft.entity.attribute.EntityAttributes;
-          import net.minecraft.entity.attribute.EntityAttributeInstance;
-          import net.minecraft.network.packet.c2s.play.PlayerInteractEntityC2SPacket;
+          import net.minecraft.entity.effect.StatusEffectInstance;
+          import net.minecraft.entity.effect.StatusEffects;
+          import net.minecraft.particle.ParticleTypes;
+          import net.minecraft.server.network.ServerPlayerEntity;
+          import net.minecraft.server.world.ServerWorld;
           import net.minecraft.text.Text;
-          import net.minecraft.util.Hand;
+          import net.minecraft.util.math.BlockPos;
+          import net.minecraft.util.math.Box;
+          import java.util.HashMap;
+          import java.util.Map;
+          import java.util.UUID;
 
-          public class KusmanClient implements ClientModInitializer {
-              public static boolean god=false, fly=false, step=false, speed=false;
-              public static boolean auraAll=false, auraPl=false, auraMb=false, auraPlS=false, auraMbS=false;
-              public static final String PREFIX = "§b[K] §f";
+          public class GodMod implements ModInitializer {
+              // Храним выбранный режим для каждого игрока
+              public static final Map<UUID, Integer> playerMode = new HashMap<>();
+              // 0 - Реген, 1 - Молния, 2 - Луч
 
-              @Override public void onInitializeClient() {
-                  ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-                      dispatcher.register(ClientCommandManager.literal("aura").executes(c -> { auraAll = !auraAll; msg("Aura All: " + auraAll); return 1; }));
-                      dispatcher.register(ClientCommandManager.literal("aurapl").executes(c -> { auraPl = !auraPl; msg("Aura Players: " + auraPl); return 1; }));
-                      dispatcher.register(ClientCommandManager.literal("auramb").executes(c -> { auraMb = !auraMb; msg("Aura Mobs: " + auraMb); return 1; }));
-                      
-                      // Новые СУПЕР-команды
-                      dispatcher.register(ClientCommandManager.literal("aurapls").executes(c -> { auraPlS = !auraPlS; msg("§dSuper Aura Players: " + auraPlS); return 1; }));
-                      dispatcher.register(ClientCommandManager.literal("aurambs").executes(c -> { auraMbS = !auraMbS; msg("§dSuper Aura Mobs: " + auraMbS); return 1; }));
-                      
-                      dispatcher.register(ClientCommandManager.literal("fl").executes(c -> { fly = !fly; msg("Fly: " + fly); return 1; }));
-                      dispatcher.register(ClientCommandManager.literal("godm").executes(c -> { god = !god; msg("GodMode: " + god); return 1; }));
-                      dispatcher.register(ClientCommandManager.literal("step").executes(c -> { step = !step; msg("Step: " + step); return 1; }));
-                      dispatcher.register(ClientCommandManager.literal("speed").executes(c -> { speed = !speed; msg("Speed: " + speed); return 1; }));
-                  });
-
-                  ClientTickEvents.END_CLIENT_TICK.register(client -> {
-                      if (client.player == null || client.world == null) return;
-                      
-                      if (god) { client.player.setHealth(20f); client.player.getHungerManager().setFoodLevel(20); }
-                      if (fly) { client.player.getAbilities().allowFlying = true; client.player.getAbilities().flying = true; }
-                      
-                      EntityAttributeInstance stepAttr = client.player.getAttributeInstance(EntityAttributes.GENERIC_STEP_HEIGHT);
-                      if (stepAttr != null) stepAttr.setBaseValue(step ? 1.5 : 0.6);
-                      
-                      if (speed && (client.player.forwardSpeed != 0 || client.player.sidewaysSpeed != 0)) {
-                          client.player.updateVelocity(0.15f, client.player.getRotationVector());
-                      }
-
-                      for (Entity e : client.world.getEntities()) {
-                          if (e instanceof LivingEntity target && target != client.player && target.isAlive()) {
-                              double dist = client.player.distanceTo(target);
-                              
-                              // Обычная логика (4 блока, кулдаун)
-                              if (dist <= 4.0) {
-                                  boolean valid = auraAll || (auraPl && target instanceof PlayerEntity) || (auraMb && target instanceof MobEntity);
-                                  if (valid && client.player.getAttackCooldownProgress(0) >= 1.0f) {
-                                      client.interactionManager.attackEntity(client.player, target);
-                                      client.player.swingHand(Hand.MAIN_HAND);
-                                  }
-                              }
-
-                              // СУПЕР логика (10 блоков, без кулдауна)
-                              if (dist <= 10.0) {
-                                  boolean superValid = (auraPlS && target instanceof PlayerEntity) || (auraMbS && target instanceof MobEntity);
-                                  if (superValid) {
-                                      // Шлем пакет атаки напрямую каждую долю секунды
-                                      client.player.networkHandler.sendPacket(PlayerInteractEntityC2SPacket.attack(target, client.player.isSneaking()));
-                                      client.player.swingHand(Hand.MAIN_HAND);
-                                  }
-                              }
+              @Override
+              public void onInitialize() {
+                  ServerTickEvents.END_SERVER_TICK.register(server -> {
+                      for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+                          BlockPos down = player.getBlockPos().down();
+                          if (player.getWorld().getBlockState(down).isOf(Blocks.DIAMOND_BLOCK)) {
+                              int mode = playerMode.getOrDefault(player.getUuid(), 0);
+                              applyPower(player, mode);
                           }
                       }
                   });
               }
-              private void msg(String s) { if (MinecraftClient.getInstance().player != null) MinecraftClient.getInstance().player.sendMessage(Text.literal(PREFIX + s), false); }
+
+              private void applyPower(ServerPlayerEntity player, int mode) {
+                  ServerWorld world = (ServerWorld) player.getWorld();
+                  switch (mode) {
+                      case 0: // Регенерация
+                          player.addStatusEffect(new StatusEffectInstance(StatusEffects.REGENERATION, 40, 1, false, false));
+                          break;
+                      case 1: // Молния (раз в 2 секунды)
+                          if (world.getTime() % 40 == 0) {
+                              world.getEntitiesByClass(LivingEntity.class, new Box(player.getBlockPos()).expand(10), e -> e != player)
+                                  .forEach(entity -> {
+                                      LightningEntity lightning = EntityType.LIGHTNING_BOLT.create(world);
+                                      if (lightning != null) {
+                                          lightning.refreshPositionAfterTeleport(entity.getX(), entity.getY(), entity.getZ());
+                                          world.spawnEntity(lightning);
+                                      }
+                                  });
+                          }
+                          break;
+                      case 2: // Луч Бога
+                          LivingEntity target = null;
+                          for (LivingEntity e : world.getEntitiesByClass(LivingEntity.class, new Box(player.getBlockPos()).expand(15), e -> e != player)) {
+                              target = e; break;
+                          }
+                          if (target != null) {
+                              // Визуальный эффект желтого луча (частицы)
+                              for(double i=0; i<target.getEyeHeight(); i+=0.2) {
+                                  world.spawnParticles(ParticleTypes.ELECTRIC_SPARK, target.getX(), target.getY()+i, target.getZ(), 5, 0.1, 0.1, 0.1, 0.05);
+                              }
+                              target.damage(world.getDamageSources().magic(), 4.0f);
+                          }
+                          break;
+                  }
+              }
           }
           EOF
 
-          cat <<'EOF' > src/main/java/com/kusman/mixin/NetworkMixin.java
-          package com.kusman.mixin;
-          import com.kusman.KusmanClient;
-          import net.minecraft.client.network.ClientPlayNetworkHandler;
-          import net.minecraft.network.packet.s2c.play.EntityDamageS2CPacket;
+          cat <<'EOF' > src/main/java/com/godmod/mixin/DiamondBlockMixin.java
+          package com.godmod.mixin;
+
+          import com.godmod.GodMod;
+          import net.minecraft.block.AbstractBlock;
+          import net.minecraft.block.Block;
+          import net.minecraft.block.BlockState;
+          import net.minecraft.block.Blocks;
+          import net.minecraft.entity.player.PlayerEntity;
+          import net.minecraft.text.Text;
+          import net.minecraft.util.ActionResult;
+          import net.minecraft.util.Hand;
+          import net.minecraft.util.hit.BlockHitResult;
+          import net.minecraft.util.math.BlockPos;
+          import net.minecraft.world.World;
           import org.spongepowered.asm.mixin.Mixin;
           import org.spongepowered.asm.mixin.injection.At;
           import org.spongepowered.asm.mixin.injection.Inject;
-          import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+          import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-          @Mixin(ClientPlayNetworkHandler.class)
-          public class NetworkMixin {
-              @Inject(method = "onEntityDamage", at = @At("HEAD"), cancellable = true)
-              private void blockDamage(EntityDamageS2CPacket packet, CallbackInfo ci) {
-                  if (KusmanClient.god) ci.cancel();
+          @Mixin(Block.class)
+          public abstract class DiamondBlockMixin {
+              @Inject(method = "onUse", at = @At("HEAD"), cancellable = true)
+              private void onDiamondUse(BlockState state, World world, BlockPos pos, PlayerEntity player, BlockHitResult hit, CallbackInfoReturnable<ActionResult> cir) {
+                  if (state.isOf(Blocks.DIAMOND_BLOCK) && player.isSneaking()) {
+                      if (!world.isClient) {
+                          int currentMode = GodMod.playerMode.getOrDefault(player.getUuid(), 0);
+                          int nextMode = (currentMode + 1) % 3;
+                          GodMod.playerMode.put(player.getUuid(), nextMode);
+                          
+                          String modeName = switch (nextMode) {
+                              case 0 -> "§aРЕГЕНЕРАЦИЯ";
+                              case 1 -> "§eГНЕВ МОЛНИЙ";
+                              case 2 -> "§6ЛУЧ БОГА";
+                              default -> "???";
+                          };
+                          
+                          player.sendMessage(Text.literal("§bРежим изменен на: " + modeName), true);
+                      }
+                      cir.setReturnValue(ActionResult.SUCCESS);
+                  }
               }
           }
           EOF
 
       - name: Build
-        run: gradle build --no-daemon
+        run: chmod +x gradlew && ./gradlew build --no-daemon
 
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Kusman-V48-SuperAura
+          name: Diamond-God-V7
           path: build/libs/*.jar
