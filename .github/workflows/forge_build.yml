@@ -1,8 +1,5 @@
-name: DIAMOND_GOD_MOD_V7
-on:
-  push:
-    branches: [ "main", "master" ]
-  workflow_dispatch:
+name: KUSMAN_V53_KITE_KILLER
+on: [push, workflow_dispatch]
 
 jobs:
   build:
@@ -14,167 +11,125 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with: { gradle-version: '8.10' }
 
-      - name: Generate Advanced God Mod
+      - name: Generate Project
         run: |
-          mkdir -p src/main/java/com/godmod/mixin
-          
-          echo "rootProject.name = 'god_mod'" > settings.gradle
+          mkdir -p src/main/java/com/kusman/mixin src/main/resources
+          echo "pluginManagement { repositories { maven { url 'https://maven.fabricmc.net/' }; gradlePluginPortal() } }" > settings.gradle
+          echo "rootProject.name = 'kusman_mod'" >> settings.gradle
 
           cat <<'EOF' > build.gradle
           plugins { id 'fabric-loom' version '1.7-SNAPSHOT' }
+          repositories { mavenCentral(); maven { url "https://maven.fabricmc.net/" } }
           dependencies {
               minecraft "com.mojang:minecraft:1.21.1"
               mappings "net.fabricmc:yarn:1.21.1+build.3:v2"
-              modImplementation "net.fabricmc:fabric-loader:0.18.4"
+              modImplementation "net.fabricmc:fabric-loader:0.16.0"
               modImplementation "net.fabricmc.fabric-api:fabric-api:0.102.0+1.21.1"
           }
           EOF
 
           cat <<'EOF' > src/main/resources/fabric.mod.json
           {
-            "schemaVersion": 1, "id": "godmod", "version": "7.0.0", "name": "Diamond God",
-            "entrypoints": { "main": [ "com.godmod.GodMod" ] },
-            "mixins": [ "godmod.mixins.json" ],
-            "depends": { "fabricloader": ">=0.18.4", "minecraft": "~1.21", "fabric-api": "*" }
+            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV53",
+            "entrypoints": { "client": [ "com.kusman.KusmanClient" ] },
+            "mixins": [ "kusman.mixins.json" ]
           }
           EOF
 
-          cat <<'EOF' > src/main/resources/godmod.mixins.json
-          {
-            "required": true,
-            "minVersion": "0.8",
-            "package": "com.godmod.mixin",
-            "compatibilityLevel": "JAVA_21",
-            "mixins": [ "DiamondBlockMixin" ],
-            "injectors": { "defaultRequire": 1 }
-          }
-          EOF
+          echo '{"required":true,"package":"com.kusman.mixin","mixins":["NetworkMixin"]}' > src/main/resources/kusman.mixins.json
 
-          cat <<'EOF' > src/main/java/com/godmod/GodMod.java
-          package com.godmod;
-
-          import net.fabricmc.api.ModInitializer;
-          import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-          import net.minecraft.block.Blocks;
-          import net.minecraft.entity.EntityType;
-          import net.minecraft.entity.LightningEntity;
-          import net.minecraft.entity.LivingEntity;
-          import net.minecraft.entity.effect.StatusEffectInstance;
-          import net.minecraft.entity.effect.StatusEffects;
-          import net.minecraft.particle.ParticleTypes;
-          import net.minecraft.server.network.ServerPlayerEntity;
-          import net.minecraft.server.world.ServerWorld;
+          cat <<'EOF' > src/main/java/com/kusman/KusmanClient.java
+          package com.kusman;
+          import net.fabricmc.api.ClientModInitializer;
+          import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
+          import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
+          import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+          import net.minecraft.entity.Entity;
+          import net.minecraft.entity.player.PlayerEntity;
+          import net.minecraft.network.packet.c2s.play.PlayerInteractEntityC2SPacket;
           import net.minecraft.text.Text;
-          import net.minecraft.util.math.BlockPos;
-          import net.minecraft.util.math.Box;
-          import java.util.HashMap;
-          import java.util.Map;
-          import java.util.UUID;
+          import net.minecraft.util.Hand;
+          import net.minecraft.util.math.Vec3d;
+          import com.mojang.brigadier.arguments.StringArgumentType;
 
-          public class GodMod implements ModInitializer {
-              // Храним выбранный режим для каждого игрока
-              public static final Map<UUID, Integer> playerMode = new HashMap<>();
-              // 0 - Реген, 1 - Молния, 2 - Луч
+          public class KusmanClient implements ClientModInitializer {
+              public static boolean god=false, spider=false;
+              public static String targetName = "";
+              public static final String PREFIX = "§b[K] §f";
 
-              @Override
-              public void onInitialize() {
-                  ServerTickEvents.END_SERVER_TICK.register(server -> {
-                      for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
-                          BlockPos down = player.getBlockPos().down();
-                          if (player.getWorld().getBlockState(down).isOf(Blocks.DIAMOND_BLOCK)) {
-                              int mode = playerMode.getOrDefault(player.getUuid(), 0);
-                              applyPower(player, mode);
+              @Override public void onInitializeClient() {
+                  ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
+                      dispatcher.register(ClientCommandManager.literal("godm").executes(c -> { god = !god; msg("GodMode: " + god); return 1; }));
+                      dispatcher.register(ClientCommandManager.literal("spdr").executes(c -> { spider = !spider; msg("Spider: " + spider); return 1; }));
+                      
+                      dispatcher.register(ClientCommandManager.literal("kll")
+                          .then(ClientCommandManager.argument("name", StringArgumentType.string())
+                          .executes(c -> {
+                              targetName = StringArgumentType.getString(c, "name");
+                              msg("Focusing & Kiting: §e" + targetName);
+                              return 1;
+                          })));
+
+                      dispatcher.register(ClientCommandManager.literal("kstop").executes(c -> {
+                          targetName = ""; msg("Target cleared."); return 1;
+                      }));
+                  });
+
+                  ClientTickEvents.END_CLIENT_TICK.register(client -> {
+                      if (client.player == null || client.world == null) return;
+                      
+                      if (god) { client.player.setHealth(20f); client.player.getAbilities().invulnerable = true; }
+                      if (spider && client.player.horizontalCollision) client.player.setVelocity(client.player.getVelocity().x, 0.2, client.player.getVelocity().z);
+
+                      if (!targetName.isEmpty()) {
+                          for (Entity e : client.world.getEntities()) {
+                              if (e instanceof PlayerEntity target && target.getName().getString().equalsIgnoreCase(targetName) && target.isAlive()) {
+                                  double dist = client.player.distanceTo(target);
+                                  
+                                  // 1. Атака на расстоянии (до 20 блоков)
+                                  if (dist < 20.0) {
+                                      client.player.networkHandler.sendPacket(PlayerInteractEntityC2SPacket.attack(target, client.player.isSneaking()));
+                                      client.player.swingHand(Hand.MAIN_HAND);
+                                      
+                                      // 2. Авто-отход (Kite)
+                                      if (dist < 5.0) {
+                                          Vec3d awayDir = client.player.getPos().subtract(target.getPos()).normalize().multiply(0.2);
+                                          client.player.addVelocity(awayDir.x, 0, awayDir.z);
+                                      }
+                                  }
+                              }
                           }
                       }
                   });
               }
-
-              private void applyPower(ServerPlayerEntity player, int mode) {
-                  ServerWorld world = (ServerWorld) player.getWorld();
-                  switch (mode) {
-                      case 0: // Регенерация
-                          player.addStatusEffect(new StatusEffectInstance(StatusEffects.REGENERATION, 40, 1, false, false));
-                          break;
-                      case 1: // Молния (раз в 2 секунды)
-                          if (world.getTime() % 40 == 0) {
-                              world.getEntitiesByClass(LivingEntity.class, new Box(player.getBlockPos()).expand(10), e -> e != player)
-                                  .forEach(entity -> {
-                                      LightningEntity lightning = EntityType.LIGHTNING_BOLT.create(world);
-                                      if (lightning != null) {
-                                          lightning.refreshPositionAfterTeleport(entity.getX(), entity.getY(), entity.getZ());
-                                          world.spawnEntity(lightning);
-                                      }
-                                  });
-                          }
-                          break;
-                      case 2: // Луч Бога
-                          LivingEntity target = null;
-                          for (LivingEntity e : world.getEntitiesByClass(LivingEntity.class, new Box(player.getBlockPos()).expand(15), e -> e != player)) {
-                              target = e; break;
-                          }
-                          if (target != null) {
-                              // Визуальный эффект желтого луча (частицы)
-                              for(double i=0; i<target.getEyeHeight(); i+=0.2) {
-                                  world.spawnParticles(ParticleTypes.ELECTRIC_SPARK, target.getX(), target.getY()+i, target.getZ(), 5, 0.1, 0.1, 0.1, 0.05);
-                              }
-                              target.damage(world.getDamageSources().magic(), 4.0f);
-                          }
-                          break;
-                  }
-              }
+              private void msg(String s) { if (net.minecraft.client.MinecraftClient.getInstance().player != null) net.minecraft.client.MinecraftClient.getInstance().player.sendMessage(Text.literal(PREFIX + s), false); }
           }
           EOF
 
-          cat <<'EOF' > src/main/java/com/godmod/mixin/DiamondBlockMixin.java
-          package com.godmod.mixin;
-
-          import com.godmod.GodMod;
-          import net.minecraft.block.AbstractBlock;
-          import net.minecraft.block.Block;
-          import net.minecraft.block.BlockState;
-          import net.minecraft.block.Blocks;
-          import net.minecraft.entity.player.PlayerEntity;
-          import net.minecraft.text.Text;
-          import net.minecraft.util.ActionResult;
-          import net.minecraft.util.Hand;
-          import net.minecraft.util.hit.BlockHitResult;
-          import net.minecraft.util.math.BlockPos;
-          import net.minecraft.world.World;
+          cat <<'EOF' > src/main/java/com/kusman/mixin/NetworkMixin.java
+          package com.kusman.mixin;
+          import com.kusman.KusmanClient;
+          import net.minecraft.client.network.ClientPlayNetworkHandler;
+          import net.minecraft.network.packet.s2c.play.EntityDamageS2CPacket;
           import org.spongepowered.asm.mixin.Mixin;
           import org.spongepowered.asm.mixin.injection.At;
           import org.spongepowered.asm.mixin.injection.Inject;
-          import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+          import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-          @Mixin(Block.class)
-          public abstract class DiamondBlockMixin {
-              @Inject(method = "onUse", at = @At("HEAD"), cancellable = true)
-              private void onDiamondUse(BlockState state, World world, BlockPos pos, PlayerEntity player, BlockHitResult hit, CallbackInfoReturnable<ActionResult> cir) {
-                  if (state.isOf(Blocks.DIAMOND_BLOCK) && player.isSneaking()) {
-                      if (!world.isClient) {
-                          int currentMode = GodMod.playerMode.getOrDefault(player.getUuid(), 0);
-                          int nextMode = (currentMode + 1) % 3;
-                          GodMod.playerMode.put(player.getUuid(), nextMode);
-                          
-                          String modeName = switch (nextMode) {
-                              case 0 -> "§aРЕГЕНЕРАЦИЯ";
-                              case 1 -> "§eГНЕВ МОЛНИЙ";
-                              case 2 -> "§6ЛУЧ БОГА";
-                              default -> "???";
-                          };
-                          
-                          player.sendMessage(Text.literal("§bРежим изменен на: " + modeName), true);
-                      }
-                      cir.setReturnValue(ActionResult.SUCCESS);
-                  }
+          @Mixin(ClientPlayNetworkHandler.class)
+          public class NetworkMixin {
+              @Inject(method = "onEntityDamage", at = @At("HEAD"), cancellable = true)
+              private void blockDamage(EntityDamageS2CPacket packet, CallbackInfo ci) {
+                  if (KusmanClient.god) ci.cancel();
               }
           }
           EOF
 
       - name: Build
-        run: chmod +x gradlew && ./gradlew build --no-daemon
+        run: gradle build --no-daemon
 
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Diamond-God-V7
+          name: Kusman-V53-Ultimate
           path: build/libs/*.jar
