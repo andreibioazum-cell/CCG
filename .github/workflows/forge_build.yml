@@ -1,4 +1,4 @@
-name: TOTEM_THUNDER_V9_1
+name: TOTEM_THUNDER_V9_2
 on:
   push:
     branches: [ "main", "master" ]
@@ -17,7 +17,7 @@ jobs:
         with:
           gradle-version: '8.10'
 
-      - name: Generate Totem Lightning Mod
+      - name: Generate Stable Totem Mod
         run: |
           mkdir -p src/main/java/com/totemmod
           mkdir -p src/main/resources
@@ -42,7 +42,7 @@ jobs:
           {
             "schemaVersion": 1,
             "id": "totemmod",
-            "version": "9.1.0",
+            "version": "9.2.0",
             "name": "Totem Thunder",
             "entrypoints": { "main": [ "com.totemmod.TotemMod" ] },
             "depends": { "fabricloader": ">=0.18.4", "minecraft": "~1.21" }
@@ -57,7 +57,7 @@ jobs:
           import net.minecraft.entity.EntityType;
           import net.minecraft.entity.LightningEntity;
           import net.minecraft.entity.LivingEntity;
-          import net.minecraft.entity.mob.HostileEntity;
+          import net.minecraft.entity.player.PlayerEntity;
           import net.minecraft.item.ItemStack;
           import net.minecraft.item.Items;
           import net.minecraft.text.Text;
@@ -69,36 +69,34 @@ jobs:
           public class TotemMod implements ModInitializer {
               @Override
               public void onInitialize() {
-                  System.out.println("!!! TOTEM THUNDER 9.1 - CLICK EDITION LOADED !!!");
+                  System.out.println("!!! TOTEM THUNDER 9.2 - MOBILE STABLE !!!");
 
                   UseItemCallback.EVENT.register((player, world, hand) -> {
                       ItemStack stack = player.getStackInHand(hand);
 
                       if (!world.isClient && stack.isOf(Items.TOTEM_OF_UNDYING)) {
-                          // Проверяем кулдаун (5 секунд = 100 тиков)
                           if (!player.getItemCooldownManager().isCoolingDown(Items.TOTEM_OF_UNDYING)) {
                               
-                              // Ищем ближайшего враждебного моба в радиусе 15 блоков
+                              // Ищем ЛЮБЫХ живых существ в радиусе 15 блоков
                               Box box = player.getBoundingBox().expand(15.0);
-                              List<HostileEntity> enemies = world.getEntitiesByClass(HostileEntity.class, box, LivingEntity::isAlive);
+                              List<LivingEntity> targets = world.getEntitiesByClass(LivingEntity.class, box, 
+                                  entity -> entity.isAlive() && entity != player && !(entity instanceof PlayerEntity));
 
-                              if (!enemies.isEmpty()) {
-                                  // Сортируем по дистанции, чтобы ударить ближайшего
-                                  enemies.sort(Comparator.comparingDouble(e -> e.squaredDistanceTo(player)));
-                                  HostileEntity target = enemies.get(0);
+                              if (!targets.isEmpty()) {
+                                  // Сортировка по дистанции
+                                  targets.sort(Comparator.comparingDouble(e -> e.squaredDistanceTo(player)));
+                                  LivingEntity target = targets.get(0);
 
-                                  // Создаем и спавним молнию
                                   LightningEntity lightning = EntityType.LIGHTNING_BOLT.create(world);
                                   if (lightning != null) {
                                       lightning.refreshPositionAfterTeleport(target.getX(), target.getY(), target.getZ());
                                       world.spawnEntity(lightning);
                                       
-                                      // Устанавливаем кулдаун 5 секунд
                                       player.getItemCooldownManager().set(Items.TOTEM_OF_UNDYING, 100);
                                       return TypedActionResult.success(stack);
                                   }
                               } else {
-                                  player.sendMessage(Text.literal("§cРядом нет целей для молнии!"), true);
+                                  player.sendMessage(Text.literal("§cНет целей поблизости!"), true);
                               }
                           }
                       }
@@ -114,5 +112,5 @@ jobs:
       - name: Upload JAR
         uses: actions/upload-artifact@v4
         with:
-          name: Totem-Thunder-V9.1
+          name: Totem-Thunder-V9.2
           path: build/libs/*.jar
