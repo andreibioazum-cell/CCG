@@ -1,4 +1,4 @@
-name: TOTEM_THUNDER_V9_4_EMERGENCY
+name: TOTEM_THUNDER_V9_5
 on:
   push:
     branches: [ "main", "master" ]
@@ -17,18 +17,24 @@ jobs:
         with:
           gradle-version: '8.10'
 
-      - name: Generate Mod
+      - name: Generate Stable Totem Mod
         run: |
           mkdir -p src/main/java/com/totemmod
           mkdir -p src/main/resources
           
           cat <<'EOF' > settings.gradle
+          pluginManagement {
+              repositories {
+                  maven { url "https://maven.fabricmc.net/" }
+                  gradlePluginPortal()
+              }
+          }
           rootProject.name = 'totem_mod'
           EOF
 
           cat <<'EOF' > build.gradle
           plugins {
-              id 'fabric-loom' version '1.8-SNAPSHOT'
+              id 'fabric-loom' version '1.7-SNAPSHOT'
           }
           repositories {
               mavenCentral()
@@ -46,7 +52,7 @@ jobs:
           {
             "schemaVersion": 1,
             "id": "totemmod",
-            "version": "9.4.0",
+            "version": "9.5.0",
             "name": "Totem Thunder",
             "entrypoints": { "main": [ "com.totemmod.TotemMod" ] },
             "depends": { "fabricloader": ">=0.18.4", "minecraft": "~1.21" }
@@ -70,27 +76,27 @@ jobs:
           public class TotemMod implements ModInitializer {
               @Override
               public void onInitialize() {
-                  System.out.println("STABLE LOAD 9.4");
-                  
+                  System.out.println("TOTEM THUNDER 9.5 LOADED");
+
                   UseItemCallback.EVENT.register((player, world, hand) -> {
-                      if (world.isClient()) return TypedActionResult.pass(player.getStackInHand(hand));
-                      
                       ItemStack stack = player.getStackInHand(hand);
-                      
-                      if (stack.isOf(Items.TOTEM_OF_UNDYING)) {
+
+                      if (!world.isClient() && stack.isOf(Items.TOTEM_OF_UNDYING)) {
                           if (!player.getItemCooldownManager().isCoolingDown(Items.TOTEM_OF_UNDYING)) {
                               
-                              Box area = player.getBoundingBox().expand(15.0);
-                              List<LivingEntity> targets = world.getEntitiesByClass(LivingEntity.class, area, (e) -> e != player && e.isAlive());
+                              Box box = player.getBoundingBox().expand(15.0);
+                              List<LivingEntity> targets = world.getEntitiesByClass(LivingEntity.class, box, (e) -> e != player && e.isAlive());
 
                               if (!targets.isEmpty()) {
                                   LivingEntity target = targets.get(0);
-                                  LightningEntity bolt = new LightningEntity(EntityType.LIGHTNING_BOLT, world);
-                                  bolt.setPosition(target.getPos());
-                                  world.spawnEntity(bolt);
-                                  
-                                  player.getItemCooldownManager().set(Items.TOTEM_OF_UNDYING, 100);
-                                  return TypedActionResult.success(stack);
+                                  LightningEntity bolt = EntityType.LIGHTNING_BOLT.create(world);
+                                  if (bolt != null) {
+                                      bolt.refreshPositionAfterTeleport(target.getX(), target.getY(), target.getZ());
+                                      world.spawnEntity(bolt);
+                                      
+                                      player.getItemCooldownManager().set(Items.TOTEM_OF_UNDYING, 100);
+                                      return TypedActionResult.success(stack);
+                                  }
                               }
                           }
                       }
@@ -100,11 +106,11 @@ jobs:
           }
           EOF
 
-      - name: Build
+      - name: Build with Gradle
         run: gradle build --no-daemon
 
-      - name: Upload
+      - name: Upload JAR
         uses: actions/upload-artifact@v4
         with:
-          name: Totem-Thunder-V9.4
+          name: Totem-Thunder-V9.5
           path: build/libs/*.jar
