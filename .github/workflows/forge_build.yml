@@ -1,4 +1,4 @@
-name: TOTEM_THUNDER_V9_2
+name: TOTEM_THUNDER_V9_3_FINAL
 on:
   push:
     branches: [ "main", "master" ]
@@ -17,7 +17,7 @@ jobs:
         with:
           gradle-version: '8.10'
 
-      - name: Generate Stable Totem Mod
+      - name: Generate Ultra Stable Totem Mod
         run: |
           mkdir -p src/main/java/com/totemmod
           mkdir -p src/main/resources
@@ -32,6 +32,7 @@ jobs:
           repositories { mavenCentral(); maven { url "https://maven.fabricmc.net/" } }
           dependencies {
               minecraft "com.mojang:minecraft:1.21.1"
+              // Используем максимально совместимые маппинги
               mappings "net.fabricmc:yarn:1.21.1+build.3:v2"
               modImplementation "net.fabricmc:fabric-loader:0.18.4"
               modImplementation "net.fabricmc.fabric-api:fabric-api:0.102.0+1.21.1"
@@ -42,7 +43,7 @@ jobs:
           {
             "schemaVersion": 1,
             "id": "totemmod",
-            "version": "9.2.0",
+            "version": "9.3.0",
             "name": "Totem Thunder",
             "entrypoints": { "main": [ "com.totemmod.TotemMod" ] },
             "depends": { "fabricloader": ">=0.18.4", "minecraft": "~1.21" }
@@ -57,46 +58,43 @@ jobs:
           import net.minecraft.entity.EntityType;
           import net.minecraft.entity.LightningEntity;
           import net.minecraft.entity.LivingEntity;
-          import net.minecraft.entity.player.PlayerEntity;
           import net.minecraft.item.ItemStack;
           import net.minecraft.item.Items;
-          import net.minecraft.text.Text;
           import net.minecraft.util.TypedActionResult;
           import net.minecraft.util.math.Box;
-          import java.util.Comparator;
           import java.util.List;
 
           public class TotemMod implements ModInitializer {
               @Override
               public void onInitialize() {
-                  System.out.println("!!! TOTEM THUNDER 9.2 - MOBILE STABLE !!!");
+                  System.out.println("!!! TOTEM THUNDER 9.3 - ULTRA STABLE START !!!");
 
                   UseItemCallback.EVENT.register((player, world, hand) -> {
                       ItemStack stack = player.getStackInHand(hand);
 
-                      if (!world.isClient && stack.isOf(Items.TOTEM_OF_UNDYING)) {
+                      // Проверка на сервере и наличие тотема
+                      if (!world.isClient() && stack.isOf(Items.TOTEM_OF_UNDYING)) {
+                          
                           if (!player.getItemCooldownManager().isCoolingDown(Items.TOTEM_OF_UNDYING)) {
                               
-                              // Ищем ЛЮБЫХ живых существ в радиусе 15 блоков
-                              Box box = player.getBoundingBox().expand(15.0);
-                              List<LivingEntity> targets = world.getEntitiesByClass(LivingEntity.class, box, 
-                                  entity -> entity.isAlive() && entity != player && !(entity instanceof PlayerEntity));
+                              double r = 15.0;
+                              Box box = player.getBoundingBox().expand(r);
+                              
+                              // Ищем сущности (используем базовый LivingEntity)
+                              List<LivingEntity> targets = world.getEntitiesByClass(LivingEntity.class, box, (e) -> e.isAlive() && e != player);
 
                               if (!targets.isEmpty()) {
-                                  // Сортировка по дистанции
-                                  targets.sort(Comparator.comparingDouble(e -> e.squaredDistanceTo(player)));
                                   LivingEntity target = targets.get(0);
 
-                                  LightningEntity lightning = EntityType.LIGHTNING_BOLT.create(world);
-                                  if (lightning != null) {
-                                      lightning.refreshPositionAfterTeleport(target.getX(), target.getY(), target.getZ());
-                                      world.spawnEntity(lightning);
+                                  LightningEntity bolt = EntityType.LIGHTNING_BOLT.create(world);
+                                  if (bolt != null) {
+                                      bolt.refreshPositionAfterTeleport(target.getX(), target.getY(), target.getZ());
+                                      world.spawnEntity(bolt);
                                       
+                                      // КД 5 секунд (100 тиков)
                                       player.getItemCooldownManager().set(Items.TOTEM_OF_UNDYING, 100);
                                       return TypedActionResult.success(stack);
                                   }
-                              } else {
-                                  player.sendMessage(Text.literal("§cНет целей поблизости!"), true);
                               }
                           }
                       }
@@ -112,5 +110,5 @@ jobs:
       - name: Upload JAR
         uses: actions/upload-artifact@v4
         with:
-          name: Totem-Thunder-V9.2
+          name: Totem-Thunder-V9.3
           path: build/libs/*.jar
