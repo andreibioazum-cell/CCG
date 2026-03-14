@@ -1,5 +1,8 @@
-name: KUSMAN_V53_KITE_KILLER
-on: [push, workflow_dispatch]
+name: TOTEM_THUNDER_V9_1
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -7,15 +10,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
-        with: { java-version: '21', distribution: 'temurin' }
+        with:
+          java-version: '21'
+          distribution: 'temurin'
       - uses: gradle/actions/setup-gradle@v4
-        with: { gradle-version: '8.10' }
+        with:
+          gradle-version: '8.10'
 
-      - name: Generate Project
+      - name: Generate Totem Lightning Mod
         run: |
-          mkdir -p src/main/java/com/kusman/mixin src/main/resources
-          echo "pluginManagement { repositories { maven { url 'https://maven.fabricmc.net/' }; gradlePluginPortal() } }" > settings.gradle
-          echo "rootProject.name = 'kusman_mod'" >> settings.gradle
+          mkdir -p src/main/java/com/totemmod
+          mkdir -p src/main/resources
+          
+          cat <<'EOF' > settings.gradle
+          pluginManagement { repositories { maven { url "https://maven.fabricmc.net/" }; gradlePluginPortal() } }
+          rootProject.name = 'totem_mod'
+          EOF
 
           cat <<'EOF' > build.gradle
           plugins { id 'fabric-loom' version '1.7-SNAPSHOT' }
@@ -23,113 +33,86 @@ jobs:
           dependencies {
               minecraft "com.mojang:minecraft:1.21.1"
               mappings "net.fabricmc:yarn:1.21.1+build.3:v2"
-              modImplementation "net.fabricmc:fabric-loader:0.16.0"
+              modImplementation "net.fabricmc:fabric-loader:0.18.4"
               modImplementation "net.fabricmc.fabric-api:fabric-api:0.102.0+1.21.1"
           }
           EOF
 
           cat <<'EOF' > src/main/resources/fabric.mod.json
           {
-            "schemaVersion": 1, "id": "kusman", "version": "1.0.0", "name": "KusmanV53",
-            "entrypoints": { "client": [ "com.kusman.KusmanClient" ] },
-            "mixins": [ "kusman.mixins.json" ]
+            "schemaVersion": 1,
+            "id": "totemmod",
+            "version": "9.1.0",
+            "name": "Totem Thunder",
+            "entrypoints": { "main": [ "com.totemmod.TotemMod" ] },
+            "depends": { "fabricloader": ">=0.18.4", "minecraft": "~1.21" }
           }
           EOF
 
-          echo '{"required":true,"package":"com.kusman.mixin","mixins":["NetworkMixin"]}' > src/main/resources/kusman.mixins.json
+          cat <<'EOF' > src/main/java/com/totemmod/TotemMod.java
+          package com.totemmod;
 
-          cat <<'EOF' > src/main/java/com/kusman/KusmanClient.java
-          package com.kusman;
-          import net.fabricmc.api.ClientModInitializer;
-          import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
-          import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
-          import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-          import net.minecraft.entity.Entity;
-          import net.minecraft.entity.player.PlayerEntity;
-          import net.minecraft.network.packet.c2s.play.PlayerInteractEntityC2SPacket;
+          import net.fabricmc.api.ModInitializer;
+          import net.fabricmc.fabric.api.event.player.UseItemCallback;
+          import net.minecraft.entity.EntityType;
+          import net.minecraft.entity.LightningEntity;
+          import net.minecraft.entity.LivingEntity;
+          import net.minecraft.entity.mob.HostileEntity;
+          import net.minecraft.item.ItemStack;
+          import net.minecraft.item.Items;
           import net.minecraft.text.Text;
-          import net.minecraft.util.Hand;
-          import net.minecraft.util.math.Vec3d;
-          import com.mojang.brigadier.arguments.StringArgumentType;
+          import net.minecraft.util.TypedActionResult;
+          import net.minecraft.util.math.Box;
+          import java.util.Comparator;
+          import java.util.List;
 
-          public class KusmanClient implements ClientModInitializer {
-              public static boolean god=false, spider=false;
-              public static String targetName = "";
-              public static final String PREFIX = "§b[K] §f";
+          public class TotemMod implements ModInitializer {
+              @Override
+              public void onInitialize() {
+                  System.out.println("!!! TOTEM THUNDER 9.1 - CLICK EDITION LOADED !!!");
 
-              @Override public void onInitializeClient() {
-                  ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-                      dispatcher.register(ClientCommandManager.literal("godm").executes(c -> { god = !god; msg("GodMode: " + god); return 1; }));
-                      dispatcher.register(ClientCommandManager.literal("spdr").executes(c -> { spider = !spider; msg("Spider: " + spider); return 1; }));
-                      
-                      dispatcher.register(ClientCommandManager.literal("kll")
-                          .then(ClientCommandManager.argument("name", StringArgumentType.string())
-                          .executes(c -> {
-                              targetName = StringArgumentType.getString(c, "name");
-                              msg("Focusing & Kiting: §e" + targetName);
-                              return 1;
-                          })));
+                  UseItemCallback.EVENT.register((player, world, hand) -> {
+                      ItemStack stack = player.getStackInHand(hand);
 
-                      dispatcher.register(ClientCommandManager.literal("kstop").executes(c -> {
-                          targetName = ""; msg("Target cleared."); return 1;
-                      }));
-                  });
+                      if (!world.isClient && stack.isOf(Items.TOTEM_OF_UNDYING)) {
+                          // Проверяем кулдаун (5 секунд = 100 тиков)
+                          if (!player.getItemCooldownManager().isCoolingDown(Items.TOTEM_OF_UNDYING)) {
+                              
+                              // Ищем ближайшего враждебного моба в радиусе 15 блоков
+                              Box box = player.getBoundingBox().expand(15.0);
+                              List<HostileEntity> enemies = world.getEntitiesByClass(HostileEntity.class, box, LivingEntity::isAlive);
 
-                  ClientTickEvents.END_CLIENT_TICK.register(client -> {
-                      if (client.player == null || client.world == null) return;
-                      
-                      if (god) { client.player.setHealth(20f); client.player.getAbilities().invulnerable = true; }
-                      if (spider && client.player.horizontalCollision) client.player.setVelocity(client.player.getVelocity().x, 0.2, client.player.getVelocity().z);
+                              if (!enemies.isEmpty()) {
+                                  // Сортируем по дистанции, чтобы ударить ближайшего
+                                  enemies.sort(Comparator.comparingDouble(e -> e.squaredDistanceTo(player)));
+                                  HostileEntity target = enemies.get(0);
 
-                      if (!targetName.isEmpty()) {
-                          for (Entity e : client.world.getEntities()) {
-                              if (e instanceof PlayerEntity target && target.getName().getString().equalsIgnoreCase(targetName) && target.isAlive()) {
-                                  double dist = client.player.distanceTo(target);
-                                  
-                                  // 1. Атака на расстоянии (до 20 блоков)
-                                  if (dist < 20.0) {
-                                      client.player.networkHandler.sendPacket(PlayerInteractEntityC2SPacket.attack(target, client.player.isSneaking()));
-                                      client.player.swingHand(Hand.MAIN_HAND);
+                                  // Создаем и спавним молнию
+                                  LightningEntity lightning = EntityType.LIGHTNING_BOLT.create(world);
+                                  if (lightning != null) {
+                                      lightning.refreshPositionAfterTeleport(target.getX(), target.getY(), target.getZ());
+                                      world.spawnEntity(lightning);
                                       
-                                      // 2. Авто-отход (Kite)
-                                      if (dist < 5.0) {
-                                          Vec3d awayDir = client.player.getPos().subtract(target.getPos()).normalize().multiply(0.2);
-                                          client.player.addVelocity(awayDir.x, 0, awayDir.z);
-                                      }
+                                      // Устанавливаем кулдаун 5 секунд
+                                      player.getItemCooldownManager().set(Items.TOTEM_OF_UNDYING, 100);
+                                      return TypedActionResult.success(stack);
                                   }
+                              } else {
+                                  player.sendMessage(Text.literal("§cРядом нет целей для молнии!"), true);
                               }
                           }
                       }
+                      return TypedActionResult.pass(stack);
                   });
               }
-              private void msg(String s) { if (net.minecraft.client.MinecraftClient.getInstance().player != null) net.minecraft.client.MinecraftClient.getInstance().player.sendMessage(Text.literal(PREFIX + s), false); }
           }
           EOF
 
-          cat <<'EOF' > src/main/java/com/kusman/mixin/NetworkMixin.java
-          package com.kusman.mixin;
-          import com.kusman.KusmanClient;
-          import net.minecraft.client.network.ClientPlayNetworkHandler;
-          import net.minecraft.network.packet.s2c.play.EntityDamageS2CPacket;
-          import org.spongepowered.asm.mixin.Mixin;
-          import org.spongepowered.asm.mixin.injection.At;
-          import org.spongepowered.asm.mixin.injection.Inject;
-          import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-
-          @Mixin(ClientPlayNetworkHandler.class)
-          public class NetworkMixin {
-              @Inject(method = "onEntityDamage", at = @At("HEAD"), cancellable = true)
-              private void blockDamage(EntityDamageS2CPacket packet, CallbackInfo ci) {
-                  if (KusmanClient.god) ci.cancel();
-              }
-          }
-          EOF
-
-      - name: Build
+      - name: Build with Gradle
         run: gradle build --no-daemon
 
-      - name: Upload
+      - name: Upload JAR
         uses: actions/upload-artifact@v4
         with:
-          name: Kusman-V53-Ultimate
+          name: Totem-Thunder-V9.1
           path: build/libs/*.jar
