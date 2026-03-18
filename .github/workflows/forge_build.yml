@@ -1,116 +1,492 @@
-name: TOTEM_THUNDER_V9_5
-on:
-  push:
-    branches: [ "main", "master" ]
-  workflow_dispatch:
+name: DimOS_VPN_GodMode_Xray
+on: [workflow_dispatch, push]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.10'
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-      - name: Generate Stable Totem Mod
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Download Xray Core
         run: |
-          mkdir -p src/main/java/com/totemmod
-          mkdir -p src/main/resources
+          wget https://github.com/XTLS/Xray-core/releases/latest/download/Xray-android-arm64.zip
+          unzip -o Xray-android-arm64.zip -d app/libs/xray/
+          chmod +x app/libs/xray/xray
+
+      - name: Initialize VPN Project with Xray
+        run: |
+          mkdir -p app/src/main/java/com/dimos/vpn
+          mkdir -p app/src/main/res/values
+          mkdir -p app/src/main/res/layout
+          mkdir -p app/src/main/assets
+          mkdir -p app/src/main/jniLibs/arm64-v8a
+          mkdir -p app/libs/xray
+
+          # Копируем бинарник Xray в assets
+          cp app/libs/xray/xray app/src/main/assets/xray
           
-          cat <<'EOF' > settings.gradle
-          pluginManagement {
-              repositories {
-                  maven { url "https://maven.fabricmc.net/" }
-                  gradlePluginPortal()
+          # Сохраняем конфиг VPN
+          cat <<'EOF' > app/src/main/assets/config.json
+          {
+            "remarks": "DimVPN ✅",
+            "dns": {
+              "port": 53,
+              "servers": ["8.8.4.4", "8.8.8.8"],
+              "queryStrategy": "UseIPv4"
+            },
+            "inbounds": [
+              {
+                "tag": "tun",
+                "protocol": "tun",
+                "settings": {
+                  "fd": 0,
+                  "address": ["10.0.0.2"],
+                  "mtu": 1500
+                },
+                "sniffing": {
+                  "enabled": true,
+                  "destOverride": ["http", "tls"]
+                }
               }
+            ],
+            "outbounds": [
+              {
+                "tag": "proxy-1",
+                "protocol": "vless",
+                "settings": {
+                  "vnext": [
+                    {
+                      "address": "test.bold-crown.test-cdn-kkk.com",
+                      "port": 443,
+                      "users": [
+                        {
+                          "id": "d8094751-0c2e-4ba3-ac2c-16d95c6fc707",
+                          "encryption": "none",
+                          "flow": "xtls-rprx-vision"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "streamSettings": {
+                  "network": "tcp",
+                  "security": "reality",
+                  "realitySettings": {
+                    "serverName": "tradingview.com",
+                    "publicKey": "-tePObR3oZwGAUOb5kqTYkNWl6rtUKl0RFuzuu06wgw",
+                    "shortId": "50",
+                    "fingerprint": "qq"
+                  }
+                }
+              },
+              {
+                "tag": "proxy-2",
+                "protocol": "vless",
+                "settings": {
+                  "vnext": [
+                    {
+                      "address": "test.bold-crown.test-cdn-kkk.com",
+                      "port": 1443,
+                      "users": [
+                        {
+                          "id": "d8094751-0c2e-4ba3-ac2c-16d95c6fc707",
+                          "encryption": "none",
+                          "flow": ""
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "streamSettings": {
+                  "network": "grpc",
+                  "grpcSettings": {
+                    "serviceName": "de.eu-ffast.com"
+                  },
+                  "security": "reality",
+                  "realitySettings": {
+                    "serverName": "de.eu-ffast.com",
+                    "publicKey": "-tePObR3oZwGAUOb5kqTYkNWl6rtUKl0RFuzuu06wgw",
+                    "shortId": "50"
+                  }
+                }
+              },
+              {
+                "tag": "proxy-3",
+                "protocol": "vless",
+                "settings": {
+                  "vnext": [
+                    {
+                      "address": "test.bold-crown.test-cdn-kkk.com",
+                      "port": 448,
+                      "users": [
+                        {
+                          "id": "d8094751-0c2e-4ba3-ac2c-16d95c6fc707",
+                          "encryption": "none",
+                          "flow": ""
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "streamSettings": {
+                  "network": "ws",
+                  "wsSettings": {
+                    "path": "/api"
+                  }
+                }
+              },
+              {
+                "tag": "direct",
+                "protocol": "freedom"
+              },
+              {
+                "tag": "block",
+                "protocol": "blackhole"
+              }
+            ],
+            "routing": {
+              "domainStrategy": "IPIfNonMatch",
+              "rules": [
+                {
+                  "type": "field",
+                  "protocol": ["bittorrent"],
+                  "outboundTag": "block"
+                },
+                {
+                  "domain": ["domain:mtalk.google.com", "domain:push.apple.com"],
+                  "outboundTag": "direct"
+                },
+                {
+                  "type": "field",
+                  "network": "tcp,udp",
+                  "balancerTag": "balancer"
+                }
+              ],
+              "balancers": [
+                {
+                  "tag": "balancer",
+                  "selector": ["proxy-1", "proxy-3"],
+                  "fallbackTag": "proxy-2",
+                  "strategy": {
+                    "type": "leastLoad"
+                  }
+                }
+              ]
+            }
           }
-          rootProject.name = 'totem_mod'
           EOF
 
-          cat <<'EOF' > build.gradle
-          plugins {
-              id 'fabric-loom' version '1.7-SNAPSHOT'
+          # Файлы сборки
+          cat <<EOF > settings.gradle
+          include ':app'
+          EOF
+
+          cat <<EOF > build.gradle
+          buildscript {
+              repositories { google(); mavenCentral() }
+              dependencies { classpath 'com.android.tools.build:gradle:8.2.2' }
           }
-          repositories {
-              mavenCentral()
-              maven { url "https://maven.fabricmc.net/" }
+          allprojects {
+              repositories { google(); mavenCentral() }
+          }
+          EOF
+
+          # build.gradle для модуля
+          cat <<EOF > app/build.gradle
+          plugins { id 'com.android.application' }
+          android {
+              namespace 'com.dimos.vpn'
+              compileSdk 34
+              defaultConfig {
+                  applicationId "com.dimos.vpn.godmode"
+                  minSdk 26
+                  targetSdk 34
+                  versionCode 1
+                  versionName "1.0-Xray-GodMode"
+              }
+              buildTypes {
+                  release {
+                      minifyEnabled false
+                  }
+              }
           }
           dependencies {
-              minecraft "com.mojang:minecraft:1.21.1"
-              mappings "net.fabricmc:yarn:1.21.1+build.3:v2"
-              modImplementation "net.fabricmc:fabric-loader:0.18.4"
-              modImplementation "net.fabricmc.fabric-api:fabric-api:0.102.0+1.21.1"
+              implementation 'androidx.core:core:1.12.0'
           }
           EOF
 
-          cat <<'EOF' > src/main/resources/fabric.mod.json
-          {
-            "schemaVersion": 1,
-            "id": "totemmod",
-            "version": "9.5.0",
-            "name": "Totem Thunder",
-            "entrypoints": { "main": [ "com.totemmod.TotemMod" ] },
-            "depends": { "fabricloader": ">=0.18.4", "minecraft": "~1.21" }
-          }
+          # Манифест
+          cat <<EOF > app/src/main/AndroidManifest.xml
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+              <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+              
+              <application 
+                  android:label="DimOS Xray VPN" 
+                  android:theme="@style/Theme.DimOSVPN"
+                  android:allowBackup="true">
+                  
+                  <activity android:name=".MainActivity" 
+                      android:exported="true"
+                      android:launchMode="singleTask">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+                  
+                  <service 
+                      android:name=".VpnXrayService" 
+                      android:permission="android.permission.BIND_VPN_SERVICE"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.net.VpnService" />
+                      </intent-filter>
+                  </service>
+              </application>
+          </manifest>
           EOF
 
-          cat <<'EOF' > src/main/java/com/totemmod/TotemMod.java
-          package com.totemmod;
+          # Тема
+          cat <<EOF > app/src/main/res/values/themes.xml
+          <resources>
+              <style name="Theme.DimOSVPN" parent="android:Theme.DeviceDefault.NoActionBar">
+                  <item name="android:windowFullscreen">true</item>
+                  <item name="android:windowNoTitle">true</item>
+              </style>
+          </resources>
+          EOF
 
-          import net.fabricmc.api.ModInitializer;
-          import net.fabricmc.fabric.api.event.player.UseItemCallback;
-          import net.minecraft.entity.EntityType;
-          import net.minecraft.entity.LightningEntity;
-          import net.minecraft.entity.LivingEntity;
-          import net.minecraft.item.ItemStack;
-          import net.minecraft.item.Items;
-          import net.minecraft.util.TypedActionResult;
-          import net.minecraft.util.math.Box;
-          import java.util.List;
+          # MainActivity.java
+          cat <<EOF > app/src/main/java/com/dimos/vpn/MainActivity.java
+          package com.dimos.vpn;
 
-          public class TotemMod implements ModInitializer {
+          import android.app.Activity;
+          import android.content.Intent;
+          import android.net.VpnService;
+          import android.os.Bundle;
+          import android.view.Gravity;
+          import android.widget.Button;
+          import android.widget.LinearLayout;
+          import android.widget.TextView;
+          import android.widget.Toast;
+          import android.graphics.Color;
+
+          public class MainActivity extends Activity {
+              private LinearLayout root;
+              private boolean isVpnRunning = false;
+              private TextView statusText;
+
               @Override
-              public void onInitialize() {
-                  System.out.println("TOTEM THUNDER 9.5 LOADED");
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  initUI();
+              }
 
-                  UseItemCallback.EVENT.register((player, world, hand) -> {
-                      ItemStack stack = player.getStackInHand(hand);
+              private void initUI() {
+                  root = new LinearLayout(this);
+                  root.setOrientation(LinearLayout.VERTICAL);
+                  root.setBackgroundColor(Color.BLACK);
+                  root.setPadding(50, 100, 50, 50);
+                  root.setGravity(Gravity.CENTER);
 
-                      if (!world.isClient() && stack.isOf(Items.TOTEM_OF_UNDYING)) {
-                          if (!player.getItemCooldownManager().isCoolingDown(Items.TOTEM_OF_UNDYING)) {
-                              
-                              Box box = player.getBoundingBox().expand(15.0);
-                              List<LivingEntity> targets = world.getEntitiesByClass(LivingEntity.class, box, (e) -> e != player && e.isAlive());
+                  TextView title = new TextView(this);
+                  title.setText("DimOS Xray VPN");
+                  title.setTextSize(32);
+                  title.setTextColor(Color.CYAN);
+                  title.setGravity(Gravity.CENTER);
+                  root.addView(title);
 
-                              if (!targets.isEmpty()) {
-                                  LivingEntity target = targets.get(0);
-                                  LightningEntity bolt = EntityType.LIGHTNING_BOLT.create(world);
-                                  if (bolt != null) {
-                                      bolt.refreshPositionAfterTeleport(target.getX(), target.getY(), target.getZ());
-                                      world.spawnEntity(bolt);
-                                      
-                                      player.getItemCooldownManager().set(Items.TOTEM_OF_UNDYING, 100);
-                                      return TypedActionResult.success(stack);
-                                  }
-                              }
-                          }
-                      }
-                      return TypedActionResult.pass(stack);
+                  statusText = new TextView(this);
+                  statusText.setText("STATUS: DISCONNECTED");
+                  statusText.setTextSize(18);
+                  statusText.setTextColor(Color.RED);
+                  statusText.setGravity(Gravity.CENTER);
+                  statusText.setPadding(0, 50, 0, 50);
+                  root.addView(statusText);
+
+                  Button connectBtn = new Button(this);
+                  connectBtn.setText("🔌 CONNECT VPN");
+                  connectBtn.setBackgroundColor(Color.parseColor("#0066CC"));
+                  connectBtn.setTextColor(Color.WHITE);
+                  connectBtn.setOnClickListener(v -> startVpn());
+                  root.addView(connectBtn);
+
+                  Button disconnectBtn = new Button(this);
+                  disconnectBtn.setText("⛔ DISCONNECT");
+                  disconnectBtn.setBackgroundColor(Color.parseColor("#CC3300"));
+                  disconnectBtn.setTextColor(Color.WHITE);
+                  disconnectBtn.setOnClickListener(v -> stopVpn());
+                  root.addView(disconnectBtn);
+
+                  Button selectServerBtn = new Button(this);
+                  selectServerBtn.setText("🌍 SELECT SERVER");
+                  selectServerBtn.setBackgroundColor(Color.parseColor("#006600"));
+                  selectServerBtn.setTextColor(Color.WHITE);
+                  selectServerBtn.setOnClickListener(v -> {
+                      Toast.makeText(this, "Servers: Auto-balancing (3 proxies)", Toast.LENGTH_SHORT).show();
                   });
+                  root.addView(selectServerBtn);
+
+                  TextView info = new TextView(this);
+                  info.setText("VLESS + Reality/WS/gRPC\nAuto-balancer active");
+                  info.setTextSize(14);
+                  info.setTextColor(Color.GRAY);
+                  info.setGravity(Gravity.CENTER);
+                  info.setPadding(0, 50, 0, 0);
+                  root.addView(info);
+
+                  setContentView(root);
+              }
+
+              private void startVpn() {
+                  Intent intent = VpnService.prepare(this);
+                  if (intent != null) {
+                      startActivityForResult(intent, 0);
+                  } else {
+                      onActivityResult(0, RESULT_OK, null);
+                  }
+              }
+
+              private void stopVpn() {
+                  Intent intent = new Intent(this, VpnXrayService.class);
+                  intent.setAction("stop");
+                  startService(intent);
+                  statusText.setText("STATUS: DISCONNECTED");
+                  statusText.setTextColor(Color.RED);
+                  isVpnRunning = false;
+              }
+
+              @Override
+              protected void onActivityResult(int request, int result, Intent data) {
+                  super.onActivityResult(request, result, data);
+                  if (result == RESULT_OK) {
+                      Intent intent = new Intent(this, VpnXrayService.class);
+                      intent.setAction("start");
+                      startService(intent);
+                      
+                      statusText.setText("STATUS: CONNECTED");
+                      statusText.setTextColor(Color.GREEN);
+                      isVpnRunning = true;
+                      Toast.makeText(this, "Xray VPN Started", Toast.LENGTH_SHORT).show();
+                  }
               }
           }
           EOF
 
-      - name: Build with Gradle
-        run: gradle build --no-daemon
+          # VPN Service с Xray
+          cat <<EOF > app/src/main/java/com/dimos/vpn/VpnXrayService.java
+          package com.dimos.vpn;
 
-      - name: Upload JAR
+          import android.net.VpnService;
+          import android.os.ParcelFileDescriptor;
+          import android.util.Log;
+          import java.io.File;
+          import java.io.FileOutputStream;
+          import java.io.InputStream;
+          import java.io.OutputStream;
+
+          public class VpnXrayService extends VpnService {
+              private static final String TAG = "XrayVPN";
+              private Process xrayProcess;
+
+              @Override
+              public int onStartCommand(Intent intent, int flags, int startId) {
+                  if (intent != null && "stop".equals(intent.getAction())) {
+                      stopXray();
+                      stopSelf();
+                  } else {
+                      startXray();
+                  }
+                  return START_STICKY;
+              }
+
+              private void startXray() {
+                  try {
+                      // Копируем Xray из assets
+                      File xrayFile = new File(getFilesDir(), "xray");
+                      if (!xrayFile.exists()) {
+                          InputStream is = getAssets().open("xray");
+                          OutputStream os = new FileOutputStream(xrayFile);
+                          byte[] buffer = new byte[1024];
+                          int len;
+                          while ((len = is.read(buffer)) != -1) {
+                              os.write(buffer, 0, len);
+                          }
+                          os.close();
+                          is.close();
+                          xrayFile.setExecutable(true);
+                      }
+
+                      // Конфиг
+                      File configFile = new File(getFilesDir(), "config.json");
+                      InputStream configIs = getAssets().open("config.json");
+                      OutputStream configOs = new FileOutputStream(configFile);
+                      byte[] buf = new byte[1024];
+                      int l;
+                      while ((l = configIs.read(buf)) != -1) {
+                          configOs.write(buf, 0, l);
+                      }
+                      configOs.close();
+                      configIs.close();
+
+                      // Настройка VPN туннеля
+                      Builder builder = new Builder();
+                      builder.setSessionName("DimOS Xray VPN");
+                      builder.setMtu(1500);
+                      builder.addAddress("10.0.0.2", 32);
+                      builder.addRoute("0.0.0.0", 0);
+                      builder.addDnsServer("8.8.8.8");
+                      
+                      ParcelFileDescriptor vpnInterface = builder.establish();
+
+                      // Запуск Xray
+                      ProcessBuilder pb = new ProcessBuilder(
+                          xrayFile.getAbsolutePath(),
+                          "run",
+                          "-c", configFile.getAbsolutePath()
+                      );
+                      pb.environment().put("VPN_FD", String.valueOf(vpnInterface.getFd()));
+                      
+                      xrayProcess = pb.start();
+                      
+                      Log.d(TAG, "Xray VPN started");
+
+                  } catch (Exception e) {
+                      Log.e(TAG, "Error starting Xray", e);
+                  }
+              }
+
+              private void stopXray() {
+                  if (xrayProcess != null) {
+                      xrayProcess.destroy();
+                      xrayProcess = null;
+                  }
+              }
+
+              @Override
+              public void onDestroy() {
+                  stopXray();
+                  super.onDestroy();
+              }
+          }
+          EOF
+
+      - name: Build VPN APK
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload VPN APK
         uses: actions/upload-artifact@v4
         with:
-          name: Totem-Thunder-V9.5
-          path: build/libs/*.jar
+          name: DimOS-Xray-VPN-GodMode
+          path: app/build/outputs/apk/debug/*.apk
