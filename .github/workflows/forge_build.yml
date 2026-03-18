@@ -243,6 +243,24 @@ jobs:
           zipStorePath=wrapper/dists
           EOF
           
+          # Create gradlew script
+          cat <<'EOF' > gradlew
+          #!/bin/sh
+          APP_NAME="Gradle"
+          APP_BASE_NAME=`basename "$0"`
+          DIR="$(cd "$(dirname "$0")" && pwd)"
+          CLASSPATH=$DIR/gradle/wrapper/gradle-wrapper.jar
+          DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
+          JAVA_OPTS=""
+          GRADLE_OPTS=""
+          if [ -n "$JAVA_HOME" ] ; then
+              JAVACMD="$JAVA_HOME/bin/java"
+          else
+              JAVACMD="java"
+          fi
+          exec "$JAVACMD" $DEFAULT_JVM_OPTS $JAVA_OPTS $GRADLE_OPTS -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"
+          EOF
+          
           chmod +x gradlew
 
           # Module build.gradle
