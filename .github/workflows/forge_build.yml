@@ -14,26 +14,23 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Download Xray Core (Corrected)
+      - name: Create directories and Download Xray Core
         run: |
-          # Alternative approach - download the generic Linux binary
-          # Xray doesn't provide separate Android binaries in releases
+          # Создаем директории перед распаковкой
+          mkdir -p app/libs/xray
+          mkdir -p app/src/main/assets
+          
+          # Download Xray Linux binary (для теста, потом заменим на Android)
           wget https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip
           unzip -o Xray-linux-64.zip -d app/libs/xray/
           # Rename to xray for consistency
           mv app/libs/xray/xray app/libs/xray/xray_linux
           
-          # For Android, we'll use a different approach - we need the ARM64 version
-          # Let's download from a more reliable source or use the universal binary
-          echo "Using Xray core from alternative source..."
+          echo "Xray core downloaded successfully"
 
       - name: Setup Xray for Android
         run: |
-          # Since the Android binary isn't directly available, we'll create a script
-          # that downloads the appropriate binary at runtime
-          mkdir -p app/src/main/assets
-          
-          # Create a download script that will fetch Xray on first run
+          # Create download script that will fetch Xray on first run
           cat <<'EOF' > app/src/main/assets/setup_xray.sh
           #!/system/bin/sh
           XRAY_DIR=\$DATA_DIR/xray
@@ -66,6 +63,7 @@ jobs:
           unzip -o xray.zip
           chmod +x xray
           rm xray.zip
+          echo "Xray downloaded for architecture: \$ARCH"
           EOF
           
           chmod +x app/src/main/assets/setup_xray.sh
@@ -75,7 +73,6 @@ jobs:
           mkdir -p app/src/main/java/com/dimos/vpn
           mkdir -p app/src/main/res/values
           mkdir -p app/src/main/res/layout
-          mkdir -p app/src/main/assets
           mkdir -p app/src/main/jniLibs/arm64-v8a
           
           # Save the VPN config
@@ -83,22 +80,15 @@ jobs:
           {
             "remarks": "DimVPN ✅",
             "dns": {
-              "port": 53,
-              "servers": ["8.8.4.4", "8.8.8.8"],
-              "queryStrategy": "UseIPv4"
+              "servers": ["8.8.4.4", "8.8.8.8"]
             },
             "inbounds": [
               {
                 "tag": "tun",
                 "protocol": "tun",
                 "settings": {
-                  "fd": 0,
                   "address": ["10.0.0.2"],
                   "mtu": 1500
-                },
-                "sniffing": {
-                  "enabled": true,
-                  "destOverride": ["http", "tls"]
                 }
               }
             ],
@@ -206,7 +196,7 @@ jobs:
                   "outboundTag": "block"
                 },
                 {
-                  "domain": ["domain:mtalk.google.com", "domain:push.apple.com"],
+                  "domain": ["mtalk.google.com", "push.apple.com"],
                   "outboundTag": "direct"
                 },
                 {
@@ -219,10 +209,7 @@ jobs:
                 {
                   "tag": "balancer",
                   "selector": ["proxy-1", "proxy-3"],
-                  "fallbackTag": "proxy-2",
-                  "strategy": {
-                    "type": "leastLoad"
-                  }
+                  "fallbackTag": "proxy-2"
                 }
               ]
             }
@@ -257,11 +244,6 @@ jobs:
                   versionCode 1
                   versionName "1.0-Xray-GodMode"
               }
-              buildTypes {
-                  release {
-                      minifyEnabled false
-                  }
-              }
           }
           dependencies {
               implementation 'androidx.core:core:1.12.0'
@@ -274,7 +256,6 @@ jobs:
               <uses-permission android:name="android.permission.INTERNET" />
               <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
               <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-              <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
               
               <application 
                   android:label="DimOS Xray VPN" 
@@ -462,34 +443,31 @@ jobs:
               }
 
               private void ensureXrayBinary() {
-                  File xrayFile = new File(getFilesDir(), "xray");
-                  if (!xrayFile.exists()) {
-                      try {
-                          // Copy setup script
-                          InputStream scriptIs = getAssets().open("setup_xray.sh");
-                          File scriptFile = new File(getFilesDir(), "setup_xray.sh");
-                          OutputStream scriptOs = new FileOutputStream(scriptFile);
-                          byte[] buffer = new byte[1024];
-                          int len;
-                          while ((len = scriptIs.read(buffer)) != -1) {
-                              scriptOs.write(buffer, 0, len);
-                          }
-                          scriptOs.close();
-                          scriptIs.close();
-                          scriptFile.setExecutable(true);
-
-                          // Run setup script
-                          ProcessBuilder pb = new ProcessBuilder(
-                              "sh", scriptFile.getAbsolutePath()
-                          );
-                          pb.environment().put("DATA_DIR", getFilesDir().getAbsolutePath());
-                          Process setupProcess = pb.start();
-                          setupProcess.waitFor();
-                          
-                          Log.d(TAG, "Xray binary setup completed");
-                      } catch (Exception e) {
-                          Log.e(TAG, "Error setting up Xray", e);
+                  try {
+                      // Copy setup script
+                      InputStream scriptIs = getAssets().open("setup_xray.sh");
+                      File scriptFile = new File(getFilesDir(), "setup_xray.sh");
+                      OutputStream scriptOs = new FileOutputStream(scriptFile);
+                      byte[] buffer = new byte[1024];
+                      int len;
+                      while ((len = scriptIs.read(buffer)) != -1) {
+                          scriptOs.write(buffer, 0, len);
                       }
+                      scriptOs.close();
+                      scriptIs.close();
+                      scriptFile.setExecutable(true);
+
+                      // Run setup script
+                      ProcessBuilder pb = new ProcessBuilder(
+                          "sh", scriptFile.getAbsolutePath()
+                      );
+                      pb.environment().put("DATA_DIR", getFilesDir().getAbsolutePath());
+                      Process setupProcess = pb.start();
+                      setupProcess.waitFor();
+                      
+                      Log.d(TAG, "Xray binary setup completed");
+                  } catch (Exception e) {
+                      Log.e(TAG, "Error setting up Xray", e);
                   }
               }
 
