@@ -20,7 +20,7 @@ jobs:
           mkdir -p app/libs/xray
           mkdir -p app/src/main/assets
           
-          # Download Xray Linux binary (для теста, потом заменим на Android)
+          # Download Xray Linux binary
           wget https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip
           unzip -o Xray-linux-64.zip -d app/libs/xray/
           # Rename to xray for consistency
@@ -243,22 +243,15 @@ jobs:
           zipStorePath=wrapper/dists
           EOF
           
+          # Download gradle-wrapper.jar
+          wget -P gradle/wrapper https://raw.githubusercontent.com/gradle/gradle/master/gradle/wrapper/gradle-wrapper.jar
+          
           # Create gradlew script
           cat <<'EOF' > gradlew
           #!/bin/sh
-          APP_NAME="Gradle"
-          APP_BASE_NAME=`basename "$0"`
           DIR="$(cd "$(dirname "$0")" && pwd)"
-          CLASSPATH=$DIR/gradle/wrapper/gradle-wrapper.jar
-          DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
-          JAVA_OPTS=""
-          GRADLE_OPTS=""
-          if [ -n "$JAVA_HOME" ] ; then
-              JAVACMD="$JAVA_HOME/bin/java"
-          else
-              JAVACMD="java"
-          fi
-          exec "$JAVACMD" $DEFAULT_JVM_OPTS $JAVA_OPTS $GRADLE_OPTS -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"
+          CLASSPATH="$DIR/gradle/wrapper/gradle-wrapper.jar"
+          java -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"
           EOF
           
           chmod +x gradlew
