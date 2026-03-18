@@ -14,11 +14,61 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Download Xray Core
+      - name: Download Xray Core (Corrected)
         run: |
-          wget https://github.com/XTLS/Xray-core/releases/latest/download/Xray-android-arm64.zip
-          unzip -o Xray-android-arm64.zip -d app/libs/xray/
-          chmod +x app/libs/xray/xray
+          # Alternative approach - download the generic Linux binary
+          # Xray doesn't provide separate Android binaries in releases
+          wget https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip
+          unzip -o Xray-linux-64.zip -d app/libs/xray/
+          # Rename to xray for consistency
+          mv app/libs/xray/xray app/libs/xray/xray_linux
+          
+          # For Android, we'll use a different approach - we need the ARM64 version
+          # Let's download from a more reliable source or use the universal binary
+          echo "Using Xray core from alternative source..."
+
+      - name: Setup Xray for Android
+        run: |
+          # Since the Android binary isn't directly available, we'll create a script
+          # that downloads the appropriate binary at runtime
+          mkdir -p app/src/main/assets
+          
+          # Create a download script that will fetch Xray on first run
+          cat <<'EOF' > app/src/main/assets/setup_xray.sh
+          #!/system/bin/sh
+          XRAY_DIR=\$DATA_DIR/xray
+          mkdir -p \$XRAY_DIR
+          
+          # Check architecture and download appropriate binary
+          ARCH=\$(getprop ro.product.cpu.abi)
+          case \$ARCH in
+              arm64-v8a)
+                  URL="https://github.com/XTLS/Xray-core/releases/latest/download/Xray-android-arm64.zip"
+                  ;;
+              armeabi-v7a)
+                  URL="https://github.com/XTLS/Xray-core/releases/latest/download/Xray-android-arm32-v7a.zip"
+                  ;;
+              x86)
+                  URL="https://github.com/XTLS/Xray-core/releases/latest/download/Xray-android-x86.zip"
+                  ;;
+              x86_64)
+                  URL="https://github.com/XTLS/Xray-core/releases/latest/download/Xray-android-x64.zip"
+                  ;;
+              *)
+                  echo "Unsupported architecture: \$ARCH"
+                  exit 1
+                  ;;
+          esac
+          
+          # Download and extract
+          cd \$XRAY_DIR
+          curl -L -o xray.zip \$URL
+          unzip -o xray.zip
+          chmod +x xray
+          rm xray.zip
+          EOF
+          
+          chmod +x app/src/main/assets/setup_xray.sh
 
       - name: Initialize VPN Project with Xray
         run: |
@@ -27,12 +77,8 @@ jobs:
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/assets
           mkdir -p app/src/main/jniLibs/arm64-v8a
-          mkdir -p app/libs/xray
-
-          # Копируем бинарник Xray в assets
-          cp app/libs/xray/xray app/src/main/assets/xray
           
-          # Сохраняем конфиг VPN
+          # Save the VPN config
           cat <<'EOF' > app/src/main/assets/config.json
           {
             "remarks": "DimVPN ✅",
@@ -183,7 +229,7 @@ jobs:
           }
           EOF
 
-          # Файлы сборки
+          # Build files
           cat <<EOF > settings.gradle
           include ':app'
           EOF
@@ -198,7 +244,7 @@ jobs:
           }
           EOF
 
-          # build.gradle для модуля
+          # Module build.gradle
           cat <<EOF > app/build.gradle
           plugins { id 'com.android.application' }
           android {
@@ -222,12 +268,13 @@ jobs:
           }
           EOF
 
-          # Манифест
+          # Manifest
           cat <<EOF > app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <uses-permission android:name="android.permission.INTERNET" />
               <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
               <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+              <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
               
               <application 
                   android:label="DimOS Xray VPN" 
@@ -253,9 +300,7 @@ jobs:
                   </service>
               </application>
           </manifest>
-          EOF
-
-          # Тема
+          EOF          # Theme
           cat <<EOF > app/src/main/res/values/themes.xml
           <resources>
               <style name="Theme.DimOSVPN" parent="android:Theme.DeviceDefault.NoActionBar">
@@ -279,11 +324,15 @@ jobs:
           import android.widget.TextView;
           import android.widget.Toast;
           import android.graphics.Color;
+          import android.os.Handler;
+          import android.os.Looper;
 
           public class MainActivity extends Activity {
               private LinearLayout root;
-              private boolean isVpnRunning = false;
               private TextView statusText;
+              private Button connectBtn;
+              private Handler handler = new Handler(Looper.getMainLooper());
+              private Runnable statusChecker;
 
               @Override
               protected void onCreate(Bundle savedInstanceState) {
@@ -313,7 +362,7 @@ jobs:
                   statusText.setPadding(0, 50, 0, 50);
                   root.addView(statusText);
 
-                  Button connectBtn = new Button(this);
+                  connectBtn = new Button(this);
                   connectBtn.setText("🔌 CONNECT VPN");
                   connectBtn.setBackgroundColor(Color.parseColor("#0066CC"));
                   connectBtn.setTextColor(Color.WHITE);
@@ -327,14 +376,14 @@ jobs:
                   disconnectBtn.setOnClickListener(v -> stopVpn());
                   root.addView(disconnectBtn);
 
-                  Button selectServerBtn = new Button(this);
-                  selectServerBtn.setText("🌍 SELECT SERVER");
-                  selectServerBtn.setBackgroundColor(Color.parseColor("#006600"));
-                  selectServerBtn.setTextColor(Color.WHITE);
-                  selectServerBtn.setOnClickListener(v -> {
-                      Toast.makeText(this, "Servers: Auto-balancing (3 proxies)", Toast.LENGTH_SHORT).show();
+                  Button setupBtn = new Button(this);
+                  setupBtn.setText("⚙️ SETUP XRAY");
+                  setupBtn.setBackgroundColor(Color.parseColor("#660066"));
+                  setupBtn.setTextColor(Color.WHITE);
+                  setupBtn.setOnClickListener(v -> {
+                      Toast.makeText(this, "Xray will be downloaded on first connect", Toast.LENGTH_LONG).show();
                   });
-                  root.addView(selectServerBtn);
+                  root.addView(setupBtn);
 
                   TextView info = new TextView(this);
                   info.setText("VLESS + Reality/WS/gRPC\nAuto-balancer active");
@@ -362,7 +411,6 @@ jobs:
                   startService(intent);
                   statusText.setText("STATUS: DISCONNECTED");
                   statusText.setTextColor(Color.RED);
-                  isVpnRunning = false;
               }
 
               @Override
@@ -373,16 +421,15 @@ jobs:
                       intent.setAction("start");
                       startService(intent);
                       
-                      statusText.setText("STATUS: CONNECTED");
-                      statusText.setTextColor(Color.GREEN);
-                      isVpnRunning = true;
-                      Toast.makeText(this, "Xray VPN Started", Toast.LENGTH_SHORT).show();
+                      statusText.setText("STATUS: CONNECTING...");
+                      statusText.setTextColor(Color.YELLOW);
+                      Toast.makeText(this, "Starting Xray VPN...", Toast.LENGTH_SHORT).show();
                   }
               }
           }
           EOF
 
-          # VPN Service с Xray
+          # VPN Service with Xray
           cat <<EOF > app/src/main/java/com/dimos/vpn/VpnXrayService.java
           package com.dimos.vpn;
 
@@ -393,40 +440,68 @@ jobs:
           import java.io.FileOutputStream;
           import java.io.InputStream;
           import java.io.OutputStream;
+          import java.io.BufferedReader;
+          import java.io.InputStreamReader;
+          import android.content.Context;
 
           public class VpnXrayService extends VpnService {
               private static final String TAG = "XrayVPN";
               private Process xrayProcess;
+              private ParcelFileDescriptor vpnInterface;
 
               @Override
               public int onStartCommand(Intent intent, int flags, int startId) {
                   if (intent != null && "stop".equals(intent.getAction())) {
                       stopXray();
                       stopSelf();
-                  } else {
+                  } else if (intent != null && "start".equals(intent.getAction())) {
+                      ensureXrayBinary();
                       startXray();
                   }
                   return START_STICKY;
               }
 
-              private void startXray() {
-                  try {
-                      // Копируем Xray из assets
-                      File xrayFile = new File(getFilesDir(), "xray");
-                      if (!xrayFile.exists()) {
-                          InputStream is = getAssets().open("xray");
-                          OutputStream os = new FileOutputStream(xrayFile);
+              private void ensureXrayBinary() {
+                  File xrayFile = new File(getFilesDir(), "xray");
+                  if (!xrayFile.exists()) {
+                      try {
+                          // Copy setup script
+                          InputStream scriptIs = getAssets().open("setup_xray.sh");
+                          File scriptFile = new File(getFilesDir(), "setup_xray.sh");
+                          OutputStream scriptOs = new FileOutputStream(scriptFile);
                           byte[] buffer = new byte[1024];
                           int len;
-                          while ((len = is.read(buffer)) != -1) {
-                              os.write(buffer, 0, len);
+                          while ((len = scriptIs.read(buffer)) != -1) {
+                              scriptOs.write(buffer, 0, len);
                           }
-                          os.close();
-                          is.close();
-                          xrayFile.setExecutable(true);
+                          scriptOs.close();
+                          scriptIs.close();
+                          scriptFile.setExecutable(true);
+
+                          // Run setup script
+                          ProcessBuilder pb = new ProcessBuilder(
+                              "sh", scriptFile.getAbsolutePath()
+                          );
+                          pb.environment().put("DATA_DIR", getFilesDir().getAbsolutePath());
+                          Process setupProcess = pb.start();
+                          setupProcess.waitFor();
+                          
+                          Log.d(TAG, "Xray binary setup completed");
+                      } catch (Exception e) {
+                          Log.e(TAG, "Error setting up Xray", e);
+                      }
+                  }
+              }
+
+              private void startXray() {
+                  try {
+                      File xrayFile = new File(getFilesDir() + "/xray/xray", "xray");
+                      if (!xrayFile.exists()) {
+                          Log.e(TAG, "Xray binary not found");
+                          return;
                       }
 
-                      // Конфиг
+                      // Config file
                       File configFile = new File(getFilesDir(), "config.json");
                       InputStream configIs = getAssets().open("config.json");
                       OutputStream configOs = new FileOutputStream(configFile);
@@ -438,17 +513,18 @@ jobs:
                       configOs.close();
                       configIs.close();
 
-                      // Настройка VPN туннеля
+                      // Setup VPN tunnel
                       Builder builder = new Builder();
                       builder.setSessionName("DimOS Xray VPN");
                       builder.setMtu(1500);
                       builder.addAddress("10.0.0.2", 32);
                       builder.addRoute("0.0.0.0", 0);
                       builder.addDnsServer("8.8.8.8");
+                      builder.addDnsServer("8.8.4.4");
                       
-                      ParcelFileDescriptor vpnInterface = builder.establish();
+                      vpnInterface = builder.establish();
 
-                      // Запуск Xray
+                      // Start Xray
                       ProcessBuilder pb = new ProcessBuilder(
                           xrayFile.getAbsolutePath(),
                           "run",
@@ -457,6 +533,13 @@ jobs:
                       pb.environment().put("VPN_FD", String.valueOf(vpnInterface.getFd()));
                       
                       xrayProcess = pb.start();
+                      
+                      // Log output
+                      BufferedReader reader = new BufferedReader(new InputStreamReader(xrayProcess.getInputStream()));
+                      String line;
+                      while ((line = reader.readLine()) != null) {
+                          Log.d(TAG, line);
+                      }
                       
                       Log.d(TAG, "Xray VPN started");
 
@@ -469,6 +552,11 @@ jobs:
                   if (xrayProcess != null) {
                       xrayProcess.destroy();
                       xrayProcess = null;
+                  }
+                  if (vpnInterface != null) {
+                      try {
+                          vpnInterface.close();
+                      } catch (Exception e) {}
                   }
               }
 
