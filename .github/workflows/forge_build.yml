@@ -231,6 +231,13 @@ jobs:
           }
           EOF
 
+          # Создаем gradle.properties с AndroidX
+          cat <<EOF > gradle.properties
+          android.useAndroidX=true
+          android.enableJetifier=true
+          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+          EOF
+
           # Создаем директорию gradle/wrapper
           mkdir -p gradle/wrapper
           
