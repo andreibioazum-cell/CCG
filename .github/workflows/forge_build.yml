@@ -1,4 +1,4 @@
-name: DimOS_VPN_GodMode_Xray
+name: Fabric_Mod_ChestCavity_Hardcore_V26
 on: [workflow_dispatch, push]
 
 jobs:
@@ -8,583 +8,161 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          java-version: '21'
+          distribution: 'microsoft'
 
-      - name: Create directories and Download Xray Core
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.10'
+
+      - name: Initialize Project
         run: |
-          # Создаем директории перед распаковкой
-          mkdir -p app/libs/xray
-          mkdir -p app/src/main/assets
-          
-          # Download Xray Linux binary
-          wget https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip
-          unzip -o Xray-linux-64.zip -d app/libs/xray/
-          # Rename to xray for consistency
-          mv app/libs/xray/xray app/libs/xray/xray_linux
-          
-          echo "Xray core downloaded successfully"
+          mkdir -p src/main/java/com/dimos/mod/item
+          mkdir -p src/main/resources/assets/dimos/lang
 
-      - name: Setup Xray for Android
-        run: |
-          # Create download script that will fetch Xray on first run
-          cat <<'EOF' > app/src/main/assets/setup_xray.sh
-          #!/system/bin/sh
-          XRAY_DIR=\$DATA_DIR/xray
-          mkdir -p \$XRAY_DIR
-          
-          # Check architecture and download appropriate binary
-          ARCH=\$(getprop ro.product.cpu.abi)
-          case \$ARCH in
-              arm64-v8a)
-                  URL="https://github.com/XTLS/Xray-core/releases/latest/download/Xray-android-arm64.zip"
-                  ;;
-              armeabi-v7a)
-                  URL="https://github.com/XTLS/Xray-core/releases/latest/download/Xray-android-arm32-v7a.zip"
-                  ;;
-              x86)
-                  URL="https://github.com/XTLS/Xray-core/releases/latest/download/Xray-android-x86.zip"
-                  ;;
-              x86_64)
-                  URL="https://github.com/XTLS/Xray-core/releases/latest/download/Xray-android-x64.zip"
-                  ;;
-              *)
-                  echo "Unsupported architecture: \$ARCH"
-                  exit 1
-                  ;;
-          esac
-          
-          # Download and extract
-          cd \$XRAY_DIR
-          curl -L -o xray.zip \$URL
-          unzip -o xray.zip
-          chmod +x xray
-          rm xray.zip
-          echo "Xray downloaded for architecture: \$ARCH"
-          EOF
-          
-          chmod +x app/src/main/assets/setup_xray.sh
-
-      - name: Initialize VPN Project with Xray
-        run: |
-          mkdir -p app/src/main/java/com/dimos/vpn
-          mkdir -p app/src/main/res/values
-          mkdir -p app/src/main/res/layout
-          mkdir -p app/src/main/jniLibs/arm64-v8a
-          
-          # Save the VPN config
-          cat <<'EOF' > app/src/main/assets/config.json
-          {
-            "remarks": "DimVPN ✅",
-            "dns": {
-              "servers": ["8.8.4.4", "8.8.8.8"]
-            },
-            "inbounds": [
-              {
-                "tag": "tun",
-                "protocol": "tun",
-                "settings": {
-                  "address": ["10.0.0.2"],
-                  "mtu": 1500
-                }
-              }
-            ],
-            "outbounds": [
-              {
-                "tag": "proxy-1",
-                "protocol": "vless",
-                "settings": {
-                  "vnext": [
-                    {
-                      "address": "test.bold-crown.test-cdn-kkk.com",
-                      "port": 443,
-                      "users": [
-                        {
-                          "id": "d8094751-0c2e-4ba3-ac2c-16d95c6fc707",
-                          "encryption": "none",
-                          "flow": "xtls-rprx-vision"
-                        }
-                      ]
-                    }
-                  ]
-                },
-                "streamSettings": {
-                  "network": "tcp",
-                  "security": "reality",
-                  "realitySettings": {
-                    "serverName": "tradingview.com",
-                    "publicKey": "-tePObR3oZwGAUOb5kqTYkNWl6rtUKl0RFuzuu06wgw",
-                    "shortId": "50",
-                    "fingerprint": "qq"
-                  }
-                }
-              },
-              {
-                "tag": "proxy-2",
-                "protocol": "vless",
-                "settings": {
-                  "vnext": [
-                    {
-                      "address": "test.bold-crown.test-cdn-kkk.com",
-                      "port": 1443,
-                      "users": [
-                        {
-                          "id": "d8094751-0c2e-4ba3-ac2c-16d95c6fc707",
-                          "encryption": "none",
-                          "flow": ""
-                        }
-                      ]
-                    }
-                  ]
-                },
-                "streamSettings": {
-                  "network": "grpc",
-                  "grpcSettings": {
-                    "serviceName": "de.eu-ffast.com"
-                  },
-                  "security": "reality",
-                  "realitySettings": {
-                    "serverName": "de.eu-ffast.com",
-                    "publicKey": "-tePObR3oZwGAUOb5kqTYkNWl6rtUKl0RFuzuu06wgw",
-                    "shortId": "50"
-                  }
-                }
-              },
-              {
-                "tag": "proxy-3",
-                "protocol": "vless",
-                "settings": {
-                  "vnext": [
-                    {
-                      "address": "test.bold-crown.test-cdn-kkk.com",
-                      "port": 448,
-                      "users": [
-                        {
-                          "id": "d8094751-0c2e-4ba3-ac2c-16d95c6fc707",
-                          "encryption": "none",
-                          "flow": ""
-                        }
-                      ]
-                    }
-                  ]
-                },
-                "streamSettings": {
-                  "network": "ws",
-                  "wsSettings": {
-                    "path": "/api"
-                  }
-                }
-              },
-              {
-                "tag": "direct",
-                "protocol": "freedom"
-              },
-              {
-                "tag": "block",
-                "protocol": "blackhole"
-              }
-            ],
-            "routing": {
-              "domainStrategy": "IPIfNonMatch",
-              "rules": [
-                {
-                  "type": "field",
-                  "protocol": ["bittorrent"],
-                  "outboundTag": "block"
-                },
-                {
-                  "domain": ["mtalk.google.com", "push.apple.com"],
-                  "outboundTag": "direct"
-                },
-                {
-                  "type": "field",
-                  "network": "tcp,udp",
-                  "balancerTag": "balancer"
-                }
-              ],
-              "balancers": [
-                {
-                  "tag": "balancer",
-                  "selector": ["proxy-1", "proxy-3"],
-                  "fallbackTag": "proxy-2"
-                }
-              ]
-            }
-          }
-          EOF
-
-          # Build files
-          cat <<EOF > settings.gradle
-          include ':app'
-          EOF
-
+          # 1. Build.gradle
           cat <<EOF > build.gradle
-          buildscript {
-              repositories { google(); mavenCentral() }
-              dependencies { classpath 'com.android.tools.build:gradle:8.2.2' }
-          }
-          allprojects {
-              repositories { google(); mavenCentral() }
-          }
-          EOF
-
-          # Создаем gradle.properties с AndroidX
-          cat <<EOF > gradle.properties
-          android.useAndroidX=true
-          android.enableJetifier=true
-          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
-          EOF
-
-          # Создаем директорию gradle/wrapper
-          mkdir -p gradle/wrapper
-          
-          # Create gradle wrapper properties
-          cat <<EOF > gradle/wrapper/gradle-wrapper.properties
-          distributionBase=GRADLE_USER_HOME
-          distributionPath=wrapper/dists
-          distributionUrl=https\://services.gradle.org/distributions/gradle-8.2-bin.zip
-          zipStoreBase=GRADLE_USER_HOME
-          zipStorePath=wrapper/dists
-          EOF
-          
-          # Download gradle-wrapper.jar
-          wget -P gradle/wrapper https://raw.githubusercontent.com/gradle/gradle/master/gradle/wrapper/gradle-wrapper.jar
-          
-          # Create gradlew script
-          cat <<'EOF' > gradlew
-          #!/bin/sh
-          DIR="$(cd "$(dirname "$0")" && pwd)"
-          CLASSPATH="$DIR/gradle/wrapper/gradle-wrapper.jar"
-          java -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"
-          EOF
-          
-          chmod +x gradlew
-
-          # Module build.gradle
-          cat <<EOF > app/build.gradle
-          plugins { id 'com.android.application' }
-          android {
-              namespace 'com.dimos.vpn'
-              compileSdk 34
-              defaultConfig {
-                  applicationId "com.dimos.vpn.godmode"
-                  minSdk 26
-                  targetSdk 34
-                  versionCode 1
-                  versionName "1.0-Xray-GodMode"
-              }
-          }
+          plugins { id 'fabric-loom' version '1.7-SNAPSHOT' }
+          version = '2.6.0'
+          group = 'com.dimos.mod'
+          repositories { mavenCentral(); maven { url = "https://maven.fabricmc.net/" } }
           dependencies {
-              implementation 'androidx.core:core:1.12.0'
+              minecraft "com.mojang:minecraft:1.21.1"
+              mappings "net.fabricmc:yarn:1.21.1+build.3:v2"
+              modImplementation "net.fabricmc:fabric-loader:0.16.5"
+              modImplementation "net.fabricmc.fabric-api:fabric-api:0.102.1+1.21.1"
           }
           EOF
 
-          # Manifest
-          cat <<EOF > app/src/main/AndroidManifest.xml
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <uses-permission android:name="android.permission.INTERNET" />
-              <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-              <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-              
-              <application 
-                  android:label="DimOS Xray VPN" 
-                  android:theme="@style/Theme.DimOSVPN"
-                  android:allowBackup="true">
-                  
-                  <activity android:name=".MainActivity" 
-                      android:exported="true"
-                      android:launchMode="singleTask">
-                      <intent-filter>
-                          <action android:name="android.intent.action.MAIN" />
-                          <category android:name="android.intent.category.LAUNCHER" />
-                      </intent-filter>
-                  </activity>
-                  
-                  <service 
-                      android:name=".VpnXrayService" 
-                      android:permission="android.permission.BIND_VPN_SERVICE"
-                      android:exported="true">
-                      <intent-filter>
-                          <action android:name="android.net.VpnService" />
-                      </intent-filter>
-                  </service>
-              </application>
-          </manifest>
-          EOF          # Theme
-          cat <<EOF > app/src/main/res/values/themes.xml
-          <resources>
-              <style name="Theme.DimOSVPN" parent="android:Theme.DeviceDefault.NoActionBar">
-                  <item name="android:windowFullscreen">true</item>
-                  <item name="android:windowNoTitle">true</item>
-              </style>
-          </resources>
+          # 2. Органы (DimItems.java)
+          cat <<EOF > src/main/java/com/dimos/mod/DimItems.java
+          package com.dimos.mod;
+          import net.minecraft.item.Item;
+          import net.minecraft.registry.Registries;
+          import net.minecraft.registry.Registry;
+          import net.minecraft.util.Identifier;
+
+          public class DimItems {
+              public static final Item SCALPEL = new Item(new Item.Settings().maxCount(1));
+              public static final Item HEART = new Item(new Item.Settings());
+              public static final Item LUNG = new Item(new Item.Settings());
+              public static final Item IRON_MUSCLE = new Item(new Item.Settings().fireproof());
+              public static final Item SQUID_GILLS = new Item(new Item.Settings());
+              public static final Item BLAZE_CORE = new Item(new Item.Settings().fireproof());
+
+              public static void register() {
+                  Registry.register(Registries.ITEM, Identifier.of("dimos", "scalpel"), SCALPEL);
+                  Registry.register(Registries.ITEM, Identifier.of("dimos", "heart"), HEART);
+                  Registry.register(Registries.ITEM, Identifier.of("dimos", "lung"), LUNG);
+                  Registry.register(Registries.ITEM, Identifier.of("dimos", "iron_muscle"), IRON_MUSCLE);
+                  Registry.register(Registries.ITEM, Identifier.of("dimos", "squid_gills"), SQUID_GILLS);
+                  Registry.register(Registries.ITEM, Identifier.of("dimos", "blaze_core"), BLAZE_CORE);
+              }
+          }
           EOF
 
-          # MainActivity.java
-          cat <<EOF > app/src/main/java/com/dimos/vpn/MainActivity.java
-          package com.dimos.vpn;
+          # 3. Хардкорная Логика (DimMod.java)
+          cat <<EOF > src/main/java/com/dimos/mod/DimMod.java
+          package com.dimos.mod;
 
-          import android.app.Activity;
-          import android.content.Intent;
-          import android.net.VpnService;
-          import android.os.Bundle;
-          import android.view.Gravity;
-          import android.widget.Button;
-          import android.widget.LinearLayout;
-          import android.widget.TextView;
-          import android.widget.Toast;
-          import android.graphics.Color;
-          import android.os.Handler;
-          import android.os.Looper;
+          import net.fabricmc.api.ModInitializer;
+          import net.fabricmc.fabric.api.event.player.UseEntityCallback;
+          import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+          import net.minecraft.entity.EntityType;
+          import net.minecraft.entity.effect.StatusEffectInstance;
+          import net.minecraft.entity.effect.StatusEffects;
+          import net.minecraft.inventory.SimpleInventory;
+          import net.minecraft.item.ItemStack;
+          import net.minecraft.screen.GenericContainerScreenHandler;
+          import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
+          import net.minecraft.server.network.ServerPlayerEntity;
+          import net.minecraft.text.Text;
+          import net.minecraft.util.ActionResult;
+          import java.util.HashMap;
+          import java.util.UUID;
 
-          public class MainActivity extends Activity {
-              private LinearLayout root;
-              private TextView statusText;
-              private Button connectBtn;
-              private Handler handler = new Handler(Looper.getMainLooper());
-              private Runnable statusChecker;
+          public class DimMod implements ModInitializer {
+              public static final HashMap<UUID, SimpleInventory> cavities = new HashMap<>();
 
               @Override
-              protected void onCreate(Bundle savedInstanceState) {
-                  super.onCreate(savedInstanceState);
-                  initUI();
-              }
+              public void onInitialize() {
+                  DimItems.register();
 
-              private void initUI() {
-                  root = new LinearLayout(this);
-                  root.setOrientation(LinearLayout.VERTICAL);
-                  root.setBackgroundColor(Color.BLACK);
-                  root.setPadding(50, 100, 50, 50);
-                  root.setGravity(Gravity.CENTER);
-
-                  TextView title = new TextView(this);
-                  title.setText("DimOS Xray VPN");
-                  title.setTextSize(32);
-                  title.setTextColor(Color.CYAN);
-                  title.setGravity(Gravity.CENTER);
-                  root.addView(title);
-
-                  statusText = new TextView(this);
-                  statusText.setText("STATUS: DISCONNECTED");
-                  statusText.setTextSize(18);
-                  statusText.setTextColor(Color.RED);
-                  statusText.setGravity(Gravity.CENTER);
-                  statusText.setPadding(0, 50, 0, 50);
-                  root.addView(statusText);
-
-                  connectBtn = new Button(this);
-                  connectBtn.setText("🔌 CONNECT VPN");
-                  connectBtn.setBackgroundColor(Color.parseColor("#0066CC"));
-                  connectBtn.setTextColor(Color.WHITE);
-                  connectBtn.setOnClickListener(v -> startVpn());
-                  root.addView(connectBtn);
-
-                  Button disconnectBtn = new Button(this);
-                  disconnectBtn.setText("⛔ DISCONNECT");
-                  disconnectBtn.setBackgroundColor(Color.parseColor("#CC3300"));
-                  disconnectBtn.setTextColor(Color.WHITE);
-                  disconnectBtn.setOnClickListener(v -> stopVpn());
-                  root.addView(disconnectBtn);
-
-                  Button setupBtn = new Button(this);
-                  setupBtn.setText("⚙️ SETUP XRAY");
-                  setupBtn.setBackgroundColor(Color.parseColor("#660066"));
-                  setupBtn.setTextColor(Color.WHITE);
-                  setupBtn.setOnClickListener(v -> {
-                      Toast.makeText(this, "Xray will be downloaded on first connect", Toast.LENGTH_LONG).show();
+                  UseEntityCallback.EVENT.register((p, world, hand, entity, hit) -> {
+                      if (!world.isClient && p.isSneaking() && p.getStackInHand(hand).isOf(DimItems.SCALPEL)) {
+                          SimpleInventory inv = cavities.computeIfAbsent(entity.getUuid(), k -> {
+                              SimpleInventory newInv = new SimpleInventory(9);
+                              if (entity.getType() == EntityType.IRON_GOLEM) newInv.setStack(4, new ItemStack(DimItems.IRON_MUSCLE));
+                              else if (entity.getType() == EntityType.SQUID) newInv.setStack(0, new ItemStack(DimItems.SQUID_GILLS));
+                              else if (entity.getType() == EntityType.BLAZE) newInv.setStack(1, new ItemStack(DimItems.BLAZE_CORE));
+                              else newInv.setStack(1, new ItemStack(DimItems.HEART));
+                              return newInv;
+                          });
+                          p.openHandledScreen(new SimpleNamedScreenHandlerFactory((s, i, player) -> 
+                              GenericContainerScreenHandler.createGeneric3x3(s, i, inv), Text.literal("Анатомия")));
+                          return ActionResult.SUCCESS;
+                      }
+                      return ActionResult.PASS;
                   });
-                  root.addView(setupBtn);
 
-                  TextView info = new TextView(this);
-                  info.setText("VLESS + Reality/WS/gRPC\nAuto-balancer active");
-                  info.setTextSize(14);
-                  info.setTextColor(Color.GRAY);
-                  info.setGravity(Gravity.CENTER);
-                  info.setPadding(0, 50, 0, 0);
-                  root.addView(info);
-
-                  setContentView(root);
+                  ServerTickEvents.END_SERVER_TICK.register(server -> {
+                      for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+                          processBiology(player);
+                      }
+                  });
               }
 
-              private void startVpn() {
-                  Intent intent = VpnService.prepare(this);
-                  if (intent != null) {
-                      startActivityForResult(intent, 0);
-                  } else {
-                      onActivityResult(0, RESULT_OK, null);
+              private void processBiology(ServerPlayerEntity player) {
+                  SimpleInventory inv = cavities.get(player.getUuid());
+                  if (inv == null) return;
+
+                  int lungCount = 0; int muscles = 0; boolean hasHeart = false; boolean canBreatheUnderwater = false;
+
+                  for (int i = 0; i < inv.size(); i++) {
+                      ItemStack s = inv.getStack(i);
+                      if (s.isOf(DimItems.LUNG)) lungCount++;
+                      if (s.isOf(DimItems.HEART) || s.isOf(DimItems.BLAZE_CORE)) hasHeart = true;
+                      if (s.isOf(DimItems.IRON_MUSCLE)) muscles++;
+                      if (s.isOf(DimItems.SQUID_GILLS)) canBreatheUnderwater = true;
                   }
-              }
 
-              private void stopVpn() {
-                  Intent intent = new Intent(this, VpnXrayService.class);
-                  intent.setAction("stop");
-                  startService(intent);
-                  statusText.setText("STATUS: DISCONNECTED");
-                  statusText.setTextColor(Color.RED);
-              }
+                  // 1. Проверка легких
+                  if (lungCount == 0 && !canBreatheUnderwater) {
+                      player.setAir(Math.max(-20, player.getAir() - 2));
+                      if (player.getAir() <= -20) player.damage(player.getDamageSources().drown(), 2.0f);
+                  } else if (lungCount == 1 && player.isSubmergedInWater()) {
+                      player.setAir(player.getAir() - 1); // Быстрее тонешь
+                  }
 
-              @Override
-              protected void onActivityResult(int request, int result, Intent data) {
-                  super.onActivityResult(request, result, data);
-                  if (result == RESULT_OK) {
-                      Intent intent = new Intent(this, VpnXrayService.class);
-                      intent.setAction("start");
-                      startService(intent);
-                      
-                      statusText.setText("STATUS: CONNECTING...");
-                      statusText.setTextColor(Color.YELLOW);
-                      Toast.makeText(this, "Starting Xray VPN...", Toast.LENGTH_SHORT).show();
+                  // 2. Проверка сердца
+                  if (!hasHeart) player.damage(player.getDamageSources().magic(), 1.0f);
+
+                  // 3. Проверка мышц
+                  if (muscles > 0) player.addStatusEffect(new StatusEffectInstance(StatusEffects.STRENGTH, 40, muscles - 1, true, false));
+                  else player.addStatusEffect(new StatusEffectInstance(StatusEffects.WEAKNESS, 40, 0, true, false));
+                  
+                  // 4. Огненное ядро
+                  if (inv.containsAny(s -> s.isOf(DimItems.BLAZE_CORE))) {
+                      player.addStatusEffect(new StatusEffectInstance(StatusEffects.FIRE_RESISTANCE, 40, 0, true, false));
+                      if (player.isWet()) player.damage(player.getDamageSources().onFire(), 1.0f);
                   }
               }
           }
           EOF
 
-          # VPN Service with Xray
-          cat <<EOF > app/src/main/java/com/dimos/vpn/VpnXrayService.java
-          package com.dimos.vpn;
+          # 4. Языки
+          echo '{"item.dimos.iron_muscle":"Железные мышцы","item.dimos.squid_gills":"Жабры спрута","item.dimos.blaze_core":"Огненное ядро"}' > src/main/resources/assets/dimos/lang/ru_ru.json
+          echo "pluginManagement { repositories { maven { url = 'https://maven.fabricmc.net/' }; mavenCentral() } }; rootProject.name = 'dimos-surgery'" > settings.gradle
 
-          import android.net.VpnService;
-          import android.os.ParcelFileDescriptor;
-          import android.util.Log;
-          import java.io.File;
-          import java.io.FileOutputStream;
-          import java.io.InputStream;
-          import java.io.OutputStream;
-          import java.io.BufferedReader;
-          import java.io.InputStreamReader;
-          import android.content.Context;
+      - name: Build Mod
+        run: gradle build --no-daemon
 
-          public class VpnXrayService extends VpnService {
-              private static final String TAG = "XrayVPN";
-              private Process xrayProcess;
-              private ParcelFileDescriptor vpnInterface;
-
-              @Override
-              public int onStartCommand(Intent intent, int flags, int startId) {
-                  if (intent != null && "stop".equals(intent.getAction())) {
-                      stopXray();
-                      stopSelf();
-                  } else if (intent != null && "start".equals(intent.getAction())) {
-                      ensureXrayBinary();
-                      startXray();
-                  }
-                  return START_STICKY;
-              }
-
-              private void ensureXrayBinary() {
-                  try {
-                      // Copy setup script
-                      InputStream scriptIs = getAssets().open("setup_xray.sh");
-                      File scriptFile = new File(getFilesDir(), "setup_xray.sh");
-                      OutputStream scriptOs = new FileOutputStream(scriptFile);
-                      byte[] buffer = new byte[1024];
-                      int len;
-                      while ((len = scriptIs.read(buffer)) != -1) {
-                          scriptOs.write(buffer, 0, len);
-                      }
-                      scriptOs.close();
-                      scriptIs.close();
-                      scriptFile.setExecutable(true);
-
-                      // Run setup script
-                      ProcessBuilder pb = new ProcessBuilder(
-                          "sh", scriptFile.getAbsolutePath()
-                      );
-                      pb.environment().put("DATA_DIR", getFilesDir().getAbsolutePath());
-                      Process setupProcess = pb.start();
-                      setupProcess.waitFor();
-                      
-                      Log.d(TAG, "Xray binary setup completed");
-                  } catch (Exception e) {
-                      Log.e(TAG, "Error setting up Xray", e);
-                  }
-              }
-
-              private void startXray() {
-                  try {
-                      File xrayFile = new File(getFilesDir() + "/xray/xray", "xray");
-                      if (!xrayFile.exists()) {
-                          Log.e(TAG, "Xray binary not found");
-                          return;
-                      }
-
-                      // Config file
-                      File configFile = new File(getFilesDir(), "config.json");
-                      InputStream configIs = getAssets().open("config.json");
-                      OutputStream configOs = new FileOutputStream(configFile);
-                      byte[] buf = new byte[1024];
-                      int l;
-                      while ((l = configIs.read(buf)) != -1) {
-                          configOs.write(buf, 0, l);
-                      }
-                      configOs.close();
-                      configIs.close();
-
-                      // Setup VPN tunnel
-                      Builder builder = new Builder();
-                      builder.setSessionName("DimOS Xray VPN");
-                      builder.setMtu(1500);
-                      builder.addAddress("10.0.0.2", 32);
-                      builder.addRoute("0.0.0.0", 0);
-                      builder.addDnsServer("8.8.8.8");
-                      builder.addDnsServer("8.8.4.4");
-                      
-                      vpnInterface = builder.establish();
-
-                      // Start Xray
-                      ProcessBuilder pb = new ProcessBuilder(
-                          xrayFile.getAbsolutePath(),
-                          "run",
-                          "-c", configFile.getAbsolutePath()
-                      );
-                      pb.environment().put("VPN_FD", String.valueOf(vpnInterface.getFd()));
-                      
-                      xrayProcess = pb.start();
-                      
-                      // Log output
-                      BufferedReader reader = new BufferedReader(new InputStreamReader(xrayProcess.getInputStream()));
-                      String line;
-                      while ((line = reader.readLine()) != null) {
-                          Log.d(TAG, line);
-                      }
-                      
-                      Log.d(TAG, "Xray VPN started");
-
-                  } catch (Exception e) {
-                      Log.e(TAG, "Error starting Xray", e);
-                  }
-              }
-
-              private void stopXray() {
-                  if (xrayProcess != null) {
-                      xrayProcess.destroy();
-                      xrayProcess = null;
-                  }
-                  if (vpnInterface != null) {
-                      try {
-                          vpnInterface.close();
-                      } catch (Exception e) {}
-                  }
-              }
-
-              @Override
-              public void onDestroy() {
-                  stopXray();
-                  super.onDestroy();
-              }
-          }
-          EOF
-
-      - name: Build VPN APK
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug
-
-      - name: Upload VPN APK
+      - name: Upload Jar
         uses: actions/upload-artifact@v4
         with:
-          name: DimOS-Xray-VPN-GodMode
-          path: app/build/outputs/apk/debug/*.apk
+          name: Surgery-Hardcore-V26
+          path: build/libs/*.jar
