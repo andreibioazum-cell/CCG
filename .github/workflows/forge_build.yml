@@ -1,4 +1,4 @@
-name: Fabric_Mod_ChestCavity_Scalpel_V34
+name: Fabric_Mod_ChestCavity_Structured_V35
 on: [workflow_dispatch, push]
 
 jobs:
@@ -19,100 +19,122 @@ jobs:
         with:
           gradle-version: '8.10'
 
-      - name: Initialize Project
+      - name: Initialize Project Structure
         run: |
-          mkdir -p src/main/java/com/dimos/mod/
+          mkdir -p src/main/java/com/dimos/mod/item
           mkdir -p src/main/resources/assets/dimos/lang
           mkdir -p src/main/resources/assets/dimos/models/item
 
-          # 1. Build.gradle
+          # 1. Build.gradle (как в твоем примере)
           cat <<EOF > build.gradle
           plugins { id 'fabric-loom' version '1.7-SNAPSHOT' }
-          version = '3.4.0'
+          version = '3.5.0'
           group = 'com.dimos.mod'
           repositories { mavenCentral(); maven { url = "https://maven.fabricmc.net/" } }
           dependencies {
               minecraft "com.mojang:minecraft:1.21.1"
               mappings "net.fabricmc:yarn:1.21.1+build.3:v2"
-              modImplementation "net.fabricmc.fabric-loader:0.16.5"
+              modImplementation "net.fabricmc:fabric-loader:0.16.5"
               modImplementation "net.fabricmc.fabric-api:fabric-api:0.102.1+1.21.1"
           }
           EOF
 
-          # 2. Предметы (DimItems.java)
-          cat <<EOF > src/main/java/com/dimos/mod/DimItems.java
-          package com.dimos.mod;
+          # 2. ScalpelItem.java (Логика использования инструмента)
+          cat <<EOF > src/main/java/com/dimos/mod/item/ScalpelItem.java
+          package com.dimos.mod.item;
+          import com.dimos.mod.DimMod;
+          import net.minecraft.entity.LivingEntity;
+          import net.minecraft.entity.player.PlayerEntity;
           import net.minecraft.item.Item;
-          import net.minecraft.registry.Registries;
-          import net.minecraft.registry.Registry;
-          import net.minecraft.util.Identifier;
+          import net.minecraft.item.ItemStack;
+          import net.minecraft.util.ActionResult;
+          import net.minecraft.util.Hand;
+          import net.minecraft.util.TypedActionResult;
+          import net.minecraft.world.World;
 
-          public class DimItems {
-              public static final Item SCALPEL = new Item(new Item.Settings().maxCount(1));
-              public static final Item HEART = new Item(new Item.Settings());
+          public class ScalpelItem extends Item {
+              public ScalpelItem(Settings settings) { super(settings); }
 
-              public static void register() {
-                  Registry.register(Registries.ITEM, Identifier.of("dimos", "scalpel"), SCALPEL);
-                  Registry.register(Registries.ITEM, Identifier.of("dimos", "heart"), HEART);
+              // Использование на мобах
+              @Override
+              public ActionResult useOnEntity(ItemStack stack, PlayerEntity user, LivingEntity entity, Hand hand) {
+                  if (!user.getWorld().isClient && user.isSneaking()) {
+                      DimMod.openSurgeryMenu((net.minecraft.server.network.ServerPlayerEntity)user, entity);
+                      return ActionResult.SUCCESS;
+                  }
+                  return ActionResult.PASS;
+              }
+
+              // Использование на себе (клик в воздух при шифте)
+              @Override
+              public TypedActionResult<ItemStack> use(World world, PlayerEntity user, Hand hand) {
+                  if (!world.isClient && user.isSneaking()) {
+                      DimMod.openSurgeryMenu((net.minecraft.server.network.ServerPlayerEntity)user, user);
+                      return TypedActionResult.success(user.getStackInHand(hand));
+                  }
+                  return TypedActionResult.pass(user.getStackInHand(hand));
               }
           }
           EOF
 
-          # 3. Логика со скальпелем (DimMod.java)
+          # 3. DimMod.java (Регистрация и Система Сохранения)
           cat <<EOF > src/main/java/com/dimos/mod/DimMod.java
           package com.dimos.mod;
 
+          import com.dimos.mod.item.ScalpelItem;
           import net.fabricmc.api.ModInitializer;
-          import net.fabricmc.fabric.api.event.player.UseEntityCallback;
+          import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
           import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
           import net.minecraft.entity.LivingEntity;
-          import net.minecraft.inventory.SimpleInventory;
+          import net.minecraft.item.Item;
+          import net.minecraft.item.ItemGroups;
           import net.minecraft.item.ItemStack;
+          import net.minecraft.inventory.SimpleInventory;
           import net.minecraft.nbt.NbtCompound;
           import net.minecraft.nbt.NbtList;
+          import net.minecraft.registry.Registries;
+          import net.minecraft.registry.Registry;
           import net.minecraft.screen.GenericContainerScreenHandler;
           import net.minecraft.screen.ScreenHandlerType;
           import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
           import net.minecraft.server.network.ServerPlayerEntity;
           import net.minecraft.text.Text;
-          import net.minecraft.util.ActionResult;
+          import net.minecraft.util.Identifier;
           import java.util.HashMap;
           import java.util.UUID;
 
           public class DimMod implements ModInitializer {
+              public static final Item SCALPEL = new ScalpelItem(new Item.Settings().maxCount(1));
+              public static final Item HEART = new Item(new Item.Settings());
               public static final HashMap<UUID, SimpleInventory> cavities = new HashMap<>();
 
               @Override
               public void onInitialize() {
-                  DimItems.register();
-
-                  // Открытие ТОЛЬКО скальпелем
-                  UseEntityCallback.EVENT.register((p, world, hand, entity, hit) -> {
-                      if (!world.isClient && p.isSneaking() && p.getStackInHand(hand).isOf(DimItems.SCALPEL) && entity instanceof LivingEntity target) {
-                          openSurgeryMenu((ServerPlayerEntity)p, target);
-                          return ActionResult.SUCCESS;
-                      }
-                      return ActionResult.PASS;
+                  // Регистрация как в твоем примере
+                  Registry.register(Registries.ITEM, Identifier.of("dimos", "scalpel"), SCALPEL);
+                  Registry.register(Registries.ITEM, Identifier.of("dimos", "heart"), HEART);
+                  
+                  ItemGroupEvents.modifyEntriesEvent(ItemGroups.COMBAT).register(c -> {
+                      c.add(SCALPEL);
+                      c.add(HEART);
                   });
 
                   ServerTickEvents.END_SERVER_TICK.register(server -> {
                       for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
-                          if (cavities.containsKey(player.getUuid())) {
-                              processBiology(player);
-                          }
+                          if (cavities.containsKey(player.getUuid())) checkBiology(player);
                       }
                   });
               }
 
-              private void openSurgeryMenu(ServerPlayerEntity surgeon, LivingEntity target) {
+              public static void openSurgeryMenu(ServerPlayerEntity surgeon, LivingEntity target) {
                   SimpleInventory inv = cavities.computeIfAbsent(target.getUuid(), k -> loadNbt(target));
                   surgeon.openHandledScreen(new SimpleNamedScreenHandlerFactory((id, pInv, p) -> 
                       new GenericContainerScreenHandler(ScreenHandlerType.GENERIC_3X3, id, pInv, inv, 1), 
-                      Text.literal("Полость организма")));
+                      Text.literal("Полость: " + target.getName().getString())));
                   inv.addListener(i -> saveNbt(target, (SimpleInventory)i));
               }
 
-              private SimpleInventory loadNbt(LivingEntity entity) {
+              private static SimpleInventory loadNbt(LivingEntity entity) {
                   SimpleInventory inv = new SimpleInventory(9);
                   NbtCompound nbt = new NbtCompound();
                   entity.writeNbt(nbt);
@@ -127,7 +149,7 @@ jobs:
                   return inv;
               }
 
-              private void saveNbt(LivingEntity entity, SimpleInventory inv) {
+              private static void saveNbt(LivingEntity entity, SimpleInventory inv) {
                   NbtCompound nbt = new NbtCompound();
                   entity.writeNbt(nbt);
                   NbtList list = new NbtList();
@@ -143,12 +165,10 @@ jobs:
                   entity.readNbt(nbt);
               }
 
-              private void processBiology(ServerPlayerEntity player) {
+              private static void checkBiology(ServerPlayerEntity player) {
                   SimpleInventory inv = cavities.get(player.getUuid());
                   boolean hasHeart = false;
-                  for (int i = 0; i < 9; i++) {
-                      if (inv.getStack(i).isOf(DimItems.HEART)) hasHeart = true;
-                  }
+                  for (int i = 0; i < 9; i++) if (inv.getStack(i).isOf(HEART)) hasHeart = true;
                   if (!hasHeart && player.getWorld().getTime() % 40 == 0) {
                       player.damage(player.getDamageSources().magic(), 4.0f);
                   }
@@ -159,6 +179,8 @@ jobs:
           # 4. Ресурсы
           echo '{"item.dimos.scalpel":"Хирургический скальпель","item.dimos.heart":"Сердце"}' > src/main/resources/assets/dimos/lang/ru_ru.json
           echo '{"parent":"minecraft:item/generated","textures":{"layer0":"minecraft:item/iron_sword"}}' > src/main/resources/assets/dimos/models/item/scalpel.json
+          echo '{"parent":"minecraft:item/generated","textures":{"layer0":"minecraft:item/apple"}}' > src/main/resources/assets/dimos/models/item/heart.json
+          echo '{"schemaVersion":1,"id":"dimos","version":"3.5.0","name":"DimOS","entrypoints":{"main":["com.dimos.mod.DimMod"]},"depends":{"fabricloader":">=0.16.0","minecraft":"~1.21.1"}}' > src/main/resources/fabric.mod.json
           echo "pluginManagement { repositories { maven { url = 'https://maven.fabricmc.net/' }; mavenCentral() } }; rootProject.name = 'dimos-surgery'" > settings.gradle
 
       - name: Build Mod
@@ -167,5 +189,5 @@ jobs:
       - name: Upload Jar
         uses: actions/upload-artifact@v4
         with:
-          name: Surgery-ScalpelReturns-V34
+          name: Surgery-Professional-V35
           path: build/libs/*.jar
