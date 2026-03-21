@@ -1,4 +1,4 @@
-name: Fabric_Mod_Surgery_V46_2_Final
+name: Fabric_Mod_Surgery_V46_3_Stable
 on: [workflow_dispatch, push]
 
 jobs:
@@ -28,7 +28,7 @@ jobs:
           # 1. Build.gradle
           cat <<EOF > build.gradle
           plugins { id 'fabric-loom' version '1.7-SNAPSHOT' }
-          version = '4.6.2'
+          version = '4.6.3'
           group = 'com.dimos.mod'
           repositories { mavenCentral(); maven { url = 'https://maven.fabricmc.net/' } }
           dependencies {
@@ -72,7 +72,7 @@ jobs:
           }
           EOF
 
-          # 3. DimMod.java (Использование LivingEntityEvents для совместимости)
+          # 3. DimMod.java (Исправлен метод damage)
           cat <<EOF > src/main/java/com/dimos/mod/DimMod.java
           package com.dimos.mod;
 
@@ -100,7 +100,6 @@ jobs:
               public void onInitialize() {
                   DimItems.register();
 
-                  // Исправленное событие урона
                   ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) -> {
                       if (entity instanceof ServerPlayerEntity player && source.isOf(DamageTypes.FALL)) {
                           damageZone(player, 18, 26, (int)amount * 4);
@@ -126,9 +125,13 @@ jobs:
                   for (int i = start; i <= end; i++) {
                       ItemStack s = inv.getStack(i);
                       if (!s.isEmpty() && s.isDamageable()) {
-                          s.damage(amount, player, p -> {});
-                          if (s.isEmpty()) {
+                          // Используем прямой метод нанесения урона без привязки к EquipmentSlot
+                          int newDamage = s.getDamage() + amount;
+                          if (newDamage >= s.getMaxDamage()) {
+                              s.setCount(0); // Предмет ломается
                               player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ENTITY_ITEM_BREAK, SoundCategory.PLAYERS, 1.0f, 0.5f);
+                          } else {
+                              s.setDamage(newDamage);
                           }
                       }
                   }
@@ -153,7 +156,7 @@ jobs:
           }
           EOF
 
-          # 4. Рецепт Костоправа (Железо + 2 Кости)
+          # 4. Рецепт Костоправа
           cat <<EOF > src/main/resources/data/dimos/recipes/bone_tool.json
           {
             "type": "minecraft:crafting_shaped",
@@ -166,9 +169,9 @@ jobs:
           }
           EOF
 
-          # 5. Остальные файлы
+          # 5. Локализация и конфиг
           echo '{"item.dimos.bone_tool":"Костоправ","item.dimos.wood_prosthesis":"Деревянный протез"}' > src/main/resources/assets/dimos/lang/ru_ru.json
-          echo '{"schemaVersion":1,"id":"dimos","version":"4.6.2","entrypoints":{"main":["com.dimos.mod.DimMod"]},"depends":{"fabricloader":">=0.16.0","minecraft":"1.21.1"}}' > src/main/resources/fabric.mod.json
+          echo '{"schemaVersion":1,"id":"dimos","version":"4.6.3","entrypoints":{"main":["com.dimos.mod.DimMod"]},"depends":{"fabricloader":">=0.16.0","minecraft":"1.21.1"}}' > src/main/resources/fabric.mod.json
           echo "pluginManagement { repositories { maven { url = 'https://maven.fabricmc.net/' }; mavenCentral() } }; rootProject.name = 'dimos-surgery'" > settings.gradle
 
       - name: Build Mod
@@ -177,5 +180,5 @@ jobs:
       - name: Upload Jar
         uses: actions/upload-artifact@v4
         with:
-          name: Surgery-Final-V46-2
+          name: Surgery-Stable-V46-3
           path: build/libs/*.jar
