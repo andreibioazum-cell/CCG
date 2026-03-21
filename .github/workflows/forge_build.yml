@@ -1,4 +1,4 @@
-name: Fabric_Mod_Surgery_V49_CreativeControls
+name: Fabric_Mod_Surgery_V49_1_Stable
 on: [workflow_dispatch, push]
 
 jobs:
@@ -27,10 +27,10 @@ jobs:
           mkdir -p src/main/resources/assets/dimos/models/item
           mkdir -p src/main/resources/data/dimos/recipes
 
-          # 1. Build.gradle (1.21.1)
+          # 1. Build.gradle
           cat <<EOF > build.gradle
           plugins { id 'fabric-loom' version '1.7-SNAPSHOT' }
-          version = '4.9.0'
+          version = '4.9.1'
           group = 'com.dimos.mod'
           repositories { mavenCentral(); maven { url = 'https://maven.fabricmc.net/' } }
           dependencies {
@@ -41,7 +41,7 @@ jobs:
           }
           EOF
 
-          # 2. ScalpelItem.java (ВОССТАНОВЛЕНО: ПКМ на себе)
+          # 2. ScalpelItem.java
           cat <<EOF > src/main/java/com/dimos/mod/item/ScalpelItem.java
           package com.dimos.mod.item;
           import com.dimos.mod.DimMod;
@@ -57,7 +57,6 @@ jobs:
               public ScalpelItem(Settings settings) { super(settings); }
               @Override
               public TypedActionResult<ItemStack> use(World world, PlayerEntity user, Hand hand) {
-                  // ПКМ в воздух/на себя с Shift: Открывает СВОЁ меню (V49 Fix)
                   if (!world.isClient && user.isSneaking()) {
                       DimMod.openMenu((ServerPlayerEntity)user, user);
                       return TypedActionResult.success(user.getStackInHand(hand));
@@ -67,7 +66,7 @@ jobs:
           }
           EOF
 
-          # 3. CreativeRestorerItem.java (Креативный восстановитель V49)
+          # 3. CreativeRestorerItem.java
           cat <<EOF > src/main/java/com/dimos/mod/item/CreativeRestorerItem.java
           package com.dimos.mod.item;
           import com.dimos.mod.DimMod;
@@ -81,37 +80,27 @@ jobs:
           import net.minecraft.text.Text;
           import net.minecraft.util.ActionResult;
           import net.minecraft.util.Hand;
-          import net.minecraft.world.World;
 
           public class CreativeRestorerItem extends Item {
               public CreativeRestorerItem(Settings settings) { super(settings); }
-
               @Override
               public ActionResult useOnEntity(ItemStack stack, PlayerEntity user, LivingEntity entity, Hand hand) {
                   if (!user.getWorld().isClient) {
-                      restoreCavity(entity, user);
+                      SimpleInventory inv = DimMod.cavities.computeIfAbsent(entity.getUuid(), k -> new SimpleInventory(27));
+                      inv.clear();
+                      for (int i = 0; i < 9; i++) inv.setStack(i, new ItemStack(DimItems.BONE));
+                      for (int i = 9; i < 18; i++) inv.setStack(i, new ItemStack(DimItems.MUSCLE));
+                      inv.setStack(13, new ItemStack(DimItems.HEART));
+                      for (int i = 18; i < 27; i++) inv.setStack(i, new ItemStack(DimItems.BONE));
+                      user.sendMessage(Text.literal("§aОрганизм восстановлен!"), true);
                       return ActionResult.SUCCESS;
                   }
                   return ActionResult.PASS;
               }
-
-              private void restoreCavity(LivingEntity entity, PlayerEntity surgeon) {
-                  SimpleInventory inv = DimMod.cavities.computeIfAbsent(entity.getUuid(), k -> new SimpleInventory(27));
-                  inv.clear();
-                  // 1. Верхний ряд (Руки/Голова): Кости (V49)
-                  for (int i = 0; i < 9; i++) inv.setStack(i, new ItemStack(DimItems.BONE));
-                  // 2. Средний ряд (Органы): Мышцы + 1 Сердце (V49)
-                  for (int i = 9; i < 18; i++) inv.setStack(i, new ItemStack(DimItems.MUSCLE));
-                  inv.setStack(13, new ItemStack(DimItems.HEART)); // Сердце по центру торса
-                  // 3. Нижний ряд (Ноги): Кости (V49)
-                  for (int i = 18; i < 27; i++) inv.setStack(i, new ItemStack(DimItems.BONE));
-
-                  surgeon.sendMessage(Text.literal("§aОрганизм восстановился полностью!"), true);
-              }
           }
           EOF
 
-          # 4. DimItems.java (Регистрация + Вкладки креатива V49)
+          # 4. DimItems.java (Исправлен импорт Rarity)
           cat <<EOF > src/main/java/com/dimos/mod/DimItems.java
           package com.dimos.mod;
           import com.dimos.mod.item.ScalpelItem;
@@ -119,7 +108,7 @@ jobs:
           import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
           import net.minecraft.item.Item;
           import net.minecraft.item.ItemGroups;
-          import net.minecraft.item.Rarity;
+          import net.minecraft.util.Rarity;
           import net.minecraft.registry.Registries;
           import net.minecraft.registry.Registry;
           import net.minecraft.util.Identifier;
@@ -149,20 +138,18 @@ jobs:
                   Registry.register(Registries.ITEM, Identifier.of("dimos", "steel_prosthesis"), STEEL_PROSTHESIS);
                   Registry.register(Registries.ITEM, Identifier.of("dimos", "netherite_prosthesis"), NETHERITE_PROSTHESIS);
 
-                  ItemGroupEvents.modifyEntriesEvent(ItemGroups.INGREDIENTS).register(content -> {
-                      content.add(CREATIVE_RESTORER);
-                      content.add(HEART); content.add(MUSCLE); content.add(BONE);
-                      content.add(DRAGON_LUNGS); content.add(WOOD_PROSTHESIS);
-                      content.add(STEEL_PROSTHESIS); content.add(NETHERITE_PROSTHESIS);
+                  ItemGroupEvents.modifyEntriesEvent(ItemGroups.INGREDIENTS).register(c -> {
+                      c.add(CREATIVE_RESTORER); c.add(HEART); c.add(MUSCLE); c.add(BONE);
+                      c.add(DRAGON_LUNGS); c.add(WOOD_PROSTHESIS); c.add(STEEL_PROSTHESIS); c.add(NETHERITE_PROSTHESIS);
                   });
-                  ItemGroupEvents.modifyEntriesEvent(ItemGroups.COMBAT).register(content -> {
-                      content.add(SCALPEL); content.add(BONE_TOOL);
+                  ItemGroupEvents.modifyEntriesEvent(ItemGroups.COMBAT).register(c -> {
+                      c.add(SCALPEL); c.add(BONE_TOOL);
                   });
               }
           }
           EOF
 
-          # 5. DimMod.java (Глобальные ивенты урона V46 + Новое управление ЛКМ V49)
+          # 5. DimMod.java
           cat <<EOF > src/main/java/com/dimos/mod/DimMod.java
           package com.dimos.mod;
 
@@ -177,8 +164,6 @@ jobs:
           import net.minecraft.inventory.SimpleInventory;
           import net.minecraft.item.ItemStack;
           import net.minecraft.server.network.ServerPlayerEntity;
-          import net.minecraft.sound.SoundCategory;
-          import net.minecraft.sound.SoundEvents;
           import net.minecraft.text.Text;
           import net.minecraft.util.ActionResult;
           import java.util.HashMap;
@@ -191,25 +176,41 @@ jobs:
               public void onInitialize() {
                   DimItems.register();
 
-                  // ЛКМ (Удар): Хирургия на других (Shift + Удар V49)
                   AttackEntityCallback.EVENT.register((player, world, hand, entity, hit) -> {
                       if (!world.isClient && player.isSneaking() && entity instanceof LivingEntity target) {
-                          ItemStack stack = player.getStackInHand(hand);
-                          if (stack.isOf(DimItems.SCALPEL) || stack.isOf(DimItems.BONE_TOOL)) {
+                          if (player.getStackInHand(hand).isOf(DimItems.SCALPEL) || player.getStackInHand(hand).isOf(DimItems.BONE_TOOL)) {
                               openMenu((ServerPlayerEntity)player, target);
-                              return ActionResult.SUCCESS; // Перехватывает урон
+                              return ActionResult.SUCCESS;
                           }
                       }
-                      return ActionResult.PASS; // Обычный удар
+                      return ActionResult.PASS;
                   });
 
                   ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) -> {
-                      if (entity instanceof ServerPlayerEntity player && source.isOf(DamageTypes.FALL)) damageZone(player, 18, 26, (int)amount * 4);
+                      if (entity instanceof ServerPlayerEntity player && source.isOf(DamageTypes.FALL)) {
+                          SimpleInventory inv = cavities.get(player.getUuid());
+                          if (inv != null) {
+                              for (int i = 18; i < 27; i++) {
+                                  ItemStack s = inv.getStack(i);
+                                  if (!s.isEmpty() && s.isDamageable()) {
+                                      s.setDamage(s.getDamage() + (int)amount * 4);
+                                      if (s.getDamage() >= s.getMaxDamage()) s.setCount(0);
+                                  }
+                              }
+                          }
+                      }
                       return true;
                   });
 
                   ServerTickEvents.END_SERVER_TICK.register(server -> {
-                      for (ServerPlayerEntity p : server.getPlayerManager().getPlayerList()) checkVitals(p);
+                      for (ServerPlayerEntity p : server.getPlayerManager().getPlayerList()) {
+                          SimpleInventory inv = cavities.get(p.getUuid());
+                          if (inv != null) {
+                              boolean hasLegs = false;
+                              for (int i = 18; i < 27; i++) if (!inv.getStack(i).isEmpty()) hasLegs = true;
+                              if (!hasLegs) p.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOWNESS, 40, 254, false, false));
+                          }
+                      }
                   });
               }
 
@@ -219,40 +220,15 @@ jobs:
                       new net.minecraft.screen.GenericContainerScreenHandler(net.minecraft.screen.ScreenHandlerType.GENERIC_9X3, id, pInv, inv, 3), 
                       Text.literal("Организм: " + target.getName().getString())));
               }
-
-              private void damageZone(ServerPlayerEntity player, int start, int end, int amount) {
-                  SimpleInventory inv = cavities.get(player.getUuid());
-                  if (inv == null) return;
-                  for (int i = start; i <= end; i++) {
-                      ItemStack s = inv.getStack(i);
-                      if (!s.isEmpty() && s.isDamageable()) {
-                          s.setDamage(s.getDamage() + amount);
-                          if (s.getDamage() >= s.getMaxDamage()) s.setCount(0);
-                      }
-                  }
-              }
-
-              private void checkVitals(ServerPlayerEntity player) {
-                  SimpleInventory inv = cavities.get(player.getUuid());
-                  if (inv == null) return;
-                  boolean canWalk = false;
-                  for (int i = 18; i < 27; i++) if (!inv.getStack(i).isEmpty()) canWalk = true;
-                  if (!canWalk) player.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOWNESS, 40, 254, false, false));
-              }
           }
           EOF
 
-          # 6. Модели для предметов-заглушек (V49 Ax/Knife Restore)
+          # 6. Модели и локализация
           echo '{"parent":"minecraft:item/generated","textures":{"layer0":"minecraft:item/iron_sword"}}' > src/main/resources/assets/dimos/models/item/scalpel.json
           echo '{"parent":"minecraft:item/generated","textures":{"layer0":"minecraft:item/stone_axe"}}' > src/main/resources/assets/dimos/models/item/bone_tool.json
           echo '{"parent":"minecraft:item/generated","textures":{"layer0":"minecraft:item/enchanted_golden_apple"}}' > src/main/resources/assets/dimos/models/item/creative_restorer.json
-          echo '{"parent":"minecraft:item/generated","textures":{"layer0":"minecraft:item/melon_slice"}}' > src/main/resources/assets/dimos/models/item/heart.json
-          echo '{"parent":"minecraft:item/generated","textures":{"layer0":"minecraft:item/bone"}}' > src/main/resources/assets/dimos/models/item/bone.json
-          echo '{"parent":"minecraft:item/generated","textures":{"layer0":"minecraft:item/leather"}}' > src/main/resources/assets/dimos/models/item/muscle.json
-
-          # 7. Локализация и конфиг
-          echo '{"item.dimos.scalpel":"Скальпель","item.dimos.bone_tool":"Костоправ","item.dimos.creative_restorer":"Креативный Восстановитель","item.dimos.heart":"Сердце"}' > src/main/resources/assets/dimos/lang/ru_ru.json
-          echo '{"schemaVersion":1,"id":"dimos","version":"4.9.0","entrypoints":{"main":["com.dimos.mod.DimMod"]},"depends":{"fabricloader":">=0.16.0","minecraft":"1.21.1"}}' > src/main/resources/fabric.mod.json
+          echo '{"item.dimos.scalpel":"Скальпель","item.dimos.bone_tool":"Костоправ","item.dimos.creative_restorer":"Креативный Восстановитель"}' > src/main/resources/assets/dimos/lang/ru_ru.json
+          echo '{"schemaVersion":1,"id":"dimos","version":"4.9.1","entrypoints":{"main":["com.dimos.mod.DimMod"]},"depends":{"fabricloader":">=0.16.0","minecraft":"1.21.1"}}' > src/main/resources/fabric.mod.json
           echo "pluginManagement { repositories { maven { url = 'https://maven.fabricmc.net/' }; mavenCentral() } }; rootProject.name = 'dimos-surgery'" > settings.gradle
 
       - name: Build Mod
@@ -261,5 +237,5 @@ jobs:
       - name: Upload Jar
         uses: actions/upload-artifact@v4
         with:
-          name: Surgery-Disability-V49
+          name: Surgery-Stable-V49-1
           path: build/libs/*.jar
