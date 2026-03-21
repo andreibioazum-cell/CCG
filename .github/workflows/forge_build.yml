@@ -1,4 +1,4 @@
-name: Fabric_Mod_ChestCavity_V38_1.21.1
+name: Fabric_Mod_ChestCavity_V39_1.21.1
 on: [workflow_dispatch, push]
 
 jobs:
@@ -25,10 +25,10 @@ jobs:
           mkdir -p src/main/resources/assets/dimos/lang
           mkdir -p src/main/resources/assets/dimos/models/item
 
-          # 1. Build.gradle (Стабильная 1.21.1)
+          # 1. Build.gradle
           cat <<EOF > build.gradle
           plugins { id 'fabric-loom' version '1.7-SNAPSHOT' }
-          version = '3.8.0'
+          version = '3.9.0'
           group = 'com.dimos.mod'
           repositories { mavenCentral(); maven { url = "https://maven.fabricmc.net/" } }
           dependencies {
@@ -39,7 +39,7 @@ jobs:
           }
           EOF
 
-          # 2. ScalpelItem.java (Логика для себя)
+          # 2. ScalpelItem.java
           cat <<EOF > src/main/java/com/dimos/mod/item/ScalpelItem.java
           package com.dimos.mod.item;
           import com.dimos.mod.DimMod;
@@ -53,7 +53,6 @@ jobs:
 
           public class ScalpelItem extends Item {
               public ScalpelItem(Settings settings) { super(settings); }
-
               @Override
               public TypedActionResult<ItemStack> use(World world, PlayerEntity user, Hand hand) {
                   if (!world.isClient && user.isSneaking()) {
@@ -65,10 +64,9 @@ jobs:
           }
           EOF
 
-          # 3. DimMod.java (Глобальный перехват для других)
+          # 3. DimMod.java
           cat <<EOF > src/main/java/com/dimos/mod/DimMod.java
           package com.dimos.mod;
-
           import com.dimos.mod.item.ScalpelItem;
           import net.fabricmc.api.ModInitializer;
           import net.fabricmc.fabric.api.event.player.UseEntityCallback;
@@ -101,7 +99,6 @@ jobs:
                   Registry.register(Registries.ITEM, Identifier.of("dimos", "scalpel"), SCALPEL);
                   Registry.register(Registries.ITEM, Identifier.of("dimos", "heart"), HEART);
                   
-                  // Перехват клика по сущностям
                   UseEntityCallback.EVENT.register((player, world, hand, entity, hit) -> {
                       if (!world.isClient && player.isSneaking() && player.getStackInHand(hand).isOf(SCALPEL) && entity instanceof LivingEntity target) {
                           openSurgeryMenu((ServerPlayerEntity)player, target);
@@ -121,7 +118,7 @@ jobs:
                   SimpleInventory inv = cavities.computeIfAbsent(target.getUuid(), k -> loadNbt(target));
                   surgeon.openHandledScreen(new SimpleNamedScreenHandlerFactory((id, pInv, p) -> 
                       new GenericContainerScreenHandler(ScreenHandlerType.GENERIC_3X3, id, pInv, inv, 1), 
-                      Text.literal("Полость: " + target.getName().getString())));
+                      Text.literal("Cavity: " + target.getName().getString())));
                   inv.addListener(i -> saveNbt(target, (SimpleInventory)i));
               }
 
@@ -170,15 +167,14 @@ jobs:
           # 4. Ресурсы
           echo '{"item.dimos.scalpel":"Скальпель","item.dimos.heart":"Сердце"}' > src/main/resources/assets/dimos/lang/ru_ru.json
           echo '{"parent":"minecraft:item/generated","textures":{"layer0":"minecraft:item/iron_sword"}}' > src/main/resources/assets/dimos/models/item/scalpel.json
-          echo '{"parent":"minecraft:item/generated","textures":{"layer0":"minecraft:item/apple"}}' > src/main/resources/assets/dimos/models/item/heart.json
-          echo '{"schemaVersion":1,"id":"dimos","version":"3.8.0","name":"DimOS","entrypoints":{"main":["com.dimos.mod.DimMod"]},"depends":{"fabricloader":">=0.16.0","minecraft":"1.21.1"}}' > src/main/resources/fabric.mod.json
           echo "pluginManagement { repositories { maven { url = 'https://maven.fabricmc.net/' }; mavenCentral() } }; rootProject.name = 'dimos-surgery'" > settings.gradle
+          echo '{"schemaVersion":1,"id":"dimos","version":"3.9.0","name":"DimOS","entrypoints":{"main":["com.dimos.mod.DimMod"]},"depends":{"fabricloader":">=0.16.0","minecraft":"1.21.1"}}' > src/main/resources/fabric.mod.json
 
       - name: Build Mod
         run: gradle build --no-daemon
 
       - name: Upload Jar
-        uses: actions/artifact@v4
+        uses: actions/upload-artifact@v4
         with:
-          name: Surgery-Stable-1.21.1-V38
+          name: Surgery-V39-Stable
           path: build/libs/*.jar
