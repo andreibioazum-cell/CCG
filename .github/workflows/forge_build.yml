@@ -1,4 +1,4 @@
-name: Fabric_Mod_Surgery_V49_1_Stable
+name: Fabric_DimSpace_V1_3_Galactic
 on: [workflow_dispatch, push]
 
 jobs:
@@ -19,223 +19,150 @@ jobs:
         with:
           gradle-version: '8.10'
 
-      - name: Initialize Project Structure
+      - name: Initialize Galactic Mod
         run: |
-          mkdir -p src/main/java/com/dimos/mod/
-          mkdir -p src/main/java/com/dimos/mod/item
-          mkdir -p src/main/resources/assets/dimos/lang
-          mkdir -p src/main/resources/assets/dimos/models/item
-          mkdir -p src/main/resources/data/dimos/recipes
+          mkdir -p src/main/java/com/dimos/space/item
+          mkdir -p src/main/java/com/dimos/space/block
+          mkdir -p src/main/resources/assets/dimspace/lang
+          mkdir -p src/main/resources/assets/dimspace/models/item
+          mkdir -p src/main/resources/assets/dimspace/models/block
+          mkdir -p src/main/resources/data/dimspace/dimension
+          mkdir -p src/main/resources/data/dimspace/worldgen/configured_feature
 
-          # 1. Build.gradle
-          cat <<EOF > build.gradle
-          plugins { id 'fabric-loom' version '1.7-SNAPSHOT' }
-          version = '4.9.1'
-          group = 'com.dimos.mod'
-          repositories { mavenCentral(); maven { url = 'https://maven.fabricmc.net/' } }
-          dependencies {
-              minecraft 'com.mojang:minecraft:1.21.1'
-              mappings 'net.fabricmc:yarn:1.21.1+build.3:v2'
-              modImplementation 'net.fabricmc:fabric-loader:0.16.9'
-              modImplementation 'net.fabricmc.fabric-api:fabric-api:0.102.1+1.21.1'
-          }
-          EOF
+          # 1. LuniteTools.java (Супер-инструменты)
+          cat <<EOF > src/main/java/com/dimos/space/item/LuniteItem.java
+          package com.dimos.space.item;
+          import net.minecraft.item.PickaxeItem;
+          import net.minecraft.item.SwordItem;
+          import net.minecraft.item.ToolMaterial;
+          import net.minecraft.recipe.Ingredient;
+          import net.minecraft.item.Items;
 
-          # 2. ScalpelItem.java
-          cat <<EOF > src/main/java/com/dimos/mod/item/ScalpelItem.java
-          package com.dimos.mod.item;
-          import com.dimos.mod.DimMod;
-          import net.minecraft.entity.player.PlayerEntity;
-          import net.minecraft.item.Item;
-          import net.minecraft.item.ItemStack;
-          import net.minecraft.server.network.ServerPlayerEntity;
-          import net.minecraft.util.Hand;
-          import net.minecraft.util.TypedActionResult;
-          import net.minecraft.world.World;
-
-          public class ScalpelItem extends Item {
-              public ScalpelItem(Settings settings) { super(settings); }
-              @Override
-              public TypedActionResult<ItemStack> use(World world, PlayerEntity user, Hand hand) {
-                  if (!world.isClient && user.isSneaking()) {
-                      DimMod.openMenu((ServerPlayerEntity)user, user);
-                      return TypedActionResult.success(user.getStackInHand(hand));
-                  }
-                  return TypedActionResult.pass(user.getStackInHand(hand));
+          public class LuniteItem {
+              public static final ToolMaterial MATERIAL = new ToolMaterial() {
+                  @Override public int getDurability() { return -1; } // Бесконечно
+                  @Override public float getMiningSpeedMultiplier() { return 15.0f; }
+                  @Override public float getAttackDamage() { return 10.0f; }
+                  @Override public int getEnchantability() { return 25; }
+                  @Override public Ingredient getRepairIngredient() { return Ingredient.ofItems(Items.NETHERITE_INGOT); }
+              };
+              public static class LunitePickaxe extends PickaxeItem {
+                  public LunitePickaxe(Settings s) { super(MATERIAL, s); }
+              }
+              public static class LuniteSword extends SwordItem {
+                  public LuniteSword(Settings s) { super(MATERIAL, s); }
               }
           }
           EOF
 
-          # 3. CreativeRestorerItem.java
-          cat <<EOF > src/main/java/com/dimos/mod/item/CreativeRestorerItem.java
-          package com.dimos.mod.item;
-          import com.dimos.mod.DimMod;
-          import com.dimos.mod.DimItems;
-          import net.minecraft.entity.LivingEntity;
-          import net.minecraft.entity.player.PlayerEntity;
+          # 2. SpaceBlocks.java (Руда и Камень)
+          cat <<EOF > src/main/java/com/dimos/space/block/SpaceBlocks.java
+          package com.dimos.space.block;
+          import net.minecraft.block.AbstractBlock;
+          import net.minecraft.block.Block;
+          import net.minecraft.block.Blocks;
+          import net.minecraft.item.BlockItem;
           import net.minecraft.item.Item;
-          import net.minecraft.item.ItemStack;
-          import net.minecraft.inventory.SimpleInventory;
-          import net.minecraft.server.network.ServerPlayerEntity;
-          import net.minecraft.text.Text;
-          import net.minecraft.util.ActionResult;
-          import net.minecraft.util.Hand;
-
-          public class CreativeRestorerItem extends Item {
-              public CreativeRestorerItem(Settings settings) { super(settings); }
-              @Override
-              public ActionResult useOnEntity(ItemStack stack, PlayerEntity user, LivingEntity entity, Hand hand) {
-                  if (!user.getWorld().isClient) {
-                      SimpleInventory inv = DimMod.cavities.computeIfAbsent(entity.getUuid(), k -> new SimpleInventory(27));
-                      inv.clear();
-                      for (int i = 0; i < 9; i++) inv.setStack(i, new ItemStack(DimItems.BONE));
-                      for (int i = 9; i < 18; i++) inv.setStack(i, new ItemStack(DimItems.MUSCLE));
-                      inv.setStack(13, new ItemStack(DimItems.HEART));
-                      for (int i = 18; i < 27; i++) inv.setStack(i, new ItemStack(DimItems.BONE));
-                      user.sendMessage(Text.literal("§aОрганизм восстановлен!"), true);
-                      return ActionResult.SUCCESS;
-                  }
-                  return ActionResult.PASS;
-              }
-          }
-          EOF
-
-          # 4. DimItems.java (Исправлен импорт Rarity)
-          cat <<EOF > src/main/java/com/dimos/mod/DimItems.java
-          package com.dimos.mod;
-          import com.dimos.mod.item.ScalpelItem;
-          import com.dimos.mod.item.CreativeRestorerItem;
-          import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
-          import net.minecraft.item.Item;
-          import net.minecraft.item.ItemGroups;
-          import net.minecraft.util.Rarity;
           import net.minecraft.registry.Registries;
           import net.minecraft.registry.Registry;
           import net.minecraft.util.Identifier;
 
-          public class DimItems {
-              public static final Item SCALPEL = new ScalpelItem(new Item.Settings().maxCount(1));
-              public static final Item BONE_TOOL = new Item(new Item.Settings().maxCount(1));
-              public static final Item CREATIVE_RESTORER = new CreativeRestorerItem(new Item.Settings().rarity(Rarity.EPIC).maxCount(1));
+          public class SpaceBlocks {
+              public static final Block MOON_STONE = new Block(AbstractBlock.Settings.copy(Blocks.STONE));
+              public static final Block LUNITE_ORE = new Block(AbstractBlock.Settings.copy(Blocks.DIAMOND_ORE).luminance(s -> 8));
               
-              public static final Item HEART = new Item(new Item.Settings());
-              public static final Item MUSCLE = new Item(new Item.Settings());
-              public static final Item BONE = new Item(new Item.Settings().maxDamage(80));
-              public static final Item DRAGON_LUNGS = new Item(new Item.Settings().maxCount(1));
-              public static final Item WOOD_PROSTHESIS = new Item(new Item.Settings().maxDamage(40));
-              public static final Item STEEL_PROSTHESIS = new Item(new Item.Settings().maxDamage(500));
-              public static final Item NETHERITE_PROSTHESIS = new Item(new Item.Settings());
-
               public static void register() {
-                  Registry.register(Registries.ITEM, Identifier.of("dimos", "scalpel"), SCALPEL);
-                  Registry.register(Registries.ITEM, Identifier.of("dimos", "bone_tool"), BONE_TOOL);
-                  Registry.register(Registries.ITEM, Identifier.of("dimos", "creative_restorer"), CREATIVE_RESTORER);
-                  Registry.register(Registries.ITEM, Identifier.of("dimos", "heart"), HEART);
-                  Registry.register(Registries.ITEM, Identifier.of("dimos", "muscle"), MUSCLE);
-                  Registry.register(Registries.ITEM, Identifier.of("dimos", "bone"), BONE);
-                  Registry.register(Registries.ITEM, Identifier.of("dimos", "dragon_lungs"), DRAGON_LUNGS);
-                  Registry.register(Registries.ITEM, Identifier.of("dimos", "wood_prosthesis"), WOOD_PROSTHESIS);
-                  Registry.register(Registries.ITEM, Identifier.of("dimos", "steel_prosthesis"), STEEL_PROSTHESIS);
-                  Registry.register(Registries.ITEM, Identifier.of("dimos", "netherite_prosthesis"), NETHERITE_PROSTHESIS);
-
-                  ItemGroupEvents.modifyEntriesEvent(ItemGroups.INGREDIENTS).register(c -> {
-                      c.add(CREATIVE_RESTORER); c.add(HEART); c.add(MUSCLE); c.add(BONE);
-                      c.add(DRAGON_LUNGS); c.add(WOOD_PROSTHESIS); c.add(STEEL_PROSTHESIS); c.add(NETHERITE_PROSTHESIS);
-                  });
-                  ItemGroupEvents.modifyEntriesEvent(ItemGroups.COMBAT).register(c -> {
-                      c.add(SCALPEL); c.add(BONE_TOOL);
-                  });
+                  Registry.register(Registries.BLOCK, Identifier.of("dimspace", "moon_stone"), MOON_STONE);
+                  Registry.register(Registries.BLOCK, Identifier.of("dimspace", "lunite_ore"), LUNITE_ORE);
+                  Registry.register(Registries.ITEM, Identifier.of("dimspace", "moon_stone"), new BlockItem(MOON_STONE, new Item.Settings()));
+                  Registry.register(Registries.ITEM, Identifier.of("dimspace", "lunite_ore"), new BlockItem(LUNITE_ORE, new Item.Settings()));
               }
           }
           EOF
 
-          # 5. DimMod.java
-          cat <<EOF > src/main/java/com/dimos/mod/DimMod.java
-          package com.dimos.mod;
+          # 3. SpaceMod.java (Переход в Космос + Полет)
+          cat <<EOF > src/main/java/com/dimos/space/SpaceMod.java
+          package com.dimos.space;
 
+          import com.dimos.space.item.SpaceItems;
+          import com.dimos.space.block.SpaceBlocks;
           import net.fabricmc.api.ModInitializer;
-          import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
-          import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
           import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-          import net.minecraft.entity.LivingEntity;
-          import net.minecraft.entity.damage.DamageTypes;
           import net.minecraft.entity.effect.StatusEffectInstance;
           import net.minecraft.entity.effect.StatusEffects;
-          import net.minecraft.inventory.SimpleInventory;
-          import net.minecraft.item.ItemStack;
           import net.minecraft.server.network.ServerPlayerEntity;
-          import net.minecraft.text.Text;
-          import net.minecraft.util.ActionResult;
-          import java.util.HashMap;
-          import java.util.UUID;
+          import net.minecraft.server.world.ServerWorld;
+          import net.minecraft.registry.RegistryKey;
+          import net.minecraft.registry.RegistryKeys;
+          import net.minecraft.util.Identifier;
+          import net.minecraft.world.World;
 
-          public class DimMod implements ModInitializer {
-              public static final HashMap<UUID, SimpleInventory> cavities = new HashMap<>();
-
+          public class SpaceMod implements ModInitializer {
               @Override
               public void onInitialize() {
-                  DimItems.register();
-
-                  AttackEntityCallback.EVENT.register((player, world, hand, entity, hit) -> {
-                      if (!world.isClient && player.isSneaking() && entity instanceof LivingEntity target) {
-                          if (player.getStackInHand(hand).isOf(DimItems.SCALPEL) || player.getStackInHand(hand).isOf(DimItems.BONE_TOOL)) {
-                              openMenu((ServerPlayerEntity)player, target);
-                              return ActionResult.SUCCESS;
-                          }
-                      }
-                      return ActionResult.PASS;
-                  });
-
-                  ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) -> {
-                      if (entity instanceof ServerPlayerEntity player && source.isOf(DamageTypes.FALL)) {
-                          SimpleInventory inv = cavities.get(player.getUuid());
-                          if (inv != null) {
-                              for (int i = 18; i < 27; i++) {
-                                  ItemStack s = inv.getStack(i);
-                                  if (!s.isEmpty() && s.isDamageable()) {
-                                      s.setDamage(s.getDamage() + (int)amount * 4);
-                                      if (s.getDamage() >= s.getMaxDamage()) s.setCount(0);
-                                  }
-                              }
-                          }
-                      }
-                      return true;
-                  });
+                  SpaceItems.register();
+                  SpaceBlocks.register();
 
                   ServerTickEvents.END_SERVER_TICK.register(server -> {
-                      for (ServerPlayerEntity p : server.getPlayerManager().getPlayerList()) {
-                          SimpleInventory inv = cavities.get(p.getUuid());
-                          if (inv != null) {
-                              boolean hasLegs = false;
-                              for (int i = 18; i < 27; i++) if (!inv.getStack(i).isEmpty()) hasLegs = true;
-                              if (!hasLegs) p.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOWNESS, 40, 254, false, false));
+                      for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+                          Identifier dim = player.getWorld().getRegistryKey().getValue();
+                          
+                          // Переход с Луны в Открытый Космос
+                          if (dim.equals(Identifier.of("dimspace", "moon")) && player.getY() > 250) {
+                              RegistryKey<World> spaceKey = RegistryKey.of(RegistryKeys.WORLD, Identifier.of("dimspace", "deep_space"));
+                              ServerWorld spaceWorld = server.getWorld(spaceKey);
+                              if (spaceWorld != null) player.teleport(spaceWorld, player.getX(), 50, player.getZ(), 0, 0);
+                          }
+
+                          // Физика открытого космоса
+                          if (dim.equals(Identifier.of("dimspace", "deep_space"))) {
+                              player.addStatusEffect(new StatusEffectInstance(StatusEffects.LEVITATION, 10, 0, false, false));
+                              player.setNoGravity(true);
+                          } else {
+                              player.setNoGravity(false);
                           }
                       }
                   });
-              }
-
-              public static void openMenu(ServerPlayerEntity surgeon, LivingEntity target) {
-                  SimpleInventory inv = cavities.computeIfAbsent(target.getUuid(), k -> new SimpleInventory(27));
-                  surgeon.openHandledScreen(new net.minecraft.screen.SimpleNamedScreenHandlerFactory((id, pInv, p) -> 
-                      new net.minecraft.screen.GenericContainerScreenHandler(net.minecraft.screen.ScreenHandlerType.GENERIC_9X3, id, pInv, inv, 3), 
-                      Text.literal("Организм: " + target.getName().getString())));
               }
           }
           EOF
 
-          # 6. Модели и локализация
-          echo '{"parent":"minecraft:item/generated","textures":{"layer0":"minecraft:item/iron_sword"}}' > src/main/resources/assets/dimos/models/item/scalpel.json
-          echo '{"parent":"minecraft:item/generated","textures":{"layer0":"minecraft:item/stone_axe"}}' > src/main/resources/assets/dimos/models/item/bone_tool.json
-          echo '{"parent":"minecraft:item/generated","textures":{"layer0":"minecraft:item/enchanted_golden_apple"}}' > src/main/resources/assets/dimos/models/item/creative_restorer.json
-          echo '{"item.dimos.scalpel":"Скальпель","item.dimos.bone_tool":"Костоправ","item.dimos.creative_restorer":"Креативный Восстановитель"}' > src/main/resources/assets/dimos/lang/ru_ru.json
-          echo '{"schemaVersion":1,"id":"dimos","version":"4.9.1","entrypoints":{"main":["com.dimos.mod.DimMod"]},"depends":{"fabricloader":">=0.16.0","minecraft":"1.21.1"}}' > src/main/resources/fabric.mod.json
-          echo "pluginManagement { repositories { maven { url = 'https://maven.fabricmc.net/' }; mavenCentral() } }; rootProject.name = 'dimos-surgery'" > settings.gradle
+          # 4. Модели и Текстуры (V1.3)
+          echo '{"parent":"minecraft:item/generated","textures":{"layer0":"minecraft:item/netherite_pickaxe"}}' > src/main/resources/assets/dimspace/models/item/lunite_pickaxe.json
+          echo '{"parent":"minecraft:item/generated","textures":{"layer0":"minecraft:item/netherite_sword"}}' > src/main/resources/assets/dimspace/models/item/lunite_sword.json
+          echo '{"parent":"minecraft:block/cube_all","textures":{"all":"minecraft:block/crying_obsidian"}}' > src/main/resources/assets/dimspace/models/block/lunite_ore.json
 
-      - name: Build Mod
+          # 5. Генерация Кратеров (Упрощенно через шум в Moon.json)
+          cat <<EOF > src/main/resources/data/dimspace/dimension/moon.json
+          {
+            "type": "minecraft:the_end",
+            "generator": {
+              "type": "minecraft:noise",
+              "settings": {
+                "default_block": { "Name": "dimspace:moon_stone" },
+                "default_fluid": { "Name": "minecraft:air" },
+                "noise": { "min_y": 0, "height": 256, "size_horizontal": 2, "size_vertical": 1 },
+                "surface_rule": {
+                  "type": "minecraft:condition",
+                  "if_true": { "type": "minecraft:noise_threshold", "noise": "minecraft:surface", "min_threshold": 0.5 },
+                  "then_run": { "type": "minecraft:block", "result_state": { "Name": "minecraft:air" } }
+                }
+              },
+              "biome_source": { "type": "minecraft:fixed", "biome": "minecraft:the_end" }
+            }
+          }
+          EOF
+
+          # 6. Локализация
+          echo '{"item.dimspace.lunite_pickaxe":"Кирка из Люнита","item.dimspace.lunite_sword":"Меч из Люнита","block.dimspace.lunite_ore":"Люнитовая руда"}' > src/main/resources/assets/dimspace/lang/ru_ru.json
+          echo '{"schemaVersion":1,"id":"dimspace","version":"1.3.0","entrypoints":{"main":["com.dimos.space.SpaceMod"]},"depends":{"fabricloader":">=0.16.0","minecraft":"1.21.1"}}' > src/main/resources/fabric.mod.json
+          echo "rootProject.name = 'dimspace'" > settings.gradle
+
+      - name: Build Galactic Mod
         run: gradle build --no-daemon
 
       - name: Upload Jar
         uses: actions/upload-artifact@v4
         with:
-          name: Surgery-Stable-V49-1
+          name: DimSpace-V1_3_Galactic
           path: build/libs/*.jar
