@@ -1,4 +1,4 @@
-name: Fabric_Mod_Surgery_Disability_V46
+name: Fabric_Mod_Surgery_V46_Fixed
 on: [workflow_dispatch, push]
 
 jobs:
@@ -23,8 +23,28 @@ jobs:
         run: |
           mkdir -p src/main/java/com/dimos/mod/
           mkdir -p src/main/resources/assets/dimos/lang
+          mkdir -p src/main/resources/assets/dimos/models/item
 
-          # 1. DimItems.java
+          # 1. Исправленный build.gradle (без \n)
+          cat <<EOF > build.gradle
+          plugins {
+              id 'fabric-loom' version '1.7-SNAPSHOT'
+          }
+          version = '4.6.1'
+          group = 'com.dimos.mod'
+          repositories {
+              mavenCentral()
+              maven { url = 'https://maven.fabricmc.net/' }
+          }
+          dependencies {
+              minecraft 'com.mojang:minecraft:1.21.1'
+              mappings 'net.fabricmc:yarn:1.21.1+build.3:v2'
+              modImplementation 'net.fabricmc:fabric-loader:0.16.9'
+              modImplementation 'net.fabricmc.fabric-api:fabric-api:0.102.1+1.21.1'
+          }
+          EOF
+
+          # 2. DimItems.java
           cat <<EOF > src/main/java/com/dimos/mod/DimItems.java
           package com.dimos.mod;
           import net.minecraft.item.Item;
@@ -57,7 +77,7 @@ jobs:
           }
           EOF
 
-          # 2. DimMod.java (Логика инвалидности)
+          # 3. DimMod.java
           cat <<EOF > src/main/java/com/dimos/mod/DimMod.java
           package com.dimos.mod;
 
@@ -85,14 +105,12 @@ jobs:
               public void onInitialize() {
                   DimItems.register();
 
-                  // Урон по ногам при падении
                   EntityDamageEvents.AFTER_DAMAGE.register((entity, source, amount, damage, absorbed) -> {
                       if (entity instanceof ServerPlayerEntity player && source.isOf(DamageTypes.FALL)) {
                           damageZone(player, 18, 26, (int)amount * 4);
                       }
                   });
 
-                  // Урон по рукам при ударе
                   AttackEntityCallback.EVENT.register((player, world, hand, entity, hit) -> {
                       if (!world.isClient && player instanceof ServerPlayerEntity sPlayer) {
                           damageZone(sPlayer, 0, 8, 2);
@@ -100,7 +118,6 @@ jobs:
                       return ActionResult.PASS;
                   });
 
-                  // Тик эффектов
                   ServerTickEvents.END_SERVER_TICK.register(server -> {
                       for (ServerPlayerEntity p : server.getPlayerManager().getPlayerList()) {
                           checkVitals(p);
@@ -113,7 +130,7 @@ jobs:
                   if (inv == null) return;
                   for (int i = start; i <= end; i++) {
                       ItemStack s = inv.getStack(i);
-                      if (s.getItem() instanceof net.minecraft.item.Item && s.isDamageable()) {
+                      if (!s.isEmpty() && s.isDamageable()) {
                           s.damage(amount, player, p -> {});
                           if (s.isEmpty()) {
                               player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ENTITY_ITEM_BREAK, SoundCategory.PLAYERS, 1.0f, 0.5f);
@@ -125,12 +142,10 @@ jobs:
               private void checkVitals(ServerPlayerEntity player) {
                   SimpleInventory inv = cavities.get(player.getUuid());
                   if (inv == null) return;
-
                   boolean canWalk = false;
                   boolean canWork = false;
-
-                  for (int i = 0; i < 9; i++) if (!inv.getStack(i).isEmpty()) canWork = true; // Руки
-                  for (int i = 18; i < 27; i++) if (!inv.getStack(i).isEmpty()) canWalk = true; // Ноги
+                  for (int i = 0; i < 9; i++) if (!inv.getStack(i).isEmpty()) canWork = true;
+                  for (int i = 18; i < 27; i++) if (!inv.getStack(i).isEmpty()) canWalk = true;
 
                   if (!canWalk) {
                       player.addStatusEffect(new StatusEffectInstance(StatusEffects.SLOWNESS, 40, 254, false, false));
@@ -143,11 +158,10 @@ jobs:
           }
           EOF
 
-          # 3. Ресурсы
+          # 4. Остальные конфиги
           echo '{"item.dimos.bone_tool":"Костоправ","item.dimos.wood_prosthesis":"Деревянный протез"}' > src/main/resources/assets/dimos/lang/ru_ru.json
-          echo '{"schemaVersion":1,"id":"dimos","version":"4.6.0","entrypoints":{"main":["com.dimos.mod.DimMod"]},"depends":{"fabricloader":">=0.16.0","minecraft":"1.21.1"}}' > src/main/resources/fabric.mod.json
+          echo '{"schemaVersion":1,"id":"dimos","version":"4.6.1","entrypoints":{"main":["com.dimos.mod.DimMod"]},"depends":{"fabricloader":">=0.16.0","minecraft":"1.21.1"}}' > src/main/resources/fabric.mod.json
           echo "pluginManagement { repositories { maven { url = 'https://maven.fabricmc.net/' }; mavenCentral() } }; rootProject.name = 'dimos-surgery'" > settings.gradle
-          echo "plugins { id 'fabric-loom' version '1.7-SNAPSHOT' } \n version = '4.6.0' \n group = 'com.dimos.mod' \n repositories { mavenCentral(); maven { url = 'https://maven.fabricmc.net/' } } \n dependencies { minecraft 'com.mojang:minecraft:1.21.1'; mappings 'net.fabricmc:yarn:1.21.1+build.3:v2'; modImplementation 'net.fabricmc:fabric-loader:0.16.9'; modImplementation 'net.fabricmc.fabric-api:fabric-api:0.102.1+1.21.1' }" > build.gradle
 
       - name: Build Mod
         run: gradle build --no-daemon
@@ -155,5 +169,5 @@ jobs:
       - name: Upload Jar
         uses: actions/upload-artifact@v4
         with:
-          name: Surgery-Disability-V46
+          name: Surgery-Disability-V46-Fixed
           path: build/libs/*.jar
