@@ -1,4 +1,4 @@
-name: Fabric_Mod_ChestCavity_V39_1.21.1
+name: Fabric_Mod_Chest_V41_Final_Items
 on: [workflow_dispatch, push]
 
 jobs:
@@ -28,7 +28,7 @@ jobs:
           # 1. Build.gradle
           cat <<EOF > build.gradle
           plugins { id 'fabric-loom' version '1.7-SNAPSHOT' }
-          version = '3.9.0'
+          version = '4.1.0'
           group = 'com.dimos.mod'
           repositories { mavenCentral(); maven { url = "https://maven.fabricmc.net/" } }
           dependencies {
@@ -64,15 +64,17 @@ jobs:
           }
           EOF
 
-          # 3. DimMod.java
+          # 3. DimMod.java (ЖЕСТКАЯ РЕГИСТРАЦИЯ)
           cat <<EOF > src/main/java/com/dimos/mod/DimMod.java
           package com.dimos.mod;
           import com.dimos.mod.item.ScalpelItem;
           import net.fabricmc.api.ModInitializer;
           import net.fabricmc.fabric.api.event.player.UseEntityCallback;
           import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+          import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
           import net.minecraft.entity.LivingEntity;
           import net.minecraft.item.Item;
+          import net.minecraft.item.ItemGroups;
           import net.minecraft.item.ItemStack;
           import net.minecraft.inventory.SimpleInventory;
           import net.minecraft.nbt.NbtCompound;
@@ -90,15 +92,24 @@ jobs:
           import java.util.UUID;
 
           public class DimMod implements ModInitializer {
+              // Объявляем предметы
+              public static final Item HEART = new Item(new Item.Settings().maxCount(16));
               public static final Item SCALPEL = new ScalpelItem(new Item.Settings().maxCount(1));
-              public static final Item HEART = new Item(new Item.Settings());
+              
               public static final HashMap<UUID, SimpleInventory> cavities = new HashMap<>();
 
               @Override
               public void onInitialize() {
-                  Registry.register(Registries.ITEM, Identifier.of("dimos", "scalpel"), SCALPEL);
+                  // Регистрируем в реестре игры
                   Registry.register(Registries.ITEM, Identifier.of("dimos", "heart"), HEART);
+                  Registry.register(Registries.ITEM, Identifier.of("dimos", "scalpel"), SCALPEL);
                   
+                  // Принудительно добавляем в группы креатива
+                  ItemGroupEvents.modifyEntriesEvent(ItemGroups.COMBAT).register(content -> content.add(SCALPEL));
+                  ItemGroupEvents.modifyEntriesEvent(ItemGroups.FOOD_AND_DRINK).register(content -> content.add(HEART));
+                  ItemGroupEvents.modifyEntriesEvent(ItemGroups.INGREDIENTS).register(content -> content.add(HEART));
+
+                  // Событие использования скальпеля на других
                   UseEntityCallback.EVENT.register((player, world, hand, entity, hit) -> {
                       if (!world.isClient && player.isSneaking() && player.getStackInHand(hand).isOf(SCALPEL) && entity instanceof LivingEntity target) {
                           openSurgeryMenu((ServerPlayerEntity)player, target);
@@ -109,7 +120,7 @@ jobs:
 
                   ServerTickEvents.END_SERVER_TICK.register(server -> {
                       for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
-                          if (cavities.containsKey(player.getUuid())) checkSurvival(player);
+                          if (cavities.containsKey(player.getUuid())) checkBio(player);
                       }
                   });
               }
@@ -118,7 +129,7 @@ jobs:
                   SimpleInventory inv = cavities.computeIfAbsent(target.getUuid(), k -> loadNbt(target));
                   surgeon.openHandledScreen(new SimpleNamedScreenHandlerFactory((id, pInv, p) -> 
                       new GenericContainerScreenHandler(ScreenHandlerType.GENERIC_3X3, id, pInv, inv, 1), 
-                      Text.literal("Cavity: " + target.getName().getString())));
+                      Text.literal("Полость: " + target.getName().getString())));
                   inv.addListener(i -> saveNbt(target, (SimpleInventory)i));
               }
 
@@ -153,7 +164,7 @@ jobs:
                   entity.readNbt(nbt);
               }
 
-              private static void checkSurvival(ServerPlayerEntity player) {
+              private static void checkBio(ServerPlayerEntity player) {
                   SimpleInventory inv = cavities.get(player.getUuid());
                   boolean hasHeart = false;
                   for (int i = 0; i < 9; i++) if (inv.getStack(i).isOf(HEART)) hasHeart = true;
@@ -166,9 +177,11 @@ jobs:
 
           # 4. Ресурсы
           echo '{"item.dimos.scalpel":"Скальпель","item.dimos.heart":"Сердце"}' > src/main/resources/assets/dimos/lang/ru_ru.json
+          echo '{"item.dimos.scalpel":"Scalpel","item.dimos.heart":"Heart"}' > src/main/resources/assets/dimos/lang/en_us.json
           echo '{"parent":"minecraft:item/generated","textures":{"layer0":"minecraft:item/iron_sword"}}' > src/main/resources/assets/dimos/models/item/scalpel.json
+          echo '{"parent":"minecraft:item/generated","textures":{"layer0":"minecraft:item/apple"}}' > src/main/resources/assets/dimos/models/item/heart.json
+          echo '{"schemaVersion":1,"id":"dimos","version":"4.1.0","name":"DimOS","entrypoints":{"main":["com.dimos.mod.DimMod"]},"depends":{"fabricloader":">=0.16.0","minecraft":"1.21.1"}}' > src/main/resources/fabric.mod.json
           echo "pluginManagement { repositories { maven { url = 'https://maven.fabricmc.net/' }; mavenCentral() } }; rootProject.name = 'dimos-surgery'" > settings.gradle
-          echo '{"schemaVersion":1,"id":"dimos","version":"3.9.0","name":"DimOS","entrypoints":{"main":["com.dimos.mod.DimMod"]},"depends":{"fabricloader":">=0.16.0","minecraft":"1.21.1"}}' > src/main/resources/fabric.mod.json
 
       - name: Build Mod
         run: gradle build --no-daemon
@@ -176,5 +189,5 @@ jobs:
       - name: Upload Jar
         uses: actions/upload-artifact@v4
         with:
-          name: Surgery-V39-Stable
+          name: Surgery-V41-FullItems
           path: build/libs/*.jar
