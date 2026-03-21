@@ -1,4 +1,4 @@
-name: Fabric_Mod_Surgery_V46_3_Stable
+name: Fabric_Mod_Surgery_Restoration_V47
 on: [workflow_dispatch, push]
 
 jobs:
@@ -19,16 +19,17 @@ jobs:
         with:
           gradle-version: '8.10'
 
-      - name: Initialize Project
+      - name: Initialize Project Structure
         run: |
           mkdir -p src/main/java/com/dimos/mod/
           mkdir -p src/main/resources/assets/dimos/lang
+          mkdir -p src/main/resources/assets/dimos/models/item
           mkdir -p src/main/resources/data/dimos/recipes
 
-          # 1. Build.gradle
+          # 1. Build.gradle (Стабильная 1.21.1)
           cat <<EOF > build.gradle
           plugins { id 'fabric-loom' version '1.7-SNAPSHOT' }
-          version = '4.6.3'
+          version = '4.7.0'
           group = 'com.dimos.mod'
           repositories { mavenCentral(); maven { url = 'https://maven.fabricmc.net/' } }
           dependencies {
@@ -39,10 +40,12 @@ jobs:
           }
           EOF
 
-          # 2. DimItems.java
+          # 2. DimItems.java (Регистрация + Вкладки креатива — ВОССТАНОВЛЕНО)
           cat <<EOF > src/main/java/com/dimos/mod/DimItems.java
           package com.dimos.mod;
+          import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
           import net.minecraft.item.Item;
+          import net.minecraft.item.ItemGroups;
           import net.minecraft.registry.Registries;
           import net.minecraft.registry.Registry;
           import net.minecraft.util.Identifier;
@@ -68,18 +71,30 @@ jobs:
                   Registry.register(Registries.ITEM, Identifier.of("dimos", "wood_prosthesis"), WOOD_PROSTHESIS);
                   Registry.register(Registries.ITEM, Identifier.of("dimos", "steel_prosthesis"), STEEL_PROSTHESIS);
                   Registry.register(Registries.ITEM, Identifier.of("dimos", "netherite_prosthesis"), NETHERITE_PROSTHESIS);
+
+                  // ПРИНУДИТЕЛЬНОЕ ДОБАВЛЕНИЕ В КРЕАТИВ (V47 Fix)
+                  ItemGroupEvents.modifyEntriesEvent(ItemGroups.INGREDIENTS).register(entries -> {
+                      entries.add(HEART); entries.add(MUSCLE); entries.add(BONE);
+                      entries.add(DRAGON_LUNGS); entries.add(WOOD_PROSTHESIS);
+                      entries.add(STEEL_PROSTHESIS); entries.add(NETHERITE_PROSTHESIS);
+                  });
+                  ItemGroupEvents.modifyEntriesEvent(ItemGroups.COMBAT).register(entries -> {
+                      entries.add(SCALPEL); entries.add(BONE_TOOL);
+                  });
               }
           }
           EOF
 
-          # 3. DimMod.java (Исправлен метод damage)
+          # 3. DimMod.java (Логика хирургии + Логика инвалидности V46.3)
           cat <<EOF > src/main/java/com/dimos/mod/DimMod.java
           package com.dimos.mod;
 
           import net.fabricmc.api.ModInitializer;
           import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
           import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
+          import net.fabricmc.fabric.api.event.player.UseEntityCallback;
           import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+          import net.minecraft.entity.LivingEntity;
           import net.minecraft.entity.damage.DamageTypes;
           import net.minecraft.entity.effect.StatusEffectInstance;
           import net.minecraft.entity.effect.StatusEffects;
@@ -98,8 +113,21 @@ jobs:
 
               @Override
               public void onInitialize() {
-                  DimItems.register();
+                  DimItems.register(); // Сначала предметы
 
+                  // ПКМ: Хирургия на других (ВОССТАНОВЛЕНО)
+                  UseEntityCallback.EVENT.register((player, world, hand, entity, hit) -> {
+                      if (!world.isClient && player.isSneaking() && entity instanceof LivingEntity target) {
+                          ItemStack stack = player.getStackInHand(hand);
+                          if (stack.isOf(DimItems.SCALPEL) || stack.isOf(DimItems.BONE_TOOL)) {
+                              openMenu((ServerPlayerEntity)player, target);
+                              return ActionResult.SUCCESS;
+                          }
+                      }
+                      return ActionResult.PASS;
+                  });
+
+                  // Урон при падении (Ноги V46)
                   ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) -> {
                       if (entity instanceof ServerPlayerEntity player && source.isOf(DamageTypes.FALL)) {
                           damageZone(player, 18, 26, (int)amount * 4);
@@ -107,6 +135,7 @@ jobs:
                       return true;
                   });
 
+                  // Урон при ударе (Руки V46)
                   AttackEntityCallback.EVENT.register((player, world, hand, entity, hit) -> {
                       if (!world.isClient && player instanceof ServerPlayerEntity sPlayer) {
                           damageZone(sPlayer, 0, 8, 1);
@@ -114,9 +143,17 @@ jobs:
                       return ActionResult.PASS;
                   });
 
+                  // Тик эффектов инвалидности (V46)
                   ServerTickEvents.END_SERVER_TICK.register(server -> {
                       for (ServerPlayerEntity p : server.getPlayerManager().getPlayerList()) checkVitals(p);
                   });
+              }
+
+              private void openMenu(ServerPlayerEntity surgeon, LivingEntity target) {
+                  SimpleInventory inv = cavities.computeIfAbsent(target.getUuid(), k -> new SimpleInventory(27));
+                  surgeon.openHandledScreen(new net.minecraft.screen.SimpleNamedScreenHandlerFactory((id, pInv, p) -> 
+                      new net.minecraft.screen.GenericContainerScreenHandler(net.minecraft.screen.ScreenHandlerType.GENERIC_9X3, id, pInv, inv, 3), 
+                      Text.literal("Организм: " + target.getName().getString())));
               }
 
               private void damageZone(ServerPlayerEntity player, int start, int end, int amount) {
@@ -125,10 +162,9 @@ jobs:
                   for (int i = start; i <= end; i++) {
                       ItemStack s = inv.getStack(i);
                       if (!s.isEmpty() && s.isDamageable()) {
-                          // Используем прямой метод нанесения урона без привязки к EquipmentSlot
                           int newDamage = s.getDamage() + amount;
                           if (newDamage >= s.getMaxDamage()) {
-                              s.setCount(0); // Предмет ломается
+                              s.setCount(0); // Сломался
                               player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ENTITY_ITEM_BREAK, SoundCategory.PLAYERS, 1.0f, 0.5f);
                           } else {
                               s.setDamage(newDamage);
@@ -156,22 +192,20 @@ jobs:
           }
           EOF
 
-          # 4. Рецепт Костоправа
-          cat <<EOF > src/main/resources/data/dimos/recipes/bone_tool.json
-          {
-            "type": "minecraft:crafting_shaped",
-            "pattern": [ " I ", " B ", " B " ],
-            "key": {
-              "I": { "item": "minecraft:iron_ingot" },
-              "B": { "item": "minecraft:bone" }
-            },
-            "result": { "item": "dimos:bone_tool", "count": 1 }
-          }
-          EOF
+          # 4. Модели и Текстуры-заглушки (V47 Restoration)
+          echo '{"parent":"minecraft:item/generated","textures":{"layer0":"minecraft:item/iron_shovel"}}' > src/main/resources/assets/dimos/models/item/scalpel.json
+          echo '{"parent":"minecraft:item/generated","textures":{"layer0":"minecraft:item/melon_slice"}}' > src/main/resources/assets/dimos/models/item/heart.json
+          echo '{"parent":"minecraft:item/generated","textures":{"layer0":"minecraft:item/bone"}}' > src/main/resources/assets/dimos/models/item/bone.json
+          echo '{"parent":"minecraft:item/generated","textures":{"layer0":"minecraft:item/beef"}}' > src/main/resources/assets/dimos/models/item/muscle.json
+          echo '{"parent":"minecraft:item/generated","textures":{"layer0":"minecraft:item/phantom_membrane"}}' > src/main/resources/assets/dimos/models/item/dragon_lungs.json
+          echo '{"parent":"minecraft:item/generated","textures":{"layer0":"minecraft:item/dark_oak_door"}}' > src/main/resources/assets/dimos/models/item/wood_prosthesis.json
+          echo '{"parent":"minecraft:item/generated","textures":{"layer0":"minecraft:item/iron_horse_armor"}}' > src/main/resources/assets/dimos/models/item/steel_prosthesis.json
+          echo '{"parent":"minecraft:item/generated","textures":{"layer0":"minecraft:item/golden_horse_armor"}}' > src/main/resources/assets/dimos/models/item/netherite_prosthesis.json
+          echo '{"parent":"minecraft:item/generated","textures":{"layer0":"minecraft:item/tripwire_hook"}}' > src/main/resources/assets/dimos/models/item/bone_tool.json
 
-          # 5. Локализация и конфиг
-          echo '{"item.dimos.bone_tool":"Костоправ","item.dimos.wood_prosthesis":"Деревянный протез"}' > src/main/resources/assets/dimos/lang/ru_ru.json
-          echo '{"schemaVersion":1,"id":"dimos","version":"4.6.3","entrypoints":{"main":["com.dimos.mod.DimMod"]},"depends":{"fabricloader":">=0.16.0","minecraft":"1.21.1"}}' > src/main/resources/fabric.mod.json
+          # 5. Локализация и конфиги
+          echo '{"item.dimos.heart":"Сердце","item.dimos.muscle":"Мышцы","item.dimos.scalpel":"Скальпель","item.dimos.bone":"Кость","item.dimos.dragon_lungs":"Легкие Дракона","item.dimos.wood_prosthesis":"Деревянный протез","item.dimos.steel_prosthesis":"Стальной протез","item.dimos.netherite_prosthesis":"Вечный протез","item.dimos.bone_tool":"Костоправ"}' > src/main/resources/assets/dimos/lang/ru_ru.json
+          echo '{"schemaVersion":1,"id":"dimos","version":"4.7.0","entrypoints":{"main":["com.dimos.mod.DimMod"]},"depends":{"fabricloader":">=0.16.0","minecraft":"1.21.1"}}' > src/main/resources/fabric.mod.json
           echo "pluginManagement { repositories { maven { url = 'https://maven.fabricmc.net/' }; mavenCentral() } }; rootProject.name = 'dimos-surgery'" > settings.gradle
 
       - name: Build Mod
@@ -180,5 +214,5 @@ jobs:
       - name: Upload Jar
         uses: actions/upload-artifact@v4
         with:
-          name: Surgery-Stable-V46-3
+          name: Surgery-Restoration-V47
           path: build/libs/*.jar
