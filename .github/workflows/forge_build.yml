@@ -1,4 +1,4 @@
-name: Native_GLES3_Final_v3
+name: Native_GLES3_Final_Fixed_v4
 on: [push, workflow_dispatch]
 
 jobs:
@@ -14,16 +14,20 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Clean and Create Project
+      - name: Create Project Structure
         run: |
-          # Очистка старых хвостов
-          rm -rf app settings.gradle build.gradle
+          # Полная очистка
+          rm -rf app settings.gradle build.gradle gradle.properties
           
           mkdir -p app/src/main/java/com/dimos/roblox
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
 
-          # --- 1. Стили (Минималистичные) ---
+          # --- 1. gradle.properties (РЕШАЕТ ВАШУ ОШИБКУ) ---
+          echo "android.useAndroidX=true" > gradle.properties
+          echo "android.enableJetifier=true" >> gradle.properties
+
+          # --- 2. Стили ---
           cat <<EOF > app/src/main/res/values/themes.xml
           <resources>
               <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
@@ -33,7 +37,7 @@ jobs:
           </resources>
           EOF
 
-          # --- 2. Интерфейс ---
+          # --- 3. Интерфейс ---
           cat <<EOF > app/src/main/res/layout/activity_main.xml
           <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
               android:layout_width="match_parent"
@@ -53,7 +57,7 @@ jobs:
           </FrameLayout>
           EOF
 
-          # --- 3. Renderer (GLES 3.0) ---
+          # --- 4. Renderer (GLES 3.0) ---
           cat <<EOF > app/src/main/java/com/dimos/roblox/GameRenderer.java
           package com.dimos.roblox;
           import android.opengl.GLES30;
@@ -103,7 +107,7 @@ jobs:
           }
           EOF
 
-          # --- 4. MainActivity ---
+          # --- 5. MainActivity ---
           cat <<EOF > app/src/main/java/com/dimos/roblox/MainActivity.java
           package com.dimos.roblox;
           import android.os.Bundle;
@@ -140,7 +144,7 @@ jobs:
           }
           EOF
 
-          # --- 5. Манифест ---
+          # --- 6. Манифест ---
           cat <<EOF > app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <application android:label="Roblox Native" android:theme="@style/AppTheme">
@@ -154,7 +158,7 @@ jobs:
           </manifest>
           EOF
 
-          # --- 6. Build.gradle ---
+          # --- 7. Конфигурация Gradle ---
           echo "include ':app'" > settings.gradle
           cat <<EOF > build.gradle
           buildscript {
@@ -196,5 +200,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Roblox_Final_v3
+          name: Roblox_GLES3_Final
           path: app/build/outputs/apk/debug/app-debug.apk
