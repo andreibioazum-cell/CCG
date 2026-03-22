@@ -1,4 +1,4 @@
-name: Roblox_Java_Final_Fixed_V5
+name: Roblox_Java_Final_Fixed_V6
 on: [push, workflow_dispatch]
 
 jobs:
@@ -16,17 +16,40 @@ jobs:
 
       - name: Generate Project Structure
         run: |
+          # Создаем ПРАВИЛЬНУЮ структуру папок (важно!)
           mkdir -p app/src/main/java/com/dimos/roblox
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
 
-          # 1. ВКЛЮЧАЕМ ANDROIDX (Решение твоей ошибки)
+          # 1. Настройки AndroidX
           cat <<EOF > gradle.properties
           android.useAndroidX=true
           android.enableJetifier=true
           EOF
 
-          # 2. Цвета
+          # 2. Исправленный Манифест (теперь папка точно существует)
+          cat <<EOF > app/src/main/AndroidManifest.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+              package="com.dimos.roblox">
+              <application
+                  android:allowBackup="true"
+                  android:label="Roblox Mobile"
+                  android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true"
+                      android:screenOrientation="landscape">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          # 3. Цвета
           cat <<EOF > app/src/main/res/values/colors.xml
           <resources>
               <color name="bg_dark">#0d1528</color>
@@ -35,7 +58,15 @@ jobs:
           </resources>
           EOF
 
-          # 3. XML Разметка
+          # 4. Стили (чтобы не было ошибок темы)
+          cat <<EOF > app/src/main/res/values/themes.xml
+          <resources>
+              <style name="Theme.AppCompat.Light.NoActionBar" parent="Theme.AppCompat.Light.NoActionBar">
+              </style>
+          </resources>
+          EOF
+
+          # 5. Разметка UI
           cat <<EOF > app/src/main/res/layout/activity_main.xml
           <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
               android:layout_width="match_parent"
@@ -53,57 +84,33 @@ jobs:
                       android:text="ROBLOX JAVA"
                       android:textColor="@color/accent_green"
                       android:textSize="32sp"
-                      android:layout_marginBottom="30dp"
                       android:textStyle="bold"/>
-                  <Button android:id="@+id/btn_play" android:layout_width="200dp" android:layout_height="60dp" android:text="ИГРАТЬ"/>
-              </LinearLayout>
-              <LinearLayout
-                  android:id="@+id/game_ui"
-                  android:layout_width="match_parent"
-                  android:layout_height="match_parent"
-                  android:visibility="gone"
-                  android:orientation="vertical">
-                  <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"/>
-                  <LinearLayout
-                      android:layout_width="wrap_content"
-                      android:layout_height="wrap_content"
-                      android:layout_gravity="center_horizontal"
-                      android:background="@color/ui_glass"
-                      android:padding="10dp"
-                      android:layout_marginBottom="20dp">
-                      <Button android:id="@+id/tool_block" android:layout_width="70dp" android:layout_height="70dp" android:text="🧱"/>
-                      <Button android:id="@+id/tool_eraser" android:layout_width="70dp" android:layout_height="70dp" android:text="🧼" android:layout_marginLeft="15dp"/>
-                  </LinearLayout>
+                  <Button android:id="@+id/btn_play" 
+                      android:layout_width="200dp" 
+                      android:layout_height="60dp" 
+                      android:layout_marginTop="20dp"
+                      android:text="ИГРАТЬ"/>
               </LinearLayout>
           </FrameLayout>
           EOF
 
-          # 4. Java Код
+          # 6. Java Код
           cat <<EOF > app/src/main/java/com/dimos/roblox/MainActivity.java
           package com.dimos.roblox;
           import android.app.Activity;
           import android.os.Bundle;
           import android.view.View;
-          import android.view.SoundEffectConstants;
-          import android.widget.*;
 
           public class MainActivity extends Activity {
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
                   setContentView(R.layout.activity_main);
-                  View menu = findViewById(R.id.menu_layout);
-                  View gameUI = findViewById(R.id.game_ui);
-                  findViewById(R.id.btn_play).setOnClickListener(v -> {
-                      menu.setVisibility(View.GONE);
-                      gameUI.setVisibility(View.VISIBLE);
-                      v.playSoundEffect(SoundEffectConstants.CLICK);
-                  });
               }
           }
           EOF
 
-          # 5. Сборка (Gradle)
+          # 7. Конфигурация Gradle
           cat <<EOF > app/build.gradle
           plugins { id 'com.android.application' }
           android {
@@ -113,8 +120,8 @@ jobs:
                   applicationId "com.dimos.roblox"
                   minSdk 24
                   targetSdk 34
-                  versionCode 5
-                  versionName "5.0"
+                  versionCode 6
+                  versionName "6.0"
               }
           }
           dependencies {
@@ -134,5 +141,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Roblox_Java_Final_V5
+          name: Roblox_Final_Fixed_V6
           path: app/build/outputs/apk/debug/app-debug.apk
