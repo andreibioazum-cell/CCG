@@ -1,4 +1,4 @@
-name: Full_Native_Roblox_GLES3_Fixed
+name: Full_Native_Roblox_GLES3_Final
 on: [push, workflow_dispatch]
 
 jobs:
@@ -13,14 +13,15 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
+          cache: 'gradle'
 
-      - name: Create Java Project
+      - name: Create Project Structure
         run: |
           mkdir -p app/src/main/java/com/dimos/roblox
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
 
-          # --- Исправленные ресурсы ---
+          # --- Ресурсы (Исправлено) ---
           cat <<EOF > app/src/main/res/values/colors.xml
           <resources>
               <color name="bg">#0d1528</color>
@@ -30,14 +31,13 @@ jobs:
 
           cat <<EOF > app/src/main/res/values/themes.xml
           <resources>
-              <style name="AppTheme" parent="Theme.AppCompat.NoActionBar">
+              <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
                   <item name="android:windowFullscreen">true</item>
-                  <item name="android:windowContentOverlay">@null</item>
               </style>
           </resources>
           EOF
 
-          # --- Разметка интерфейса ---
+          # --- Интерфейс ---
           cat <<EOF > app/src/main/res/layout/activity_main.xml
           <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
               android:layout_width="match_parent"
@@ -47,31 +47,26 @@ jobs:
                   android:id="@+id/gl_view"
                   android:layout_width="match_parent"
                   android:layout_height="match_parent" />
-              <RelativeLayout
+              <LinearLayout
                   android:layout_width="match_parent"
-                  android:layout_height="match_parent">
-                  <TextView
-                      android:layout_width="wrap_content"
-                      android:layout_height="wrap_content"
-                      android:text="💎 15,847"
-                      android:layout_alignParentTop="true"
-                      android:layout_alignParentRight="true"
-                      android:padding="25dp"
-                      android:textColor="@color/green"
-                      android:textSize="20sp"
-                      android:textStyle="bold" />
-                  <LinearLayout
-                      android:layout_width="match_parent"
-                      android:layout_height="match_parent"
-                      android:orientation="horizontal">
-                      <View android:id="@+id/zone_move" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" />
-                      <View android:id="@+id/zone_look" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" />
-                  </LinearLayout>
-              </RelativeLayout>
+                  android:layout_height="match_parent"
+                  android:orientation="horizontal">
+                  <View android:id="@+id/zone_move" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" />
+                  <View android:id="@+id/zone_look" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" />
+              </LinearLayout>
+              <TextView
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:text="💎 15,847"
+                  android:layout_gravity="top|end"
+                  android:padding="20dp"
+                  android:textColor="@color/green"
+                  android:textSize="20sp"
+                  android:textStyle="bold" />
           </FrameLayout>
           EOF
 
-          # --- Рендерер OpenGL ES 3.0 ---
+          # --- Рендерер GLES 3.0 ---
           cat <<EOF > app/src/main/java/com/dimos/roblox/GameRenderer.java
           package com.dimos.roblox;
           import android.opengl.GLES30;
@@ -81,7 +76,7 @@ jobs:
           import javax.microedition.khronos.opengles.GL10;
 
           public class GameRenderer implements GLSurfaceView.Renderer {
-              private final float[] mvpMatrix = new float[16], projMatrix = new float[16], viewMatrix = new float[16];
+              private final float[] mvpM = new float[16], pM = new float[16], vM = new float[16];
               public float posX = 0, posZ = 5, angleY = 0;
               private int program;
 
@@ -92,29 +87,25 @@ jobs:
                   String vS = "#version 300 es\nuniform mat4 uM; layout(location=0) in vec4 p; void main(){gl_Position=uM*p;}";
                   String fS = "#version 300 es\nprecision mediump float; out vec4 fc; void main(){fc=vec4(0.13, 0.77, 0.37, 1.0);}";
                   program = GLES30.glCreateProgram();
-                  int vs = loadS(GLES30.GL_VERTEX_SHADER, vS), fs = loadS(GLES30.GL_FRAGMENT_SHADER, fS);
+                  int vs = loadShader(GLES30.GL_VERTEX_SHADER, vS), fs = loadShader(GLES30.GL_FRAGMENT_SHADER, fS);
                   GLES30.glAttachShader(program, vs); GLES30.glAttachShader(program, fs);
                   GLES30.glLinkProgram(program);
               }
 
-              @Override
-              public void onSurfaceChanged(GL10 gl, int w, int h) {
-                  GLES30.glViewport(0, 0, w, h);
-                  Matrix.perspectiveM(projMatrix, 0, 45, (float)w/h, 0.1f, 100f);
+              @Override public void onSurfaceChanged(GL10 gl, int w, int h) {
+                  GLES30.glViewport(0, 0, w, h); Matrix.perspectiveM(pM, 0, 45, (float)w/h, 0.1f, 100f);
               }
 
-              @Override
-              public void onDrawFrame(GL10 gl) {
+              @Override public void onDrawFrame(GL10 gl) {
                   GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
-                  float lx = posX + (float)Math.sin(Math.toRadians(angleY));
-                  float lz = posZ - (float)Math.cos(Math.toRadians(angleY));
-                  Matrix.setLookAtM(viewMatrix, 0, posX, 1.5f, posZ, lx, 1.5f, lz, 0, 1, 0);
-                  Matrix.multiplyMM(mvpMatrix, 0, projMatrix, 0, viewMatrix, 0);
+                  float lx = posX + (float)Math.sin(Math.toRadians(angleY)), lz = posZ - (float)Math.cos(Math.toRadians(angleY));
+                  Matrix.setLookAtM(vM, 0, posX, 1.5f, posZ, lx, 1.5f, lz, 0, 1, 0);
+                  Matrix.multiplyMM(mvpM, 0, pM, 0, vM, 0);
                   GLES30.glUseProgram(program);
-                  GLES30.glUniformMatrix4fv(GLES30.glGetUniformLocation(program, "uM"), 1, false, mvpMatrix, 0);
+                  GLES30.glUniformMatrix4fv(GLES30.glGetUniformLocation(program, "uM"), 1, false, mvpM, 0);
               }
 
-              private int loadS(int t, String s) {
+              private int loadShader(int t, String s) {
                   int id = GLES30.glCreateShader(t); GLES30.glShaderSource(id, s); GLES30.glCompileShader(id); return id;
               }
           }
@@ -142,14 +133,13 @@ jobs:
                   
                   findViewById(R.id.zone_move).setOnTouchListener((v, e) -> {
                       if (e.getAction() == MotionEvent.ACTION_MOVE) {
-                          renderer.posX += (e.getX() - lX)/150f; 
-                          renderer.posZ += (e.getY() - lY)/150f;
+                          renderer.posX += (e.getX() - lX)/100f; renderer.posZ += (e.getY() - lY)/100f;
                       }
                       lX = e.getX(); lY = e.getY(); return true;
                   });
                   findViewById(R.id.zone_look).setOnTouchListener((v, e) -> {
                       if (e.getAction() == MotionEvent.ACTION_MOVE) {
-                          renderer.angleY += (e.getX() - lX) * 0.4f;
+                          renderer.angleY += (e.getX() - lX) * 0.3f;
                       }
                       lX = e.getX(); lY = e.getY(); return true;
                   });
@@ -157,32 +147,37 @@ jobs:
           }
           EOF
 
-          # --- Манифест (Без устаревшего package) ---
+          # --- Манифест ---
           cat <<EOF > app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <application android:label="Roblox GLES3" android:theme="@style/AppTheme">
                   <activity android:name="com.dimos.roblox.MainActivity" android:exported="true" android:screenOrientation="landscape">
-                      <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
                   </activity>
               </application>
           </manifest>
           EOF
 
-          # --- Gradle (С зависимостью AppCompat) ---
+          # --- Build.gradle (Namespace Fix) ---
           echo "plugins { id 'com.android.application' }" > app/build.gradle
           cat <<EOF >> app/build.gradle
-          android { 
+          android {
               namespace 'com.dimos.roblox'
-              compileSdk 34 
-              defaultConfig { 
+              compileSdk 34
+              defaultConfig {
                   applicationId 'com.dimos.roblox'
-                  minSdk 24 
-                  targetSdk 34 
-                  versionCode 1 
-                  versionName '1.0' 
-              } 
+                  minSdk 24
+                  targetSdk 34
+                  versionCode 1
+                  versionName '1.0'
+              }
+              buildTypes { release { minifyEnabled false } }
+              compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17; }
           }
-          dependencies { 
+          dependencies {
               implementation 'androidx.appcompat:appcompat:1.6.1'
               implementation 'com.google.android.material:material:1.11.0'
           }
@@ -191,7 +186,7 @@ jobs:
           echo "buildscript { repositories { google(); mavenCentral() }; dependencies { classpath 'com.android.tools.build:gradle:8.2.2' } }" > build.gradle
           echo "allprojects { repositories { google(); mavenCentral() } }" >> build.gradle
 
-      - name: Build APK
+      - name: Build with Gradle Wrapper
         run: |
           gradle wrapper --gradle-version 8.5
           ./gradlew assembleDebug
@@ -199,5 +194,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Roblox_Fixed_APK
+          name: Roblox_Final_APK
           path: app/build/outputs/apk/debug/app-debug.apk
