@@ -1,4 +1,4 @@
-name: Full_Native_Roblox_GLES3
+name: Full_Native_Roblox_GLES3_Fixed
 on: [push, workflow_dispatch]
 
 jobs:
@@ -20,7 +20,7 @@ jobs:
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
 
-          # --- Ресурсы и Цвета ---
+          # --- Исправленные ресурсы ---
           cat <<EOF > app/src/main/res/values/colors.xml
           <resources>
               <color name="bg">#0d1528</color>
@@ -32,6 +32,7 @@ jobs:
           <resources>
               <style name="AppTheme" parent="Theme.AppCompat.NoActionBar">
                   <item name="android:windowFullscreen">true</item>
+                  <item name="android:windowContentOverlay">@null</item>
               </style>
           </resources>
           EOF
@@ -47,7 +48,6 @@ jobs:
                   android:layout_width="match_parent"
                   android:layout_height="match_parent" />
               <RelativeLayout
-                  android:id="@+id/ui_layer"
                   android:layout_width="match_parent"
                   android:layout_height="match_parent">
                   <TextView
@@ -120,15 +120,15 @@ jobs:
           }
           EOF
 
-          # --- Главная Активность (Управление) ---
+          # --- MainActivity ---
           cat <<EOF > app/src/main/java/com/dimos/roblox/MainActivity.java
           package com.dimos.roblox;
-          import android.app.Activity;
           import android.os.Bundle;
           import android.view.MotionEvent;
           import android.opengl.GLSurfaceView;
+          import androidx.appcompat.app.AppCompatActivity;
 
-          public class MainActivity extends Activity {
+          public class MainActivity extends AppCompatActivity {
               private GameRenderer renderer;
               private float lX, lY;
               @Override
@@ -140,14 +140,16 @@ jobs:
                   renderer = new GameRenderer();
                   gv.setRenderer(renderer);
                   
-                  gv.setOnTouchListener((v, e) -> {
+                  findViewById(R.id.zone_move).setOnTouchListener((v, e) -> {
                       if (e.getAction() == MotionEvent.ACTION_MOVE) {
-                          float dx = e.getX() - lX, dy = e.getY() - lY;
-                          if (e.getX() < v.getWidth()/2) {
-                              renderer.posX += dx/150f; renderer.posZ += dy/150f;
-                          } else {
-                              renderer.angleY += dx * 0.4f;
-                          }
+                          renderer.posX += (e.getX() - lX)/150f; 
+                          renderer.posZ += (e.getY() - lY)/150f;
+                      }
+                      lX = e.getX(); lY = e.getY(); return true;
+                  });
+                  findViewById(R.id.zone_look).setOnTouchListener((v, e) -> {
+                      if (e.getAction() == MotionEvent.ACTION_MOVE) {
+                          renderer.angleY += (e.getX() - lX) * 0.4f;
                       }
                       lX = e.getX(); lY = e.getY(); return true;
                   });
@@ -155,18 +157,36 @@ jobs:
           }
           EOF
 
-          # --- Конфигурация сборки ---
+          # --- Манифест (Без устаревшего package) ---
           cat <<EOF > app/src/main/AndroidManifest.xml
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.dimos.roblox">
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <application android:label="Roblox GLES3" android:theme="@style/AppTheme">
-                  <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="landscape">
+                  <activity android:name="com.dimos.roblox.MainActivity" android:exported="true" android:screenOrientation="landscape">
                       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
                   </activity>
               </application>
           </manifest>
           EOF
+
+          # --- Gradle (С зависимостью AppCompat) ---
           echo "plugins { id 'com.android.application' }" > app/build.gradle
-          echo "android { namespace 'com.dimos.roblox'; compileSdk 34; defaultConfig { applicationId 'com.dimos.roblox'; minSdk 24; targetSdk 34; versionCode 1; versionName '1.0' } }" >> app/build.gradle
+          cat <<EOF >> app/build.gradle
+          android { 
+              namespace 'com.dimos.roblox'
+              compileSdk 34 
+              defaultConfig { 
+                  applicationId 'com.dimos.roblox'
+                  minSdk 24 
+                  targetSdk 34 
+                  versionCode 1 
+                  versionName '1.0' 
+              } 
+          }
+          dependencies { 
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+              implementation 'com.google.android.material:material:1.11.0'
+          }
+          EOF
           echo "include ':app'" > settings.gradle
           echo "buildscript { repositories { google(); mavenCentral() }; dependencies { classpath 'com.android.tools.build:gradle:8.2.2' } }" > build.gradle
           echo "allprojects { repositories { google(); mavenCentral() } }" >> build.gradle
@@ -179,5 +199,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Roblox_Native_GLES3
+          name: Roblox_Fixed_APK
           path: app/build/outputs/apk/debug/app-debug.apk
