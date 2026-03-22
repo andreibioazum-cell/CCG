@@ -1,4 +1,4 @@
-name: Roblox_Java_Final_Fixed
+name: Roblox_Java_Final_Fixed_V5
 on: [push, workflow_dispatch]
 
 jobs:
@@ -14,14 +14,19 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Generate Fixed Project Structure
+      - name: Generate Project Structure
         run: |
-          # Создаем все необходимые директории
           mkdir -p app/src/main/java/com/dimos/roblox
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
 
-          # 1. Цвета и Стили
+          # 1. ВКЛЮЧАЕМ ANDROIDX (Решение твоей ошибки)
+          cat <<EOF > gradle.properties
+          android.useAndroidX=true
+          android.enableJetifier=true
+          EOF
+
+          # 2. Цвета
           cat <<EOF > app/src/main/res/values/colors.xml
           <resources>
               <color name="bg_dark">#0d1528</color>
@@ -30,13 +35,12 @@ jobs:
           </resources>
           EOF
 
-          # 2. XML Разметка (Исправленная)
+          # 3. XML Разметка
           cat <<EOF > app/src/main/res/layout/activity_main.xml
           <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
               android:layout_width="match_parent"
               android:layout_height="match_parent"
               android:background="@color/bg_dark">
-              
               <LinearLayout
                   android:id="@+id/menu_layout"
                   android:layout_width="wrap_content"
@@ -53,7 +57,6 @@ jobs:
                       android:textStyle="bold"/>
                   <Button android:id="@+id/btn_play" android:layout_width="200dp" android:layout_height="60dp" android:text="ИГРАТЬ"/>
               </LinearLayout>
-
               <LinearLayout
                   android:id="@+id/game_ui"
                   android:layout_width="match_parent"
@@ -75,7 +78,7 @@ jobs:
           </FrameLayout>
           EOF
 
-          # 3. MainActivity с Звуками и Логикой
+          # 4. Java Код
           cat <<EOF > app/src/main/java/com/dimos/roblox/MainActivity.java
           package com.dimos.roblox;
           import android.app.Activity;
@@ -85,44 +88,34 @@ jobs:
           import android.widget.*;
 
           public class MainActivity extends Activity {
-              private boolean isEraser = false;
-
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
                   setContentView(R.layout.activity_main);
-
                   View menu = findViewById(R.id.menu_layout);
                   View gameUI = findViewById(R.id.game_ui);
-
                   findViewById(R.id.btn_play).setOnClickListener(v -> {
                       menu.setVisibility(View.GONE);
                       gameUI.setVisibility(View.VISIBLE);
                       v.playSoundEffect(SoundEffectConstants.CLICK);
                   });
-
-                  findViewById(R.id.tool_block).setOnClickListener(v -> {
-                      isEraser = false;
-                      v.playSoundEffect(SoundEffectConstants.NAVIGATION_RIGHT);
-                      Toast.makeText(this, "Выбран блок", Toast.LENGTH_SHORT).show();
-                  });
-
-                  findViewById(R.id.tool_eraser).setOnClickListener(v -> {
-                      isEraser = true;
-                      v.playSoundEffect(SoundEffectConstants.NAVIGATION_LEFT);
-                      Toast.makeText(this, "Выбран ластик", Toast.LENGTH_SHORT).show();
-                  });
               }
           }
           EOF
 
-          # 4. Сборка (Gradle)
+          # 5. Сборка (Gradle)
           cat <<EOF > app/build.gradle
           plugins { id 'com.android.application' }
           android {
               namespace 'com.dimos.roblox'
               compileSdk 34
-              defaultConfig { applicationId "com.dimos.roblox"; minSdk 24; targetSdk 34; versionCode 4; versionName "4.0" }
+              defaultConfig { 
+                  applicationId "com.dimos.roblox"
+                  minSdk 24
+                  targetSdk 34
+                  versionCode 5
+                  versionName "5.0"
+              }
           }
           dependencies {
               implementation 'androidx.appcompat:appcompat:1.6.1'
@@ -141,5 +134,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Roblox_Java_Final_Fixed
+          name: Roblox_Java_Final_V5
           path: app/build/outputs/apk/debug/app-debug.apk
