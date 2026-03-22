@@ -1,4 +1,4 @@
-name: Roblox_Java_Ultimate_Build
+name: Roblox_Java_Final_Fixed
 on: [push, workflow_dispatch]
 
 jobs:
@@ -14,147 +14,126 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Generate Full Project Structure
+      - name: Generate Fixed Project Structure
         run: |
+          # Создаем все необходимые директории
           mkdir -p app/src/main/java/com/dimos/roblox
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
 
-          # 1. Стили интерфейса (Цвета из style-core.css)
+          # 1. Цвета и Стили
           cat <<EOF > app/src/main/res/values/colors.xml
           <resources>
               <color name="bg_dark">#0d1528</color>
               <color name="accent_green">#22c55e</color>
-              <color name="ui_glass">#CC000000</color>
-              <color name="white">#FFFFFF</color>
+              <color name="ui_glass">#AA000000</color>
           </resources>
           EOF
 
-          # 2. Разметка Меню и Игрового UI
+          # 2. XML Разметка (Исправленная)
           cat <<EOF > app/src/main/res/layout/activity_main.xml
           <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
               android:layout_width="match_parent"
               android:layout_height="match_parent"
               android:background="@color/bg_dark">
               
-              <android.opengl.GLSurfaceView
-                  android:id="@+id/gl_view"
-                  android:layout_width="match_parent"
-                  android:layout_height="match_parent" />
-
               <LinearLayout
-                  android:id="@+id/menu_screen"
-                  android:layout_width="match_parent"
-                  android:layout_height="match_parent"
-                  android:background="@color/bg_dark"
-                  android:gravity="center"
-                  android:orientation="vertical"
-                  android:visibility="visible">
-                  
+                  android:id="@+id/menu_layout"
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:layout_gravity="center"
+                  android:orientation="vertical">
                   <TextView
                       android:layout_width="wrap_content"
                       android:layout_height="wrap_content"
-                      android:text="ROBLOX MOBILE"
+                      android:text="ROBLOX JAVA"
                       android:textColor="@color/accent_green"
                       android:textSize="32sp"
-                      android:textStyle="bold"
-                      android:layout_marginBottom="50dp"/>
-
-                  <Button android:id="@+id/btn_play" android:layout_width="250dp" android:layout_height="60dp" android:text="ИГРАТЬ" android:backgroundTint="@color/accent_green" android:textColor="@android:color/black"/>
-                  <Button android:id="@+id/btn_studio" android:layout_width="250dp" android:layout_height="60dp" android:text="СТУДИЯ" android:layout_marginTop="15dp"/>
+                      android:layout_marginBottom="30dp"
+                      android:textStyle="bold"/>
+                  <Button android:id="@+id/btn_play" android:layout_width="200dp" android:layout_height="60dp" android:text="ИГРАТЬ"/>
               </LinearLayout>
 
-              <RelativeLayout
+              <LinearLayout
                   android:id="@+id/game_ui"
                   android:layout_width="match_parent"
                   android:layout_height="match_parent"
-                  android:visibility="gone">
-                  
-                  <Button android:id="@+id/btn_exit" android:layout_width="50dp" android:layout_height="50dp" android:text="✕" android:layout_margin="20dp"/>
-
+                  android:visibility="gone"
+                  android:orientation="vertical">
+                  <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"/>
                   <LinearLayout
                       android:layout_width="wrap_content"
                       android:layout_height="wrap_content"
-                      android:layout_alignParentBottom="true"
-                      android:layout_centerHorizontal="true"
-                      android:layout_marginBottom="20dp"
+                      android:layout_gravity="center_horizontal"
                       android:background="@color/ui_glass"
-                      android:padding="10dp">
-                      
-                      <ImageButton android:id="@+id/tool_build" android:layout_width="60dp" android:layout_height="60dp" android:src="@android:drawable/ic_menu_add" android:contentDescription="Build"/>
-                      <ImageButton android:id="@+id/tool_erase" android:layout_width="60dp" android:layout_height="60dp" android:src="@android:drawable/ic_menu_delete" android:layout_marginLeft="15dp" android:contentDescription="Erase"/>
+                      android:padding="10dp"
+                      android:layout_marginBottom="20dp">
+                      <Button android:id="@+id/tool_block" android:layout_width="70dp" android:layout_height="70dp" android:text="🧱"/>
+                      <Button android:id="@+id/tool_eraser" android:layout_width="70dp" android:layout_height="70dp" android:text="🧼" android:layout_marginLeft="15dp"/>
                   </LinearLayout>
-              </RelativeLayout>
+              </LinearLayout>
           </FrameLayout>
           EOF
 
-          # 3. Логика приложения (MainActivity.java)
+          # 3. MainActivity с Звуками и Логикой
           cat <<EOF > app/src/main/java/com/dimos/roblox/MainActivity.java
           package com.dimos.roblox;
           import android.app.Activity;
-          import android.opengl.GLSurfaceView;
           import android.os.Bundle;
           import android.view.View;
-          import android.widget.Toast;
+          import android.view.SoundEffectConstants;
+          import android.widget.*;
 
           public class MainActivity extends Activity {
-              private boolean isEraserMode = false;
+              private boolean isEraser = false;
 
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
                   setContentView(R.layout.activity_main);
 
-                  View menu = findViewById(R.id.menu_screen);
-                  View ui = findViewById(R.id.game_ui);
+                  View menu = findViewById(R.id.menu_layout);
+                  View gameUI = findViewById(R.id.game_ui);
 
                   findViewById(R.id.btn_play).setOnClickListener(v -> {
                       menu.setVisibility(View.GONE);
-                      ui.setVisibility(View.VISIBLE);
+                      gameUI.setVisibility(View.VISIBLE);
+                      v.playSoundEffect(SoundEffectConstants.CLICK);
                   });
 
-                  findViewById(R.id.btn_studio).setOnClickListener(v -> {
-                      menu.setVisibility(View.GONE);
-                      ui.setVisibility(View.VISIBLE);
-                      Toast.makeText(this, "Режим редактирования", Toast.LENGTH_SHORT).show();
+                  findViewById(R.id.tool_block).setOnClickListener(v -> {
+                      isEraser = false;
+                      v.playSoundEffect(SoundEffectConstants.NAVIGATION_RIGHT);
+                      Toast.makeText(this, "Выбран блок", Toast.LENGTH_SHORT).show();
                   });
 
-                  findViewById(R.id.btn_exit).setOnClickListener(v -> {
-                      ui.setVisibility(View.GONE);
-                      menu.setVisibility(View.VISIBLE);
-                  });
-
-                  findViewById(R.id.tool_erase).setOnClickListener(v -> {
-                      isEraserMode = true;
-                      Toast.makeText(this, "Ластик активен", Toast.LENGTH_SHORT).show();
-                  });
-
-                  findViewById(R.id.tool_build).setOnClickListener(v -> {
-                      isEraserMode = false;
-                      Toast.makeText(this, "Режим постройки", Toast.LENGTH_SHORT).show();
+                  findViewById(R.id.tool_eraser).setOnClickListener(v -> {
+                      isEraser = true;
+                      v.playSoundEffect(SoundEffectConstants.NAVIGATION_LEFT);
+                      Toast.makeText(this, "Выбран ластик", Toast.LENGTH_SHORT).show();
                   });
               }
           }
           EOF
 
-          # 4. Gradle & Manifest
+          # 4. Сборка (Gradle)
           cat <<EOF > app/build.gradle
           plugins { id 'com.android.application' }
           android {
               namespace 'com.dimos.roblox'
               compileSdk 34
-              defaultConfig { applicationId "com.dimos.roblox"; minSdk 24; targetSdk 34; versionCode 3; versionName "3.0" }
+              defaultConfig { applicationId "com.dimos.roblox"; minSdk 24; targetSdk 34; versionCode 4; versionName "4.0" }
           }
           dependencies {
-              implementation 'com.google.code.gson:gson:2.10.1'
               implementation 'androidx.appcompat:appcompat:1.6.1'
+              implementation 'com.google.code.gson:gson:2.10.1'
           }
           EOF
           echo "include ':app'" > settings.gradle
           echo "buildscript { repositories { google(); mavenCentral() }; dependencies { classpath 'com.android.tools.build:gradle:8.2.2' } }" > build.gradle
           echo "allprojects { repositories { google(); mavenCentral() } }" >> build.gradle
 
-      - name: Build Production APK
+      - name: Build APK
         run: |
           gradle wrapper --gradle-version 8.5
           ./gradlew assembleDebug
@@ -162,5 +141,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Roblox_Final_NoOnline
+          name: Roblox_Java_Final_Fixed
           path: app/build/outputs/apk/debug/app-debug.apk
