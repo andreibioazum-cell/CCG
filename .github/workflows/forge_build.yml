@@ -1,4 +1,4 @@
-name: Enjoer_Pro_v2_1
+name: Enjoer_Pro_Stable_Build
 on: [push, workflow_dispatch]
 
 jobs:
@@ -14,14 +14,20 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Create Project
+      - name: Install Specific Gradle 8.2.2
+        run: |
+          wget https://services.gradle.org/distributions/gradle-8.2.2-bin.zip
+          sudo unzip -d /opt/gradle gradle-8.2.2-bin.zip
+          echo "/opt/gradle/gradle-8.2.2/bin" >> $GITHUB_PATH
+
+      - name: Create Project Files
         run: |
           mkdir -p app/src/main/java/com/enjoer/game
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
           mkdir -p app/src/main/res/drawable
 
-          # ФИКС: Включаем AndroidX
+          # Настройки AndroidX
           cat <<EOF > gradle.properties
           android.useAndroidX=true
           android.enableJetifier=true
@@ -53,30 +59,20 @@ jobs:
                   minSdk 24
                   targetSdk 34
                   versionCode 1
-                  versionName "2.1"
+                  versionName "2.2"
               }
           }
           dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }
           EOF
 
+          # UI и Ресурсы
           cat <<EOF > app/src/main/res/values/themes.xml
           <resources><style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
           <item name="android:windowFullscreen">true</item></style></resources>
           EOF
-          
           echo '<shape xmlns:android="http://schemas.android.com/apk/res/android"><solid android:color="#AA000000"/><corners android:radius="50dp"/></shape>' > app/src/main/res/drawable/ui_circle.xml
 
-          cat <<EOF > app/src/main/res/layout/activity_main.xml
-          <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent">
-              <android.opengl.GLSurfaceView android:id="@+id/gl_view" android:layout_width="match_parent" android:layout_height="match_parent" />
-              <RelativeLayout android:layout_width="match_parent" android:layout_height="match_parent">
-                  <View android:id="@+id/btn_jump" android:layout_width="85dp" android:layout_height="85dp" android:layout_alignParentRight="true" android:layout_alignParentBottom="true" android:layout_margin="50dp" android:background="@drawable/ui_circle" />
-                  <FrameLayout android:id="@+id/joy_base" android:layout_width="130dp" android:layout_height="130dp" android:layout_alignParentBottom="true" android:layout_marginLeft="50dp" android:layout_marginBottom="50dp" android:background="@drawable/ui_circle" android:alpha="0.5" />
-                  <View android:id="@+id/joy_stick" android:layout_width="55dp" android:layout_height="55dp" android:layout_alignLeft="@id/joy_base" android:layout_alignTop="@id/joy_base" android:layout_marginLeft="37dp" android:layout_marginTop="37dp" android:background="#22C55E" />
-              </RelativeLayout>
-          </FrameLayout>
-          EOF
-
+          # Код рендерера (Тот самый плавный движок)
           cat <<EOF > app/src/main/java/com/enjoer/game/GameRenderer.java
           package com.enjoer.game;
           import android.opengl.GLES30;
@@ -158,6 +154,7 @@ jobs:
           }
           EOF
 
+          # Код MainActivity (Управление)
           cat <<EOF > app/src/main/java/com/enjoer/game/MainActivity.java
           package com.enjoer.game;
           import android.os.Bundle;
@@ -206,9 +203,20 @@ jobs:
           }
           EOF
 
+          cat <<EOF > app/src/main/res/layout/activity_main.xml
+          <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent">
+              <android.opengl.GLSurfaceView android:id="@+id/gl_view" android:layout_width="match_parent" android:layout_height="match_parent" />
+              <RelativeLayout android:layout_width="match_parent" android:layout_height="match_parent">
+                  <View android:id="@+id/btn_jump" android:layout_width="85dp" android:layout_height="85dp" android:layout_alignParentRight="true" android:layout_alignParentBottom="true" android:layout_margin="50dp" android:background="@drawable/ui_circle" />
+                  <FrameLayout android:id="@+id/joy_base" android:layout_width="130dp" android:layout_height="130dp" android:layout_alignParentBottom="true" android:layout_marginLeft="50dp" android:layout_marginBottom="50dp" android:background="@drawable/ui_circle" android:alpha="0.5" />
+                  <View android:id="@+id/joy_stick" android:layout_width="55dp" android:layout_height="55dp" android:layout_alignLeft="@id/joy_base" android:layout_alignTop="@id/joy_base" android:layout_marginLeft="37dp" android:layout_marginTop="37dp" android:background="#22C55E" />
+              </RelativeLayout>
+          </FrameLayout>
+          EOF
+
           cat <<EOF > app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="Enjoer Pro 2.1" android:theme="@style/AppTheme">
+              <application android:label="Enjoer Pro Stable" android:theme="@style/AppTheme">
                   <activity android:name="com.enjoer.game.MainActivity" android:exported="true" android:screenOrientation="landscape">
                       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
                   </activity>
@@ -223,5 +231,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Enjoer_Pro_v2_1
+          name: Enjoer_Pro_Stable
           path: app/build/outputs/apk/debug/app-debug.apk
