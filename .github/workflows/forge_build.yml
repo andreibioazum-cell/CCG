@@ -14,11 +14,11 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # ИСПОЛЬЗУЕМ ОФИЦИАЛЬНЫЙ ЭКШЕН ДЛЯ УСТАНОВКИ GRADLE 8.2.2
-      - name: Setup Gradle 8.2.2
+      # Используем стабильную 8.5, которая точно есть в репозиториях Actions
+      - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
-          gradle-version: '8.2.2'
+          gradle-version: '8.5'
 
       - name: Create Project
         run: |
@@ -27,7 +27,7 @@ jobs:
           mkdir -p app/src/main/res/values
           mkdir -p app/src/main/res/drawable
 
-          # Фикс AndroidX (Обязательно для новых версий Gradle)
+          # Настройки для корректной работы библиотек
           cat <<EOF > gradle.properties
           android.useAndroidX=true
           android.enableJetifier=true
@@ -39,7 +39,7 @@ jobs:
           </style></resources>
           EOF
 
-          # --- UI Ресурсы (Black & Green Neo) ---
+          # --- UI Ресурсы ---
           cat <<EOF > app/src/main/res/drawable/btn_round.xml
           <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
               <corners android:radius="12dp"/><solid android:color="#000"/><stroke android:width="1dp" android:color="#0F0"/>
@@ -81,7 +81,7 @@ jobs:
           </FrameLayout>
           EOF
 
-          # --- Renderer ---
+          # --- Renderer (Тот самый крутой код) ---
           cat <<EOF > app/src/main/java/com/enjoer/game/GameRenderer.java
           package com.enjoer.game;
           import android.opengl.GLES30;
@@ -223,7 +223,7 @@ jobs:
           </manifest>
           EOF
 
-          # --- Gradle Config ---
+          # --- Конфигурация Gradle ---
           echo "include ':app'" > settings.gradle
           cat <<EOF > build.gradle
           buildscript {
