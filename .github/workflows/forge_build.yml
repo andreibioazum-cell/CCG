@@ -1,4 +1,4 @@
-name: Enjoer_1.0_Night_Fix
+name: Enjoer_1.0_Final_Fix
 on: [push, workflow_dispatch]
 
 jobs:
@@ -30,7 +30,7 @@ jobs:
           </style></resources>
           EOF
 
-          # --- UI (Black & Green Neo) ---
+          # --- UI Drawables ---
           cat <<EOF > app/src/main/res/drawable/btn_ui.xml
           <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
               <corners android:radius="12dp"/><solid android:color="#EE000000"/><stroke android:width="1dp" android:color="#0F0"/>
@@ -78,12 +78,12 @@ jobs:
                   android:orientation="vertical" android:visibility="gone">
                   <Button android:id="@+id/rtx_off" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="RTX OFF"/>
                   <Button android:id="@+id/rtx_on" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="RTX ON"/>
-                  <Button android:id="@+id/rtx_close" android:layout_width="match_parent" android:layout_height="30dp" android:text="CLOSE" android:textSize="8sp" android:layout_marginTop="10dp"/>
+                  <Button android:id="@+id/rtx_close" android:layout_width="match_parent" android:layout_height="35dp" android:text="CLOSE" android:layout_marginTop="10dp"/>
               </LinearLayout>
           </FrameLayout>
           EOF
 
-          # --- Renderer (Night & Fog Edition) ---
+          # --- Renderer ---
           cat <<EOF > app/src/main/java/com/enjoer/game/GameRenderer.java
           package com.enjoer.game;
           import android.opengl.GLES30;
@@ -106,9 +106,8 @@ jobs:
                   GLES30.glEnable(GLES30.GL_DEPTH_TEST);
                   GLES30.glEnable(GLES30.GL_BLEND);
                   GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
-                  // Шейдер: VS передает мировую позицию в FS для расчета тумана
                   String vs="#version 300 es\nin vec4 aP; uniform mat4 uM; uniform mat4 uP; uniform mat4 uV; out vec3 wP; void main(){vec4 pos=uM*aP; wP=pos.xyz; gl_Position=uP*uV*pos;}";
-                  String fs="#version 300 es\nprecision mediump float; in vec3 wP; uniform vec4 uC; uniform float a; uniform vec3 camP; uniform int fogE; void main(){vec4 color=vec4(uC.rgb, a); if(fogE==1){float d=length(wP-camP); float f=clamp((d-20.0)/40.0,0.0,1.0); fC=mix(color, vec4(0.05,0.1,0.2,1.0), f);}else{fC=color;}} out vec4 fC;";
+                  String fs="#version 300 es\nprecision mediump float; in vec3 wP; uniform vec4 uC; uniform float a; uniform vec3 camP; out vec4 fC; void main(){float d=length(wP-camP); float f=clamp((d-15.0)/45.0,0.0,1.0); fC=mix(vec4(uC.rgb, a), vec4(0.05,0.1,0.2,1.0), f);}";
                   prog=shP(vs, fs);
                   float[] vc = {-0.5f,0.5f,0.5f, -0.5f,-0.5f,0.5f, 0.5f,0.5f,0.5f, 0.5f,-0.5f,0.5f, -0.5f,0.5f,-0.5f, -0.5f,-0.5f,-0.5f, 0.5f,0.5f,-0.5f, 0.5f,-0.5f,-0.5f, -0.5f,0.5f,-0.5f, -0.5f,0.5f,0.5f, 0.5f,0.5f,-0.5f, 0.5f,0.5f,0.5f, -0.5f,-0.5f,-0.5f, -0.5f,-0.5f,0.5f, 0.5f,-0.5f,-0.5f, 0.5f,-0.5f,0.5f, -0.5f,0.5f,-0.5f, -0.5f,-0.5f,-0.5f, -0.5f,0.5f,0.5f, -0.5f,-0.5f,0.5f, 0.5f,0.5f,-0.5f, 0.5f,-0.5f,-0.5f, 0.5f,0.5f,0.5f, 0.5f,-0.5f,0.5f};
                   vBuf=ByteBuffer.allocateDirect(vc.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(vc); vBuf.position(0);
@@ -120,61 +119,45 @@ jobs:
 
               @Override public void onDrawFrame(GL10 gl) {
                   update();
-                  GLES30.glClearColor(0.05f, 0.1f, 0.2f, 1.0f); // Глубокое ночное небо
+                  GLES30.glClearColor(0.05f, 0.1f, 0.2f, 1.0f);
                   GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
-                  
                   float vx=(float)(Math.sin(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
                   float vy=(float)Math.sin(Math.toRadians(rX));
                   float vz=(float)(-Math.cos(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
                   Matrix.setLookAtM(view,0,pX,pY,pZ,pX+vx,pY+vy,pZ+vz,0,1,0);
-                  
                   GLES30.glUseProgram(prog);
-                  int uP=GLES30.glGetUniformLocation(prog,"uP"), uV=GLES30.glGetUniformLocation(prog,"uV"), uM=GLES30.glGetUniformLocation(prog,"uM"), uC=GLES30.glGetUniformLocation(prog,"uC"), uA=GLES30.glGetUniformLocation(prog,"a"), uCam=GLES30.glGetUniformLocation(prog,"camP"), uFog=GLES30.glGetUniformLocation(prog,"fogE");
-                  GLES30.glUniformMatrix4fv(uP,1,false,proj,0); GLES30.glUniformMatrix4fv(uV,1,false,view,0); GLES30.glUniform3f(uCam, pX,pY,pZ); GLES30.glUniform1i(uFog, 1);
+                  int uP=GLES30.glGetUniformLocation(prog,"uP"), uV=GLES30.glGetUniformLocation(prog,"uV"), uM=GLES30.glGetUniformLocation(prog,"uM"), uC=GLES30.glGetUniformLocation(prog,"uC"), uA=GLES30.glGetUniformLocation(prog,"a"), uCam=GLES30.glGetUniformLocation(prog,"camP");
+                  GLES30.glUniformMatrix4fv(uP,1,false,proj,0); GLES30.glUniformMatrix4fv(uV,1,false,view,0); GLES30.glUniform3f(uCam, pX,pY,pZ);
                   GLES30.glVertexAttribPointer(0,3,GLES30.GL_FLOAT,false,0,vBuf); GLES30.glEnableVertexAttribArray(0);
 
                   if(rtx) {
                       for(int i=0; i<3; i++) {
-                          // ЧЕРНАЯ ТЕНЬ (Прозрачная, отражает свет)
-                          Matrix.setIdentityM(model,0); Matrix.translateM(model,0,bX[i]+1.2f, 0.05f, bZ[i]+1.2f); 
-                          Matrix.scaleM(model,0,3.2f, 0.01f, 3.2f); GLES30.glUniform1f(uA, 0.5f); draw(uM,uC,0,0,0);
-                          // ОТРАЖЕНИЕ ПОЛА В КУБЕ (Низ куба зеркалит пол)
-                          Matrix.setIdentityM(model,0); Matrix.translateM(model,0,bX[i], 0.1f, bZ[i]); 
-                          Matrix.scaleM(model,0,3,0.1f,3); GLES30.glUniform1f(uA, 0.4f); draw(uM,uC,0.2f,0.7f,0.2f);
+                          // Черная тень
+                          Matrix.setIdentityM(model,0); Matrix.translateM(model,0,bX[i]+0.8f, 0.05f, bZ[i]+0.8f); Matrix.scaleM(model,0,3.1f, 0.01f, 3.1f);
+                          GLES30.glUniform1f(uA, 0.6f); draw(uM,uC,0,0,0);
+                          // Отражение
+                          Matrix.setIdentityM(model,0); Matrix.translateM(model,0,bX[i], 0.1f, bZ[i]); Matrix.scaleM(model,0,3,0.1f,3);
+                          GLES30.glUniform1f(uA, 0.4f); draw(uM,uC,0.2f,0.7f,0.2f);
                       }
                   }
-
-                  // Зеленый Пол (Трава)
-                  Matrix.setIdentityM(model,0); Matrix.scaleM(model,0,1000,0.1f,1000); 
-                  GLES30.glUniform1f(uA, 1.0f); draw(uM,uC,0.2f,0.7f,0.2f);
-
-                  // Реальные блоки (Красные)
+                  // Пол
+                  Matrix.setIdentityM(model,0); Matrix.scaleM(model,0,1000,0.1f,1000); GLES30.glUniform1f(uA, 1.0f); draw(uM,uC,0.2f,0.7f,0.2f);
+                  // Блоки
                   for(int i=0; i<3; i++) {
-                      Matrix.setIdentityM(model,0); Matrix.translateM(model,0,bX[i], 1.55f, bZ[i]); 
-                      Matrix.scaleM(model,0,3,3,3); GLES30.glUniform1f(uA, 1.0f); draw(uM,uC,0.8f,0,0);
+                      Matrix.setIdentityM(model,0); Matrix.translateM(model,0,bX[i], 1.55f, bZ[i]); Matrix.scaleM(model,0,3,3,3);
+                      GLES30.glUniform1f(uA, 1.0f); draw(uM,uC,0.8f,0,0);
                   }
               }
 
               private void update() {
-                  vY-=0.012f; pY+=vY; 
-                  float floorY = 2.1f;
-                  for(int i=0; i<3; i++) { if(Math.abs(pX-bX[i]) < 2.0f && Math.abs(pZ-bZ[i]) < 2.0f && pY > 3.0f) floorY = 4.6f; }
-                  if(pY < floorY) { pY = floorY; vY = 0; }
-
-                  float s=0.22f, rad=(float)Math.toRadians(rY);
-                  float dx = ((float)Math.sin(rad)*-jY + (float)Math.cos(rad)*jX)*s;
-                  float dz = ((float)-Math.cos(rad)*-jY + (float)Math.sin(rad)*jX)*s;
-                  if(!checkCol(pX+dx, pZ)) pX += dx;
-                  if(!checkCol(pX, pZ+dz)) pZ += dz;
+                  vY-=0.012f; pY+=vY; float fY = 2.1f;
+                  for(int i=0; i<3; i++){ if(Math.abs(pX-bX[i])<2.0f && Math.abs(pZ-bZ[i])<2.0f && pY>3.0f) fY=4.6f; }
+                  if(pY<fY){pY=fY; vY=0;}
+                  float s=0.22f, rD=(float)Math.toRadians(rY), dx=((float)Math.sin(rD)*-jY + (float)Math.cos(rD)*jX)*s, dz=((float)-Math.cos(rD)*-jY + (float)Math.sin(rD)*jX)*s;
+                  if(!cCol(pX+dx, pZ)) pX+=dx; if(!cCol(pX, pZ+dz)) pZ+=dz;
               }
-              private boolean checkCol(float nx, float nz) {
-                  for(int i=0; i<3; i++) { if(Math.abs(nx-bX[i]) < 2.1f && Math.abs(nz-bZ[i]) < 2.1f && pY < 4.0f) return true; }
-                  return false;
-              }
-              private void draw(int uM,int uC,float r,float g,float b){
-                  float[] res=new float[16]; Matrix.setIdentityM(res,0); Matrix.multiplyMM(res,0,res,0,model,0); GLES30.glUniformMatrix4fv(uM,1,false,res,0); GLES30.glUniform4f(uC,r,g,b,1f);
-                  for(int i=0; i<6; i++) GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP,i*4,4);
-              }
+              private boolean cCol(float nx, float nz){ for(int i=0; i<3; i++){ if(Math.abs(nx-bX[i])<2.1f && Math.abs(nz-bZ[i])<2.1f && pY<4.0f) return true; } return false; }
+              private void draw(int uM,int uC,float r,float g,float b){ Matrix.setIdentityM(model,0); Matrix.multiplyMM(model,0,model,0,model,0); GLES30.glUniformMatrix4fv(uM,1,false,model,0); GLES30.glUniform4f(uC,r,g,b,1f); for(int i=0; i<6; i++) GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP,i*4,4); }
               private int shP(String v,String f){int p=GLES30.glCreateProgram();GLES30.glAttachShader(p,sh(35633,v));GLES30.glAttachShader(p,sh(35632,f));GLES30.glLinkProgram(p);return p;}
               private int sh(int t,String s){int i=GLES30.glCreateShader(t);GLES30.glShaderSource(i,s);GLES30.glCompileShader(i);return i;}
           }
@@ -200,34 +183,33 @@ jobs:
                   gv.setEGLContextClientVersion(3);
                   ren = new GameRenderer();
                   gv.setRenderer(ren);
-                  gv.setVisibility(View.VISIBLE);
 
                   findViewById(R.id.btn_respawn).setOnClickListener(v -> { ren.pX=0; ren.pZ=10; ren.pY=5; });
                   
-                  View rMenu = findViewById(R.id.rtx_menu);
-                  findViewById(R.id.btn_settings).setOnClickListener(v -> rMenu.setVisibility(View.VISIBLE));
-                  findViewById(R.id.rtx_on).setOnClickListener(v -> { ren.rtx=true; rMenu.setVisibility(View.GONE); });
-                  findViewById(R.id.rtx_off).setOnClickListener(v -> { ren.rtx=false; rMenu.setVisibility(View.GONE); });
+                  final View rtxPop = findViewById(R.id.rtx_menu);
+                  findViewById(R.id.btn_settings).setOnClickListener(v -> rtxPop.setVisibility(View.VISIBLE));
+                  findViewById(R.id.rtx_on).setOnClickListener(v -> { ren.rtx=true; rtxPop.setVisibility(View.GONE); });
+                  findViewById(R.id.rtx_off).setOnClickListener(v -> { ren.rtx=false; rtxPop.setVisibility(View.GONE); });
                   findViewById(R.id.rtx_close).setOnClickListener(v -> rtxPop.setVisibility(View.GONE));
 
                   findViewById(R.id.btn_jump).setOnClickListener(v -> { if(ren.vY == 0) ren.vY = 0.32f; });
                   
-                  View stick = findViewById(R.id.joy_stick);
+                  final View stick = findViewById(R.id.joy_stick);
                   findViewById(R.id.joy_base).setOnTouchListener((v, e) -> {
                       if (e.getAction() == MotionEvent.ACTION_MOVE || e.getAction() == MotionEvent.ACTION_DOWN) {
-                          float cx = v.getWidth()/2f, cy = v.getHeight()/2f, dx = e.getX() - cx, dy = e.getY() - cy, d = (float)Math.sqrt(dx*dx + dy*dy), limit = 45f;
-                          if (d > limit) { dx *= limit/d; dy *= limit/d; }
+                          float cx = v.getWidth()/2f, cy = v.getHeight()/2f, dx = e.getX()-cx, dy = e.getY()-cy, d=(float)Math.sqrt(dx*dx+dy*dy), lim=45f;
+                          if(d>lim){ dx*=lim/d; dy*=lim/d; }
                           stick.setTranslationX(dx); stick.setTranslationY(dy);
-                          ren.jX = dx/limit; ren.jY = dy/limit;
-                      } else { stick.setTranslationX(0); stick.setTranslationY(0); ren.jX = 0; ren.jY = 0; }
+                          ren.jX=dx/lim; ren.jY=dy/lim;
+                      } else { stick.setTranslationX(0); stick.setTranslationY(0); ren.jX=0; ren.jY=0; }
                       return true;
                   });
 
                   findViewById(R.id.look_zone).setOnTouchListener((v, e) -> {
                       if (e.getAction() == MotionEvent.ACTION_DOWN) { lx = e.getX(); ly = e.getY(); }
                       else if (e.getAction() == MotionEvent.ACTION_MOVE) {
-                          ren.rY += (e.getX() - lx) * 0.25f;
-                          ren.rX = Math.max(-85, Math.min(85, ren.rX - (e.getY() - ly) * 0.25f));
+                          ren.rY += (e.getX()-lx)*0.25f;
+                          ren.rX = Math.max(-85, Math.min(85, ren.rX-(e.getY()-ly)*0.25f));
                           lx = e.getX(); ly = e.getY();
                       }
                       return true;
@@ -250,7 +232,7 @@ jobs:
           echo "allprojects { repositories { google(); mavenCentral() } }" >> build.gradle
           cat <<EOF > app/build.gradle
           plugins { id 'com.android.application' }
-          android { namespace 'com.enjoer.game'; compileSdk 34; defaultConfig { applicationId 'com.enjoer.game'; minSdk 24; targetSdk 34; versionCode 1; versionName "1.0" } }
+          android { namespace 'com.enjoer.game'; compileSdk 34; defaultConfig { applicationId 'com.enjoer.game'; minSdk 24; targetSdk 34; versionCode 1; versionName "1.0.1" } }
           dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }
           EOF
 
@@ -259,8 +241,8 @@ jobs:
           gradle wrapper --gradle-version 8.5
           ./gradlew assembleDebug
 
-      - name: Upload Artifact
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Enjoer_1.0_Final
+          name: Enjoer_v1.0.1_Fixed
           path: app/build/outputs/apk/debug/app-debug.apk
