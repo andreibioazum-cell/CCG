@@ -1,4 +1,4 @@
-name: Roblox_GLES3_Continuous_Movement_v8
+name: Roblox_GLES3_Physics_Jump_v9
 on: [push, workflow_dispatch]
 
 jobs:
@@ -25,15 +25,15 @@ jobs:
           echo "android.useAndroidX=true" > gradle.properties
           echo "android.enableJetifier=true" >> gradle.properties
 
-          # --- Графика Джойстика ---
+          # --- Графика кнопок ---
           cat <<EOF > app/src/main/res/drawable/joy_base.xml
           <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
-              <solid android:color="#33FFFFFF"/><stroke android:width="2dp" android:color="#66FFFFFF"/>
+              <solid android:color="#22FFFFFF"/><stroke android:width="2dp" android:color="#44FFFFFF"/>
           </shape>
           EOF
-          cat <<EOF > app/src/main/res/drawable/joy_stick.xml
+          cat <<EOF > app/src/main/res/drawable/btn_jump.xml
           <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
-              <solid android:color="#CCFFFFFF"/>
+              <solid android:color="#66FFFFFF"/><stroke android:width="2dp" android:color="#FFFFFF"/>
           </shape>
           EOF
 
@@ -43,28 +43,32 @@ jobs:
           </style></resources>
           EOF
 
-          # --- Интерфейс ---
+          # --- Интерфейс с кнопкой прыжка ---
           cat <<EOF > app/src/main/res/layout/activity_main.xml
           <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
               android:layout_width="match_parent" android:layout_height="match_parent">
               <android.opengl.GLSurfaceView android:id="@+id/gl_view"
                   android:layout_width="match_parent" android:layout_height="match_parent" />
               
-              <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal">
-                  <RelativeLayout android:id="@+id/move_zone" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent">
-                      <FrameLayout android:id="@+id/joy_container" android:layout_width="140dp" android:layout_height="140dp"
-                          android:layout_alignParentBottom="true" android:layout_centerHorizontal="true" android:layout_marginBottom="60dp"
-                          android:background="@drawable/joy_base">
-                          <View android:id="@+id/joy_center" android:layout_width="60dp" android:layout_height="60dp"
-                              android:layout_gravity="center" android:background="@drawable/joy_stick" />
-                      </FrameLayout>
-                  </RelativeLayout>
-                  <View android:id="@+id/look_zone" android:layout_width="0dp" android:layout_weight="1.5" android:layout_height="match_parent" />
-              </LinearLayout>
+              <View android:id="@+id/move_zone" android:layout_width="300dp" android:layout_height="match_parent" android:layout_alignParentLeft="true" />
+              
+              <FrameLayout android:id="@+id/joy_container" android:layout_width="140dp" android:layout_height="140dp"
+                  android:layout_alignParentBottom="true" android:layout_marginLeft="50dp" android:layout_marginBottom="50dp"
+                  android:background="@drawable/joy_base" android:visibility="invisible">
+                  <View android:id="@+id/joy_center" android:layout_width="60dp" android:layout_height="60dp"
+                      android:layout_gravity="center" android:background="@drawable/btn_jump" />
+              </FrameLayout>
+
+              <Button android:id="@+id/btn_jump" android:layout_width="80dp" android:layout_height="80dp"
+                  android:layout_alignParentRight="true" android:layout_alignParentBottom="true"
+                  android:layout_marginRight="60dp" android:layout_marginBottom="80dp"
+                  android:background="@drawable/btn_jump" android:text="JUMP" android:textColor="#FFF" />
+
+              <View android:id="@+id/look_zone" android:layout_width="match_parent" android:layout_height="match_parent" />
           </RelativeLayout>
           EOF
 
-          # --- Renderer (Движение в каждом кадре) ---
+          # --- Renderer (Гравитация и Коллизии) ---
           cat <<EOF > app/src/main/java/com/dimos/roblox/GameRenderer.java
           package com.dimos.roblox;
           import android.opengl.GLES30;
@@ -76,8 +80,9 @@ jobs:
 
           public class GameRenderer implements GLSurfaceView.Renderer {
               private final float[] mvpM = new float[16], pM = new float[16], vM = new float[16];
-              public float pX=0, pY=2.5f, pZ=15, rotY=0, rotX=0;
-              public float joyDX=0, joyDY=0; // Смещение джойстика
+              public float pX=0, pY=5f, pZ=15, rotY=0, rotX=0;
+              public float joyDX=0, joyDY=0, velY=0;
+              private boolean isGrounded = false;
               private int program;
               private FloatBuffer boxBuf;
 
@@ -101,7 +106,7 @@ jobs:
               }
 
               @Override public void onDrawFrame(GL10 gl) {
-                  updatePhysics(); // Двигаем персонажа КАЖДЫЙ кадр
+                  updatePhysics();
                   GLES30.glClear(16640);
                   float vx = (float)(Math.sin(Math.toRadians(rotY)) * Math.cos(Math.toRadians(rotX)));
                   float vy = (float)Math.sin(Math.toRadians(rotX));
@@ -117,20 +122,37 @@ jobs:
               }
 
               private void updatePhysics() {
-                  if (Math.abs(joyDX) < 0.01f && Math.abs(joyDY) < 0.01f) return;
-                  float speed = 0.12f;
-                  float rad = (float)Math.toRadians(rotY);
-                  float fX = (float)Math.sin(rad), fZ = (float)-Math.cos(rad);
-                  float sX = (float)Math.cos(rad), sZ = (float)Math.sin(rad);
-                  pX += (fX * -joyDY + sX * joyDX) * speed;
-                  pZ += (fZ * -joyDY + sZ * joyDX) * speed;
+                  // Гравитация
+                  velY -= 0.015f; 
+                  pY += velY;
+
+                  // Простая проверка коллизии с платформой (центр 0,0, размер 10x10, высота 1)
+                  if (pX > -5.5f && pX < 5.5f && pZ > -5.5f && pZ < 5.5f) {
+                      if (pY <= 2.5f && pY > 1.0f) { // 2.5 - уровень "глаз" над платформой
+                          pY = 2.5f; velY = 0; isGrounded = true;
+                      }
+                  } else {
+                      isGrounded = false;
+                  }
+
+                  // Смерть/Респаун при падении
+                  if (pY < -20f) { pX=0; pY=10f; pZ=15; velY=0; }
+
+                  // Ходьба
+                  if (Math.abs(joyDX) > 0.01f || Math.abs(joyDY) > 0.01f) {
+                      float speed = 0.15f;
+                      float rad = (float)Math.toRadians(rotY);
+                      pX += ((float)Math.sin(rad) * -joyDY + (float)Math.cos(rad) * joyDX) * speed;
+                      pZ += ((float)-Math.cos(rad) * -joyDY + (float)Math.sin(rad) * joyDX) * speed;
+                  }
               }
 
+              public void jump() { if(isGrounded) velY = 0.35f; }
               private int sh(int t, String s){int i=GLES30.glCreateShader(t);GLES30.glShaderSource(i,s);GLES30.glCompileShader(i);return i;}
           }
           EOF
 
-          # --- MainActivity ---
+          # --- MainActivity (Улучшенный джойстик) ---
           cat <<EOF > app/src/main/java/com/dimos/roblox/MainActivity.java
           package com.dimos.roblox;
           import android.os.Bundle;
@@ -141,7 +163,7 @@ jobs:
           public class MainActivity extends AppCompatActivity {
               private GameRenderer ren;
               private float lLookX, lLookY, sJoyX, sJoyY;
-              private View stick;
+              private View stick, joyCont;
 
               @Override
               protected void onCreate(Bundle savedInstanceState) {
@@ -151,20 +173,25 @@ jobs:
                   gv.setEGLContextClientVersion(3);
                   ren = new GameRenderer();
                   gv.setRenderer(ren);
+                  
                   stick = findViewById(R.id.joy_center);
+                  joyCont = findViewById(R.id.joy_container);
+
+                  findViewById(R.id.btn_jump).setOnClickListener(v -> ren.jump());
 
                   findViewById(R.id.move_zone).setOnTouchListener((v, e) -> {
                       if (e.getAction() == MotionEvent.ACTION_DOWN) {
                           sJoyX = e.getX(); sJoyY = e.getY();
+                          joyCont.setX(sJoyX - 70); joyCont.setY(sJoyY - 70);
+                          joyCont.setVisibility(View.VISIBLE);
                       } else if (e.getAction() == MotionEvent.ACTION_MOVE) {
                           float dx = e.getX() - sJoyX, dy = e.getY() - sJoyY;
                           float dist = (float)Math.sqrt(dx*dx + dy*dy);
                           if (dist > 70) { dx *= 70/dist; dy *= 70/dist; }
                           stick.setTranslationX(dx); stick.setTranslationY(dy);
-                          // Передаем отклонение в рендерер (нормализованное 0..1)
                           ren.joyDX = dx / 70f; ren.joyDY = dy / 70f;
                       } else {
-                          stick.setTranslationX(0); stick.setTranslationY(0);
+                          joyCont.setVisibility(View.INVISIBLE);
                           ren.joyDX = 0; ren.joyDY = 0;
                       }
                       return true;
@@ -187,7 +214,7 @@ jobs:
           # --- Манифест и Gradle ---
           cat <<EOF > app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="Roblox Physics" android:theme="@style/AppTheme">
+              <application android:label="Roblox Physics+" android:theme="@style/AppTheme">
                   <activity android:name="com.dimos.roblox.MainActivity" android:exported="true" android:screenOrientation="landscape">
                       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
                   </activity>
@@ -211,5 +238,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Roblox_V8_Continuous
+          name: Roblox_V9_Jump_Gravity
           path: app/build/outputs/apk/debug/app-debug.apk
