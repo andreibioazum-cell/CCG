@@ -21,7 +21,14 @@ jobs:
           mkdir -p app/src/main/res/values
           mkdir -p app/src/main/res/drawable
 
-          # --- Полноэкранная тема ---
+          # --- Gradle properties ---
+          cat <<EOF > gradle.properties
+          org.gradle.jvmargs=-Xmx2048m
+          android.useAndroidX=true
+          android.enableJetifier=true
+          EOF
+
+          # --- Тема ---
           cat <<EOF > app/src/main/res/values/themes.xml
           <resources>
               <style name="GameTheme" parent="Theme.AppCompat.Light.NoActionBar">
@@ -31,7 +38,7 @@ jobs:
           </resources>
           EOF
 
-          # --- Кнопки управления ---
+          # --- Кнопки ---
           cat <<EOF > app/src/main/res/drawable/btn_round.xml
           <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
               <corners android:radius="12dp"/>
@@ -40,8 +47,9 @@ jobs:
           </shape>
           EOF
 
-          # --- Layout с джойстиком ---
+          # --- Layout ---
           cat <<EOF > app/src/main/res/layout/activity_main.xml
+          <?xml version="1.0" encoding="utf-8"?>
           <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
               android:layout_width="match_parent"
               android:layout_height="match_parent">
@@ -60,6 +68,18 @@ jobs:
                       android:layout_width="match_parent"
                       android:layout_height="match_parent" />
                   
+                  <Button
+                      android:id="@+id/btn_respawn"
+                      android:layout_width="80dp"
+                      android:layout_height="40dp"
+                      android:layout_alignParentTop="true"
+                      android:layout_centerHorizontal="true"
+                      android:layout_marginTop="20dp"
+                      android:text="RESPAWN"
+                      android:textSize="12sp"
+                      android:background="@drawable/btn_round"
+                      android:textColor="#0F0" />
+                  
                   <FrameLayout
                       android:id="@+id/joy_base"
                       android:layout_width="120dp"
@@ -77,8 +97,7 @@ jobs:
                       android:layout_alignTop="@id/joy_base"
                       android:layout_marginLeft="35dp"
                       android:layout_marginTop="35dp"
-                      android:background="#0F0"
-                      android:alpha="0.8" />
+                      android:background="#0F0" />
                   
                   <Button
                       android:id="@+id/btn_jump"
@@ -86,147 +105,153 @@ jobs:
                       android:layout_height="70dp"
                       android:layout_alignParentRight="true"
                       android:layout_alignParentBottom="true"
-                      android:layout_margin="30dp"
-                      android:text="⬆"
-                      android:textSize="24sp"
+                      android:layout_marginRight="30dp"
+                      android:layout_marginBottom="30dp"
+                      android:text="JUMP"
+                      android:textSize="16sp"
                       android:background="@drawable/btn_round"
                       android:textColor="#0F0" />
               </RelativeLayout>
           </FrameLayout>
           EOF
 
-          # --- ЯДРО ДВИЖКА (OpenGL ES 3.0) ---
+          # --- GameRenderer (полный движок) ---
           cat <<EOF > app/src/main/java/com/enjoer/engine/GameRenderer.java
           package com.enjoer.engine;
           
-          import android.opengl.GLES30;
+          import android.opengl.GLES20;
           import android.opengl.GLSurfaceView;
           import android.opengl.Matrix;
-          import java.nio.*;
+          import java.nio.ByteBuffer;
+          import java.nio.ByteOrder;
+          import java.nio.FloatBuffer;
           import javax.microedition.khronos.egl.EGLConfig;
           import javax.microedition.khronos.opengles.GL10;
 
           public class GameRenderer implements GLSurfaceView.Renderer {
-              // Позиция игрока
               public float playerX = 0, playerY = 2.5f, playerZ = 5;
-              // Поворот камеры
               public float rotY = 0, rotX = 0;
-              // Управление
               public float joyX = 0, joyY = 0;
-              // Физика
+              
               private float velocityY = 0;
               private boolean onGround = true;
               
-              // Матрицы
               private final float[] projectionMatrix = new float[16];
               private final float[] viewMatrix = new float[16];
               private final float[] modelMatrix = new float[16];
               
-              // Данные куба
               private FloatBuffer vertexBuffer;
               private FloatBuffer normalBuffer;
               private int program;
               
-              // Позиция света
+              private int uMVPMatrixHandle;
+              private int uModelMatrixHandle;
+              private int uColorHandle;
+              private int uLightPosHandle;
+              private int uCameraPosHandle;
+              
               private final float[] lightPos = {15, 20, 10};
+              
+              private final float[] vertices = {
+                  // front
+                  -0.5f, 0.5f, 0.5f,  -0.5f,-0.5f, 0.5f,   0.5f, 0.5f, 0.5f,   0.5f,-0.5f, 0.5f,
+                  // back
+                  -0.5f, 0.5f,-0.5f,  -0.5f,-0.5f,-0.5f,   0.5f, 0.5f,-0.5f,   0.5f,-0.5f,-0.5f,
+                  // top
+                  -0.5f, 0.5f,-0.5f,  -0.5f, 0.5f, 0.5f,   0.5f, 0.5f,-0.5f,   0.5f, 0.5f, 0.5f,
+                  // bottom
+                  -0.5f,-0.5f,-0.5f,  -0.5f,-0.5f, 0.5f,   0.5f,-0.5f,-0.5f,   0.5f,-0.5f, 0.5f,
+                  // left
+                  -0.5f, 0.5f,-0.5f,  -0.5f,-0.5f,-0.5f,  -0.5f, 0.5f, 0.5f,  -0.5f,-0.5f, 0.5f,
+                  // right
+                   0.5f, 0.5f,-0.5f,   0.5f,-0.5f,-0.5f,   0.5f, 0.5f, 0.5f,   0.5f,-0.5f, 0.5f
+              };
+              
+              private final float[] normals = {
+                  0,0,1, 0,0,1, 0,0,1, 0,0,1,
+                  0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1,
+                  0,1,0, 0,1,0, 0,1,0, 0,1,0,
+                  0,-1,0, 0,-1,0, 0,-1,0, 0,-1,0,
+                  -1,0,0, -1,0,0, -1,0,0, -1,0,0,
+                  1,0,0, 1,0,0, 1,0,0, 1,0,0
+              };
 
               @Override
               public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-                  GLES30.glEnable(GLES30.GL_DEPTH_TEST);
-                  GLES30.glEnable(GLES30.GL_CULL_FACE);
+                  GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+                  GLES20.glEnable(GLES20.GL_CULL_FACE);
                   
-                  // Шейдеры
-                  String vertexShader = 
-                      "#version 300 es\n" +
-                      "layout(location=0) in vec3 aPosition;\n" +
-                      "layout(location=1) in vec3 aNormal;\n" +
-                      "uniform mat4 uMVP;\n" +
-                      "uniform mat4 uModel;\n" +
-                      "out vec3 vNormal;\n" +
-                      "out vec3 vWorldPos;\n" +
-                      "void main() {\n" +
-                      "  vWorldPos = vec3(uModel * vec4(aPosition, 1.0));\n" +
-                      "  vNormal = normalize(mat3(uModel) * aNormal);\n" +
-                      "  gl_Position = uMVP * vec4(aPosition, 1.0);\n" +
+                  String vertexShaderCode =
+                      "uniform mat4 uMVPMatrix;" +
+                      "uniform mat4 uModelMatrix;" +
+                      "attribute vec4 vPosition;" +
+                      "attribute vec3 vNormal;" +
+                      "varying vec3 vWorldPos;" +
+                      "varying vec3 vNormalOut;" +
+                      "void main() {" +
+                      "  vec4 worldPos = uModelMatrix * vPosition;" +
+                      "  vWorldPos = worldPos.xyz;" +
+                      "  vNormalOut = normalize(mat3(uModelMatrix) * vNormal);" +
+                      "  gl_Position = uMVPMatrix * vPosition;" +
                       "}";
                   
-                  String fragmentShader =
-                      "#version 300 es\n" +
-                      "precision mediump float;\n" +
-                      "in vec3 vNormal;\n" +
-                      "in vec3 vWorldPos;\n" +
-                      "uniform vec3 uLightPos;\n" +
-                      "uniform vec3 uCameraPos;\n" +
-                      "uniform vec4 uColor;\n" +
-                      "out vec4 fragColor;\n" +
-                      "void main() {\n" +
-                      "  vec3 normal = normalize(vNormal);\n" +
-                      "  vec3 lightDir = normalize(uLightPos - vWorldPos);\n" +
-                      "  float diff = max(dot(normal, lightDir), 0.3);\n" +
-                      "  vec3 viewDir = normalize(uCameraPos - vWorldPos);\n" +
-                      "  vec3 reflectDir = reflect(-lightDir, normal);\n" +
-                      "  float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);\n" +
-                      "  vec3 ambient = uColor.rgb * 0.3;\n" +
-                      "  vec3 diffuse = uColor.rgb * diff;\n" +
-                      "  vec3 specular = vec3(0.5) * spec;\n" +
-                      "  float dist = length(uCameraPos - vWorldPos);\n" +
-                      "  float fog = clamp((dist - 15.0) / 40.0, 0.0, 0.7);\n" +
-                      "  vec3 finalColor = ambient + diffuse + specular;\n" +
-                      "  vec3 fogColor = vec3(0.05, 0.08, 0.12);\n" +
-                      "  fragColor = vec4(mix(finalColor, fogColor, fog), 1.0);\n" +
+                  String fragmentShaderCode =
+                      "precision mediump float;" +
+                      "uniform vec3 uLightPos;" +
+                      "uniform vec3 uCameraPos;" +
+                      "uniform vec4 uColor;" +
+                      "varying vec3 vWorldPos;" +
+                      "varying vec3 vNormalOut;" +
+                      "void main() {" +
+                      "  vec3 normal = normalize(vNormalOut);" +
+                      "  vec3 lightDir = normalize(uLightPos - vWorldPos);" +
+                      "  float diff = max(dot(normal, lightDir), 0.3);" +
+                      "  vec3 viewDir = normalize(uCameraPos - vWorldPos);" +
+                      "  vec3 reflectDir = reflect(-lightDir, normal);" +
+                      "  float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);" +
+                      "  vec3 ambient = uColor.rgb * 0.3;" +
+                      "  vec3 diffuse = uColor.rgb * diff;" +
+                      "  vec3 specular = vec3(0.5) * spec;" +
+                      "  gl_FragColor = vec4(ambient + diffuse + specular, 1.0);" +
                       "}";
                   
-                  program = createProgram(vertexShader, fragmentShader);
+                  int vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, vertexShaderCode);
+                  int fragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentShaderCode);
                   
-                  // Геометрия куба (24 вершины)
-                  float[] vertices = {
-                      // перед
-                      -0.5f, 0.5f, 0.5f,  -0.5f,-0.5f, 0.5f,   0.5f, 0.5f, 0.5f,   0.5f,-0.5f, 0.5f,
-                      // зад
-                      -0.5f, 0.5f,-0.5f,  -0.5f,-0.5f,-0.5f,   0.5f, 0.5f,-0.5f,   0.5f,-0.5f,-0.5f,
-                      // верх
-                      -0.5f, 0.5f,-0.5f,  -0.5f, 0.5f, 0.5f,   0.5f, 0.5f,-0.5f,   0.5f, 0.5f, 0.5f,
-                      // низ
-                      -0.5f,-0.5f,-0.5f,  -0.5f,-0.5f, 0.5f,   0.5f,-0.5f,-0.5f,   0.5f,-0.5f, 0.5f,
-                      // лево
-                      -0.5f, 0.5f,-0.5f,  -0.5f,-0.5f,-0.5f,  -0.5f, 0.5f, 0.5f,  -0.5f,-0.5f, 0.5f,
-                      // право
-                       0.5f, 0.5f,-0.5f,   0.5f,-0.5f,-0.5f,   0.5f, 0.5f, 0.5f,   0.5f,-0.5f, 0.5f
-                  };
+                  program = GLES20.glCreateProgram();
+                  GLES20.glAttachShader(program, vertexShader);
+                  GLES20.glAttachShader(program, fragmentShader);
+                  GLES20.glLinkProgram(program);
                   
-                  float[] normals = {
-                      0,0,1, 0,0,1, 0,0,1, 0,0,1,
-                      0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1,
-                      0,1,0, 0,1,0, 0,1,0, 0,1,0,
-                      0,-1,0, 0,-1,0, 0,-1,0, 0,-1,0,
-                      -1,0,0, -1,0,0, -1,0,0, -1,0,0,
-                      1,0,0, 1,0,0, 1,0,0, 1,0,0
-                  };
+                  uMVPMatrixHandle = GLES20.glGetUniformLocation(program, "uMVPMatrix");
+                  uModelMatrixHandle = GLES20.glGetUniformLocation(program, "uModelMatrix");
+                  uColorHandle = GLES20.glGetUniformLocation(program, "uColor");
+                  uLightPosHandle = GLES20.glGetUniformLocation(program, "uLightPos");
+                  uCameraPosHandle = GLES20.glGetUniformLocation(program, "uCameraPos");
                   
                   vertexBuffer = ByteBuffer.allocateDirect(vertices.length * 4)
-                      .order(ByteOrder.nativeOrder()).asFloatBuffer().put(vertices);
-                  vertexBuffer.position(0);
+                      .order(ByteOrder.nativeOrder()).asFloatBuffer();
+                  vertexBuffer.put(vertices).position(0);
                   
                   normalBuffer = ByteBuffer.allocateDirect(normals.length * 4)
-                      .order(ByteOrder.nativeOrder()).asFloatBuffer().put(normals);
-                  normalBuffer.position(0);
+                      .order(ByteOrder.nativeOrder()).asFloatBuffer();
+                  normalBuffer.put(normals).position(0);
               }
 
               @Override
               public void onSurfaceChanged(GL10 gl, int width, int height) {
-                  GLES30.glViewport(0, 0, width, height);
+                  GLES20.glViewport(0, 0, width, height);
                   float aspect = (float) width / height;
-                  Matrix.perspectiveM(projectionMatrix, 0, 60, aspect, 0.1f, 200);
+                  Matrix.frustumM(projectionMatrix, 0, -aspect, aspect, -1, 1, 1, 100);
               }
 
               @Override
               public void onDrawFrame(GL10 gl) {
                   updatePhysics();
                   
-                  GLES30.glClearColor(0.05f, 0.08f, 0.12f, 1);
-                  GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
+                  GLES20.glClearColor(0.05f, 0.08f, 0.12f, 1);
+                  GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
                   
-                  // Камера
                   float cx = (float) Math.sin(Math.toRadians(rotY)) * (float) Math.cos(Math.toRadians(rotX));
                   float cy = (float) Math.sin(Math.toRadians(rotX));
                   float cz = (float) -Math.cos(Math.toRadians(rotY)) * (float) Math.cos(Math.toRadians(rotX));
@@ -236,29 +261,23 @@ jobs:
                       playerX + cx, playerY + 1.5f + cy, playerZ + cz,
                       0, 1, 0);
                   
-                  GLES30.glUseProgram(program);
+                  GLES20.glUseProgram(program);
                   
-                  int uMVPLoc = GLES30.glGetUniformLocation(program, "uMVP");
-                  int uModelLoc = GLES30.glGetUniformLocation(program, "uModel");
-                  int uColorLoc = GLES30.glGetUniformLocation(program, "uColor");
-                  int uLightPosLoc = GLES30.glGetUniformLocation(program, "uLightPos");
-                  int uCameraPosLoc = GLES30.glGetUniformLocation(program, "uCameraPos");
+                  GLES20.glUniform3f(uLightPosHandle, lightPos[0], lightPos[1], lightPos[2]);
+                  GLES20.glUniform3f(uCameraPosHandle, playerX, playerY + 1.5f, playerZ);
                   
-                  GLES30.glUniform3f(uLightPosLoc, lightPos[0], lightPos[1], lightPos[2]);
-                  GLES30.glUniform3f(uCameraPosLoc, playerX, playerY + 1.5f, playerZ);
-                  
-                  GLES30.glVertexAttribPointer(0, 3, GLES30.GL_FLOAT, false, 0, vertexBuffer);
-                  GLES30.glEnableVertexAttribArray(0);
-                  GLES30.glVertexAttribPointer(1, 3, GLES30.GL_FLOAT, false, 0, normalBuffer);
-                  GLES30.glEnableVertexAttribArray(1);
+                  GLES20.glVertexAttribPointer(0, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+                  GLES20.glEnableVertexAttribArray(0);
+                  GLES20.glVertexAttribPointer(1, 3, GLES20.GL_FLOAT, false, 0, normalBuffer);
+                  GLES20.glEnableVertexAttribArray(1);
                   
                   // Пол
                   Matrix.setIdentityM(modelMatrix, 0);
                   Matrix.scaleM(modelMatrix, 0, 60, 0.2f, 60);
                   Matrix.translateM(modelMatrix, 0, 0, -1, 0);
-                  drawObject(uMVPLoc, uModelLoc, uColorLoc, 0.2f, 0.3f, 0.4f);
+                  drawObject(0.2f, 0.3f, 0.4f);
                   
-                  // Стены/препятствия
+                  // Препятствия
                   float[][] obstacles = {
                       {-8, 1, -5, 2, 2, 2, 0.8f, 0.2f, 0.2f},
                       {8, 1, -5, 2, 2, 2, 0.8f, 0.2f, 0.2f},
@@ -273,41 +292,35 @@ jobs:
                       Matrix.setIdentityM(modelMatrix, 0);
                       Matrix.translateM(modelMatrix, 0, obs[0], obs[1], obs[2]);
                       Matrix.scaleM(modelMatrix, 0, obs[3], obs[4], obs[5]);
-                      drawObject(uMVPLoc, uModelLoc, uColorLoc, obs[6], obs[7], obs[8]);
+                      drawObject(obs[6], obs[7], obs[8]);
                   }
-                  
-                  // Игрок (отображается в отражении, но сам не рисуем)
               }
               
-              private void drawObject(int uMVPLoc, int uModelLoc, int uColorLoc, float r, float g, float b) {
+              private void drawObject(float r, float g, float b) {
                   float[] mvpMatrix = new float[16];
                   Matrix.multiplyMM(mvpMatrix, 0, viewMatrix, 0, modelMatrix, 0);
                   Matrix.multiplyMM(mvpMatrix, 0, projectionMatrix, 0, mvpMatrix, 0);
                   
-                  GLES30.glUniformMatrix4fv(uModelLoc, 1, false, modelMatrix, 0);
-                  GLES30.glUniformMatrix4fv(uMVPLoc, 1, false, mvpMatrix, 0);
-                  GLES30.glUniform4f(uColorLoc, r, g, b, 1);
+                  GLES20.glUniformMatrix4fv(uModelMatrixHandle, 1, false, modelMatrix, 0);
+                  GLES20.glUniformMatrix4fv(uMVPMatrixHandle, 1, false, mvpMatrix, 0);
+                  GLES20.glUniform4f(uColorHandle, r, g, b, 1);
                   
                   for (int i = 0; i < 6; i++) {
-                      GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, i * 4, 4);
+                      GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, i * 4, 4);
                   }
               }
               
               private void updatePhysics() {
-                  // Движение от джойстика
                   float speed = 0.18f;
                   float rad = (float) Math.toRadians(rotY);
                   playerX += (float)(Math.sin(rad) * -joyY + Math.cos(rad) * joyX) * speed;
                   playerZ += (float)(-Math.cos(rad) * -joyY + Math.sin(rad) * joyX) * speed;
                   
-                  // Гравитация
                   velocityY -= 0.025f;
                   playerY += velocityY;
                   
-                  // Проверка земли и коллизий
                   float groundY = 0;
                   
-                  // Проверка коллизий с препятствиями
                   float[][] obstacles = {
                       {-8, 1, -5, 2, 2, 2},
                       {8, 1, -5, 2, 2, 2},
@@ -326,7 +339,6 @@ jobs:
                           playerZ + 0.5f > oz - od/2 && playerZ - 0.5f < oz + od/2) {
                           
                           if (playerY <= oy + oh && playerY + 1.5f > oy) {
-                              // Откат назад
                               playerX -= (float)(Math.sin(rad) * -joyY + Math.cos(rad) * joyX) * speed;
                               playerZ -= (float)(-Math.cos(rad) * -joyY + Math.sin(rad) * joyX) * speed;
                           }
@@ -345,7 +357,6 @@ jobs:
                       onGround = false;
                   }
                   
-                  // Границы мира
                   playerX = Math.max(-28, Math.min(28, playerX));
                   playerZ = Math.max(-28, Math.min(28, playerZ));
                   
@@ -369,29 +380,20 @@ jobs:
                   velocityY = 0;
               }
               
-              private int createProgram(String vertex, String fragment) {
-                  int vShader = loadShader(GLES30.GL_VERTEX_SHADER, vertex);
-                  int fShader = loadShader(GLES30.GL_FRAGMENT_SHADER, fragment);
-                  int program = GLES30.glCreateProgram();
-                  GLES30.glAttachShader(program, vShader);
-                  GLES30.glAttachShader(program, fShader);
-                  GLES30.glLinkProgram(program);
-                  return program;
-              }
-              
-              private int loadShader(int type, String source) {
-                  int shader = GLES30.glCreateShader(type);
-                  GLES30.glShaderSource(shader, source);
-                  GLES30.glCompileShader(shader);
+              private int loadShader(int type, String shaderCode) {
+                  int shader = GLES20.glCreateShader(type);
+                  GLES20.glShaderSource(shader, shaderCode);
+                  GLES20.glCompileShader(shader);
                   return shader;
               }
           }
           EOF
 
-          # --- MainActivity (управление) ---
+          # --- MainActivity ---
           cat <<EOF > app/src/main/java/com/enjoer/engine/MainActivity.java
           package com.enjoer.engine;
           
+          import android.opengl.GLSurfaceView;
           import android.os.Bundle;
           import android.view.MotionEvent;
           import android.view.View;
@@ -400,7 +402,6 @@ jobs:
           public class MainActivity extends AppCompatActivity {
               private GameRenderer renderer;
               private float lastX, lastY;
-              private float joyBaseX, joyBaseY;
               private View joyStick;
               private float joyLimit = 35;
               
@@ -409,15 +410,14 @@ jobs:
                   super.onCreate(savedInstanceState);
                   setContentView(R.layout.activity_main);
                   
-                  android.opengl.GLSurfaceView glView = findViewById(R.id.gl_view);
-                  glView.setEGLContextClientVersion(3);
+                  GLSurfaceView glView = findViewById(R.id.gl_view);
+                  glView.setEGLContextClientVersion(2);
                   renderer = new GameRenderer();
                   glView.setRenderer(renderer);
                   
                   View joyBase = findViewById(R.id.joy_base);
                   joyStick = findViewById(R.id.joy_stick);
                   
-                  // Джойстик
                   joyBase.setOnTouchListener((v, event) -> {
                       switch (event.getAction()) {
                           case MotionEvent.ACTION_DOWN:
@@ -446,13 +446,9 @@ jobs:
                       return true;
                   });
                   
-                  // Прыжок
                   findViewById(R.id.btn_jump).setOnClickListener(v -> renderer.jump());
-                  
-                  // Кнопка респавна
                   findViewById(R.id.btn_respawn).setOnClickListener(v -> renderer.respawn());
                   
-                  // Зона поворота камеры
                   View lookZone = findViewById(R.id.look_zone);
                   lookZone.setOnTouchListener((v, event) -> {
                       switch (event.getAction()) {
@@ -477,8 +473,11 @@ jobs:
 
           # --- Manifest ---
           cat <<EOF > app/src/main/AndroidManifest.xml
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+              package="com.enjoer.engine">
               <application
+                  android:allowBackup="true"
                   android:label="Enjoer Engine"
                   android:theme="@style/GameTheme">
                   <activity
@@ -494,28 +493,42 @@ jobs:
           </manifest>
           EOF
 
-          # --- Gradle конфигурация ---
+          # --- Gradle files ---
           echo "include ':app'" > settings.gradle
           
           cat <<EOF > build.gradle
           buildscript {
-              repositories { google(); mavenCentral() }
-              dependencies { classpath 'com.android.tools.build:gradle:8.2.2' }
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+              dependencies {
+                  classpath 'com.android.tools.build:gradle:7.4.2'
+              }
           }
           allprojects {
-              repositories { google(); mavenCentral() }
+              repositories {
+                  google()
+                  mavenCentral()
+              }
           }
           EOF
           
           cat <<EOF > app/build.gradle
-          plugins { id 'com.android.application' }
+          apply plugin: 'com.android.application'
           android {
-              namespace 'com.enjoer.engine'
-              compileSdk 34
+              compileSdk 33
               defaultConfig {
-                  applicationId 'com.enjoer.engine'
-                  minSdk 24
-                  targetSdk 34
+                  applicationId "com.enjoer.engine"
+                  minSdk 21
+                  targetSdk 33
+                  versionCode 1
+                  versionName "1.0"
+              }
+              buildTypes {
+                  debug {
+                      minifyEnabled false
+                  }
               }
           }
           dependencies {
@@ -525,12 +538,15 @@ jobs:
 
       - name: Build APK
         run: |
-          gradle wrapper --gradle-version 8.5
+          chmod +x gradlew 2>/dev/null || true
+          if [ ! -f gradlew ]; then
+            gradle wrapper --gradle-version 7.5
+          fi
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Enjoer_Engine
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: app/build/outputs/apk/debug/*.apk
