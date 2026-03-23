@@ -1,4 +1,4 @@
-name: Enjoer_Pro_Stable_v3
+name: Enjoer_1.0_Final_Stable
 on: [push, workflow_dispatch]
 
 jobs:
@@ -14,187 +14,198 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # Официальный способ установить конкретную версию Gradle
+      # ИСПОЛЬЗУЕМ ОФИЦИАЛЬНЫЙ ЭКШЕН ДЛЯ УСТАНОВКИ GRADLE 8.2.2
       - name: Setup Gradle 8.2.2
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: '8.2.2'
 
-      - name: Create Project Files
+      - name: Create Project
         run: |
           mkdir -p app/src/main/java/com/enjoer/game
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
           mkdir -p app/src/main/res/drawable
 
-          # Настройки AndroidX
+          # Фикс AndroidX (Обязательно для новых версий Gradle)
           cat <<EOF > gradle.properties
           android.useAndroidX=true
           android.enableJetifier=true
           EOF
 
-          cat <<EOF > settings.gradle
-          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
-          dependencyResolutionManagement { 
-              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-              repositories { google(); mavenCentral() } 
-          }
-          include ':app'
-          EOF
-
-          cat <<EOF > build.gradle
-          buildscript {
-              repositories { google(); mavenCentral() }
-              dependencies { classpath 'com.android.tools.build:gradle:8.2.2' }
-          }
-          EOF
-
-          cat <<EOF > app/build.gradle
-          plugins { id 'com.android.application' }
-          android {
-              namespace 'com.enjoer.game'
-              compileSdk 34
-              defaultConfig {
-                  applicationId 'com.enjoer.game'
-                  minSdk 24
-                  targetSdk 34
-                  versionCode 1
-                  versionName "3.0"
-              }
-          }
-          dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }
-          EOF
-
-          # UI (Кнопка прыжка и Джойстик)
           cat <<EOF > app/src/main/res/values/themes.xml
           <resources><style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
-          <item name="android:windowFullscreen">true</item></style></resources>
+              <item name="android:windowFullscreen">true</item>
+          </style></resources>
           EOF
-          echo '<shape xmlns:android="http://schemas.android.com/apk/res/android"><solid android:color="#AA000000"/><corners android:radius="50dp"/></shape>' > app/src/main/res/drawable/ui_circle.xml
 
-          # Весь Java код (Renderer и MainActivity) мы оставляем прежним, так как он рабочий
+          # --- UI Ресурсы (Black & Green Neo) ---
+          cat <<EOF > app/src/main/res/drawable/btn_round.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+              <corners android:radius="12dp"/><solid android:color="#000"/><stroke android:width="1dp" android:color="#0F0"/>
+          </shape>
+          EOF
+          cat <<EOF > app/src/main/res/drawable/joy_base.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+              <solid android:color="#CC000000"/> <stroke android:width="2dp" android:color="#00FF00"/> </shape>
+          EOF
+          cat <<EOF > app/src/main/res/drawable/joy_stick.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+              <solid android:color="#00FF00"/> </shape>
+          EOF
+
+          # --- Layout ---
+          cat <<EOF > app/src/main/res/layout/activity_main.xml
+          <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent" android:layout_height="match_parent" android:background="#05101F">
+              <android.opengl.GLSurfaceView android:id="@+id/gl_view"
+                  android:layout_width="match_parent" android:layout_height="match_parent" />
+              <RelativeLayout android:layout_width="match_parent" android:layout_height="match_parent">
+                  <View android:id="@+id/look_zone" android:layout_width="match_parent" android:layout_height="match_parent" />
+                  <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
+                      android:layout_alignParentTop="true" android:layout_centerHorizontal="true" android:layout_marginTop="10dp">
+                      <Button android:id="@+id/btn_respawn" android:layout_width="100dp" android:layout_height="40dp"
+                          android:text="RESPAWN" android:textSize="10sp" android:background="@drawable/btn_round" android:textColor="#0F0"/>
+                  </LinearLayout>
+                  <FrameLayout android:id="@+id/joy_base" android:layout_width="140dp" android:layout_height="140dp"
+                      android:layout_alignParentBottom="true" android:layout_marginLeft="40dp" android:layout_marginBottom="40dp"
+                      android:background="@drawable/joy_base" />
+                  <View android:id="@+id/joy_stick" android:layout_width="60dp" android:layout_height="60dp"
+                      android:layout_alignLeft="@id/joy_base" android:layout_alignTop="@id/joy_base"
+                      android:layout_marginLeft="40dp" android:layout_marginTop="40dp"
+                      android:background="@drawable/joy_stick" />
+                  <Button android:id="@+id/btn_jump" android:layout_width="100dp" android:layout_height="100dp"
+                      android:layout_alignParentRight="true" android:layout_alignParentBottom="true"
+                      android:layout_margin="40dp" android:text="JUMP" android:background="@drawable/btn_round" android:textColor="#FFF"/>
+              </RelativeLayout>
+          </FrameLayout>
+          EOF
+
+          # --- Renderer ---
           cat <<EOF > app/src/main/java/com/enjoer/game/GameRenderer.java
           package com.enjoer.game;
           import android.opengl.GLES30;
           import android.opengl.GLSurfaceView;
           import android.opengl.Matrix;
           import java.nio.*;
-          import java.util.ArrayList;
           import javax.microedition.khronos.egl.EGLConfig;
           import javax.microedition.khronos.opengles.GL10;
 
           public class GameRenderer implements GLSurfaceView.Renderer {
               private final float[] proj=new float[16], view=new float[16], model=new float[16];
-              public float pX=0, pY=5f, pZ=5, rY=0, rX=0, jX=0, jY=0, vY=0, anim=0;
+              public float pX=0, pY=4, pZ=10, rY=0, rX=0, jX=0, jY=0, vY=0;
               private int prog;
-              private FloatBuffer vBuf;
-              
-              public static class Shape {
-                  float x,y,z,sx,sy,sz,r,g,b;
-                  Shape(float x,float y,float z,float sx,float sy,float sz,float r,float g,float b)
-                  {this.x=x;this.y=y;this.z=z;this.sx=sx;this.sy=sy;this.sz=sz;this.r=r;this.g=g;this.b=b;}
-                  boolean check(float px,float py,float pz)
-                  {return px>x-sx/2-0.4f && px<x+sx/2+0.4f && pz>z-sz/2-0.4f && pz<z+sz/2+0.4f && py>y-sy/2-2.1f && py<y+sy/2;}
-              }
-              private ArrayList<Shape> scene = new ArrayList<>();
+              private FloatBuffer vBuf, nBuf;
+              private float[] lightP = {20.0f, 30.0f, -10.0f};
 
               @Override
               public void onSurfaceCreated(GL10 gl, EGLConfig config) {
                   GLES30.glEnable(GLES30.GL_DEPTH_TEST);
-                  String vs="#version 300 es\nin vec4 aP; uniform mat4 uM; void main(){gl_Position=uM*aP;}";
-                  String fs="#version 300 es\nprecision mediump float; uniform vec4 uC; out vec4 fC; void main(){fC=uC;}";
-                  prog=shP(vs,fs);
-                  float[] v={-0.5f,0.5f,0.5f,-0.5f,-0.5f,0.5f,0.5f,0.5f,0.5f,0.5f,-0.5f,0.5f, -0.5f,0.5f,-0.5f,-0.5f,-0.5f,-0.5f,0.5f,0.5f,-0.5f,0.5f,-0.5f,-0.5f, -0.5f,0.5f,-0.5f,-0.5f,0.5f,0.5f,0.5f,0.5f,-0.5f,0.5f,0.5f,0.5f, -0.5f,-0.5f,-0.5f,-0.5f,-0.5f,0.5f,0.5f,-0.5f,-0.5f,0.5f,-0.5f,0.5f, -0.5f,0.5f,-0.5f,-0.5f,-0.5f,-0.5f,-0.5f,0.5f,0.5f,-0.5f,-0.5f,0.5f, 0.5f,0.5f,-0.5f,0.5f,-0.5f,-0.5f,0.5f,0.5f,0.5f,0.5f,-0.5f,0.5f};
-                  vBuf=ByteBuffer.allocateDirect(v.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(v); vBuf.position(0);
-                  scene.add(new Shape(0,0,0, 20,0.2f,20, 0.2f,0.2f,0.3f));
-                  scene.add(new Shape(0,2,-12, 4,1,4, 0.1f,0.7f,0.3f));
-                  scene.add(new Shape(7,4,-20, 4,1,4, 0.1f,0.7f,0.3f));
-                  scene.add(new Shape(0,6,-30, 6,0.2f,6, 0.8f,0.1f,0.1f));
+                  GLES30.glEnable(GLES30.GL_BLEND);
+                  GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
+                  String vs="#version 300 es\nlayout(location=0) in vec4 aP; layout(location=1) in vec3 aN; uniform mat4 uMVP; uniform mat4 uM; out vec3 vN; out vec3 vP; void main(){vP=vec3(uM*aP); vN=normalize(mat3(uM)*aN); gl_Position=uMVP*aP;}";
+                  String fs="#version 300 es\nprecision mediump float; in vec3 vN; in vec3 vP; uniform vec3 lightP; uniform vec3 camP; uniform vec4 uC; out vec4 fC; void main(){vec3 n=normalize(vN); vec3 lD=normalize(lightP-vP); vec3 vD=normalize(camP-vP); float d=max(dot(n, lD), 0.2); vec3 color=uC.rgb*d; float dist=length(camP-vP); float fog=clamp((dist-10.0)/60.0, 0.0, 1.0); fC=mix(vec4(color, uC.a), vec4(0.02, 0.04, 0.08, 1.0), fog);}";
+                  prog=shP(vs, fs);
+                  float[] vc = {-0.5f,0.5f,0.5f, -0.5f,-0.5f,0.5f, 0.5f,0.5f,0.5f, 0.5f,-0.5f,0.5f, -0.5f,0.5f,-0.5f, -0.5f,-0.5f,-0.5f, 0.5f,0.5f,-0.5f, 0.5f,-0.5f,-0.5f, -0.5f,0.5f,-0.5f, -0.5f,0.5f,0.5f, 0.5f,0.5f,-0.5f, 0.5f,0.5f,0.5f, -0.5f,-0.5f,-0.5f, -0.5f,-0.5f,0.5f, 0.5f,-0.5f,-0.5f, 0.5f,-0.5f,0.5f, -0.5f,0.5f,-0.5f, -0.5f,-0.5f,-0.5f, -0.5f,0.5f,0.5f, -0.5f,-0.5f,0.5f, 0.5f,0.5f,-0.5f, 0.5f,-0.5f,-0.5f, 0.5f,0.5f,0.5f, 0.5f,-0.5f,0.5f};
+                  float[] nc = {0,0,1, 0,0,1, 0,0,1, 0,0,1,  0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1,  0,1,0, 0,1,0, 0,1,0, 0,1,0,  0,-1,0, 0,-1,0, 0,-1,0, 0,-1,0,  -1,0,0, -1,0,0, -1,0,0, -1,0,0,  1,0,0, 1,0,0, 1,0,0, 1,0,0};
+                  vBuf=ByteBuffer.allocateDirect(vc.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(vc); vBuf.position(0);
+                  nBuf=ByteBuffer.allocateDirect(nc.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(nc); nBuf.position(0);
               }
 
               @Override public void onSurfaceChanged(GL10 gl, int w, int h) {
-                  GLES30.glViewport(0,0,w,h); Matrix.perspectiveM(proj,0,65,(float)w/h,0.1f,500f);
+                  GLES30.glViewport(0,0,w,h); Matrix.perspectiveM(proj,0,45,(float)w/h,0.1f,300f);
               }
 
               @Override public void onDrawFrame(GL10 gl) {
-                  vY-=0.016f; pY+=vY;
-                  for(Shape s:scene) if(s.check(pX,pY,pZ)) { if(vY<0){pY=s.y+s.sy/2+2.1f; vY=0;} }
-                  float spd=0.22f, rad=(float)Math.toRadians(rY);
-                  float nX=pX+((float)Math.sin(rad)*-jY+(float)Math.cos(rad)*jX)*spd;
-                  float nZ=pZ+((float)-Math.cos(rad)*-jY+(float)Math.sin(rad)*jX)*spd;
-                  boolean col=false; for(Shape s:scene) if(s.check(nX,pY,nZ)&&Math.abs(pY-(s.y+s.sy/2+2.1f))>0.5f) col=true;
-                  if(!col){pX=nX; pZ=nZ;} if(Math.abs(jX)>0.1f||Math.abs(jY)>0.1f) anim+=1.3f;
-                  if(pY<-15){pX=0; pY=5; pZ=5; vY=0;}
+                  update();
+                  GLES30.glClearColor(0.02f, 0.04f, 0.08f, 1.0f);
+                  GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
+                  float vx=(float)(Math.sin(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
+                  float vy=(float)Math.sin(Math.toRadians(rX));
+                  float vz=(float)(-Math.cos(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
+                  Matrix.setLookAtM(view,0,pX,pY,pZ,pX+vx,pY+vy,pZ+vz,0,1,0);
+                  GLES30.glUseProgram(prog);
+                  int uMVP=GLES30.glGetUniformLocation(prog,"uMVP"), uM=GLES30.glGetUniformLocation(prog,"uM"), uC=GLES30.glGetUniformLocation(prog,"uC");
+                  GLES30.glUniform3f(GLES30.glGetUniformLocation(prog,"lightP"), lightP[0], lightP[1], lightP[2]); GLES30.glUniform3f(GLES30.glGetUniformLocation(prog,"camP"), pX, pY, pZ);
+                  GLES30.glVertexAttribPointer(0, 3, GLES30.GL_FLOAT, false, 0, vBuf); GLES30.glEnableVertexAttribArray(0);
+                  GLES30.glVertexAttribPointer(1, 3, GLES30.GL_FLOAT, false, 0, nBuf); GLES30.glEnableVertexAttribArray(1);
 
-                  GLES30.glClearColor(0.02f,0.03f,0.06f,1); GLES30.glClear(16640);
-                  float b=(Math.abs(jX)>0.1f||Math.abs(jY)>0.1f)?(float)Math.sin(anim*0.15f)*0.05f:0;
-                  float vx=(float)(Math.sin(Math.toRadians(rY))*Math.cos(Math.toRadians(rX))), vy=(float)Math.sin(Math.toRadians(rX)), vz=(float)(-Math.cos(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
-                  Matrix.setLookAtM(view,0,pX,pY+b,pZ,pX+vx,pY+vy+b,pZ+vz,0,1,0);
-                  GLES30.glUseProgram(prog); int uM=GLES30.glGetUniformLocation(prog,"uM"), uC=GLES30.glGetUniformLocation(prog,"uC");
-                  GLES30.glVertexAttribPointer(0,3,GLES30.GL_FLOAT,false,0,vBuf); GLES30.glEnableVertexAttribArray(0);
-
-                  for(Shape s:scene) {
-                      Matrix.setIdentityM(model,0); Matrix.translateM(model,0,s.x,s.y,s.z); Matrix.scaleM(model,0,s.sx,s.sy,s.sz);
-                      draw(uM,uC,s.r,s.g,s.b);
+                  for(int i=-1; i<=1; i++) {
+                      Matrix.setIdentityM(model,0); Matrix.translateM(model, 0, i*10, -2, -20); Matrix.scaleM(model, 0, 4, 4, 4);
+                      draw(uM, uMVP, uC, 0.8f, 0.1f, 0.1f, 0.3f);
                   }
-                  GLES30.glClear(256);
-                  drawM(-0.5f,-0.6f+b,-0.8f, 0.15f,0.15f,0.6f, 0.8f,0.6f,0.4f, uM,uC);
-                  drawM(0.5f,-0.6f+b,-0.8f, 0.15f,0.15f,0.6f, 0.8f,0.6f,0.4f, uM,uC);
+                  Matrix.setIdentityM(model,0); Matrix.scaleM(model,0,500,0.1f,500); 
+                  draw(uM, uMVP, uC, 0.2f, 0.3f, 0.4f, 0.8f);
+                  for(int i=-1; i<=1; i++) {
+                      Matrix.setIdentityM(model,0); Matrix.translateM(model, 0, i*10, 2, -20); Matrix.scaleM(model, 0, 4, 4, 4);
+                      draw(uM, uMVP, uC, 0.8f, 0.1f, 0.1f, 1.0f);
+                  }
               }
-              private void drawM(float x,float y,float z,float sx,float sy,float sz,float r,float g,float b,int uM,int uC) {
-                  Matrix.setIdentityM(model,0); Matrix.translateM(model,0,x,y,z); Matrix.scaleM(model,0,sx,sy,sz); draw(uM,uC,r,g,b);
+
+              private void update() {
+                  vY-=0.015f; pY+=vY; if(pY<2.1f){pY=2.1f; vY=0;}
+                  float s=0.22f, rad=(float)Math.toRadians(rY);
+                  pX += ((float)Math.sin(rad)*-jY + (float)Math.cos(rad)*jX)*s;
+                  pZ += ((float)-Math.cos(rad)*-jY + (float)Math.sin(rad)*jX)*s;
               }
-              private void draw(int uM,int uC,float r,float g,float b) {
-                  float[] mvp=new float[16]; Matrix.multiplyMM(mvp,0,proj,0,view,0); Matrix.multiplyMM(mvp,0,mvp,0,model,0);
-                  GLES30.glUniformMatrix4fv(uM,1,false,mvp,0); GLES30.glUniform4f(uC,r,g,b,1);
-                  for(int i=0;i<6;i++) GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP,i*4,4);
+              private void draw(int uM, int uMVP, int uC, float r, float g, float b, float a) {
+                  GLES30.glUniformMatrix4fv(uM, 1, false, model, 0);
+                  float[] res=new float[16]; Matrix.multiplyMM(res, 0, proj, 0, view, 0); Matrix.multiplyMM(res, 0, res, 0, model, 0);
+                  GLES30.glUniformMatrix4fv(uMVP, 1, false, res, 0); GLES30.glUniform4f(uC, r, g, b, a);
+                  for(int i=0; i<6; i++) GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, i*4, 4);
               }
               private int shP(String v,String f){int p=GLES30.glCreateProgram();GLES30.glAttachShader(p,sh(35633,v));GLES30.glAttachShader(p,sh(35632,f));GLES30.glLinkProgram(p);return p;}
               private int sh(int t,String s){int i=GLES30.glCreateShader(t);GLES30.glShaderSource(i,s);GLES30.glCompileShader(i);return i;}
           }
           EOF
 
+          # --- MainActivity ---
           cat <<EOF > app/src/main/java/com/enjoer/game/MainActivity.java
           package com.enjoer.game;
           import android.os.Bundle;
-          import android.view.MotionEvent;
           import android.view.View;
+          import android.view.MotionEvent;
           import androidx.appcompat.app.AppCompatActivity;
 
           public class MainActivity extends AppCompatActivity {
               private GameRenderer ren;
               private float lx, ly;
-              private int lookId=-1, joyId=-1;
-              @Override protected void onCreate(Bundle bS) {
-                  super.onCreate(bS); setContentView(R.layout.activity_main);
-                  android.opengl.GLSurfaceView gv=findViewById(R.id.gl_view);
-                  gv.setEGLContextClientVersion(3); ren=new GameRenderer(); gv.setRenderer(ren);
-                  findViewById(R.id.btn_jump).setOnTouchListener((v,e)->{
-                      if(e.getAction()==MotionEvent.ACTION_DOWN && ren.vY==0) ren.vY=0.43f;
+
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  setContentView(R.layout.activity_main);
+                  android.opengl.GLSurfaceView gv = findViewById(R.id.gl_view);
+                  gv.setEGLContextClientVersion(3);
+                  ren = new GameRenderer();
+                  gv.setRenderer(ren);
+
+                  findViewById(R.id.btn_respawn).setOnClickListener(v -> { ren.pX=0; ren.pZ=10; ren.pY=5; });
+                  findViewById(R.id.btn_jump).setOnClickListener(v -> { if(ren.pY <= 2.2f) ren.vY = 0.4f; });
+                  
+                  final View stick = findViewById(R.id.joy_stick);
+                  findViewById(R.id.joy_base).setOnTouchListener((v, e) -> {
+                      float cx = v.getWidth()/2f, cy = v.getHeight()/2f;
+                      if (e.getAction() == MotionEvent.ACTION_MOVE || e.getAction() == MotionEvent.ACTION_DOWN) {
+                          float dx = e.getX() - cx, dy = e.getY() - cy;
+                          float d = (float)Math.sqrt(dx*dx + dy*dy);
+                          float limit = cx - stick.getWidth()/2f;
+                          if (d > limit) { dx *= limit/d; dy *= limit/d; }
+                          stick.setTranslationX(dx); stick.setTranslationY(dy);
+                          ren.jX = dx/limit; ren.jY = dy/limit;
+                      } else if (e.getAction() == MotionEvent.ACTION_UP) {
+                          stick.setTranslationX(0); stick.setTranslationY(0);
+                          ren.jX = 0; ren.jY = 0;
+                      }
                       return true;
                   });
-                  View stick=findViewById(R.id.joy_stick), base=findViewById(R.id.joy_base);
-                  findViewById(R.id.gl_view).setOnTouchListener((v,e)->{
-                      int a=e.getActionMasked(), i=e.getActionIndex(), id=e.getPointerId(i);
-                      float x=e.getX(i), y=e.getY(i);
-                      if(a==0||a==5) {
-                          if(x<v.getWidth()/2f && joyId==-1) joyId=id;
-                          else if(lookId==-1) { lookId=id; lx=x; ly=y; }
-                      } else if(a==2) {
-                          for(int p=0; p<e.getPointerCount(); p++) {
-                              int pid=e.getPointerId(p);
-                              if(pid==joyId) {
-                                  float dx=e.getX(p)-(base.getLeft()+65), dy=e.getY(p)-(base.getTop()+65), d=(float)Math.sqrt(dx*dx+dy*dy);
-                                  if(d>60){dx*=60/d; dy*=60/d;} stick.setTranslationX(dx); stick.setTranslationY(dy);
-                                  ren.jX=dx/60f; ren.jY=dy/60f;
-                              } else if(pid==lookId) {
-                                  ren.rY+=(e.getX(p)-lx)*0.16f; ren.rX=Math.max(-85,Math.min(85,ren.rX-(e.getY(p)-ly)*0.16f));
-                                  lx=e.getX(p); ly=e.getY(p);
-                              }
-                          }
-                      } else if(a==1||a==6) {
-                          if(id==joyId){joyId=-1; ren.jX=0; ren.jY=0; stick.setTranslationX(0); stick.setTranslationY(0);}
-                          else if(id==lookId) lookId=-1;
+
+                  findViewById(R.id.look_zone).setOnTouchListener((v, e) -> {
+                      if (e.getAction() == MotionEvent.ACTION_DOWN) { lx = e.getX(); ly = e.getY(); }
+                      else if (e.getAction() == MotionEvent.ACTION_MOVE) {
+                          ren.rY += (e.getX() - lx) * 0.3f;
+                          ren.rX = Math.max(-85, Math.min(85, ren.rX - (e.getY() - ly) * 0.3f));
+                          lx = e.getX(); ly = e.getY();
                       }
                       return true;
                   });
@@ -202,25 +213,40 @@ jobs:
           }
           EOF
 
-          cat <<EOF > app/src/main/res/layout/activity_main.xml
-          <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent">
-              <android.opengl.GLSurfaceView android:id="@+id/gl_view" android:layout_width="match_parent" android:layout_height="match_parent" />
-              <RelativeLayout android:layout_width="match_parent" android:layout_height="match_parent">
-                  <View android:id="@+id/btn_jump" android:layout_width="85dp" android:layout_height="85dp" android:layout_alignParentRight="true" android:layout_alignParentBottom="true" android:layout_margin="50dp" android:background="@drawable/ui_circle" />
-                  <FrameLayout android:id="@+id/joy_base" android:layout_width="130dp" android:layout_height="130dp" android:layout_alignParentBottom="true" android:layout_marginLeft="50dp" android:layout_marginBottom="50dp" android:background="@drawable/ui_circle" android:alpha="0.5" />
-                  <View android:id="@+id/joy_stick" android:layout_width="55dp" android:layout_height="55dp" android:layout_alignLeft="@id/joy_base" android:layout_alignTop="@id/joy_base" android:layout_marginLeft="37dp" android:layout_marginTop="37dp" android:background="#22C55E" />
-              </RelativeLayout>
-          </FrameLayout>
-          EOF
-
           cat <<EOF > app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="Enjoer Pro 3.0" android:theme="@style/AppTheme">
+              <application android:label="Enjoer Final" android:theme="@style/AppTheme">
                   <activity android:name="com.enjoer.game.MainActivity" android:exported="true" android:screenOrientation="landscape">
                       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
                   </activity>
               </application>
           </manifest>
+          EOF
+
+          # --- Gradle Config ---
+          echo "include ':app'" > settings.gradle
+          cat <<EOF > build.gradle
+          buildscript {
+              repositories { google(); mavenCentral() }
+              dependencies { classpath 'com.android.tools.build:gradle:8.2.2' }
+          }
+          allprojects { repositories { google(); mavenCentral() } }
+          EOF
+
+          cat <<EOF > app/build.gradle
+          plugins { id 'com.android.application' }
+          android { 
+              namespace 'com.enjoer.game'
+              compileSdk 34 
+              defaultConfig { 
+                  applicationId 'com.enjoer.game'
+                  minSdk 24 
+                  targetSdk 34 
+                  versionCode 1
+                  versionName "1.0"
+              } 
+          }
+          dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }
           EOF
 
       - name: Build APK
@@ -230,5 +256,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Enjoer_Pro_v3
+          name: Enjoer_Final_Stable_APK
           path: app/build/outputs/apk/debug/app-debug.apk
