@@ -1,4 +1,4 @@
-name: Native_Roblox_GLES3_3D_Update
+name: Roblox_GLES3_Pro_Controls
 on: [push, workflow_dispatch]
 
 jobs:
@@ -19,16 +19,21 @@ jobs:
           rm -rf app settings.gradle build.gradle gradle.properties
           mkdir -p app/src/main/java/com/dimos/roblox
           mkdir -p app/src/main/res/layout
-          mkdir -p app/src/main/res/values/
-          mkdir -p app/src/main/res/drawable/
+          mkdir -p app/src/main/res/values
+          mkdir -p app/src/main/res/drawable
 
           echo "android.useAndroidX=true" > gradle.properties
           echo "android.enableJetifier=true" >> gradle.properties
 
-          # --- Ресурсы и Джойстик ---
-          cat <<EOF > app/src/main/res/drawable/joystick_base.xml
+          # --- 1. Отрисовка Джойстика (База и Стик) ---
+          cat <<EOF > app/src/main/res/drawable/joy_base.xml
           <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
               <solid android:color="#44FFFFFF"/><stroke android:width="2dp" android:color="#AAFFFFFF"/>
+          </shape>
+          EOF
+          cat <<EOF > app/src/main/res/drawable/joy_stick.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+              <solid android:color="#AAFFFFFF"/>
           </shape>
           EOF
 
@@ -38,21 +43,28 @@ jobs:
           </style></resources>
           EOF
 
-          # --- Интерфейс с визуальным джойстиком ---
+          # --- 2. Интерфейс (Разделение зон) ---
           cat <<EOF > app/src/main/res/layout/activity_main.xml
           <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
               android:layout_width="match_parent" android:layout_height="match_parent">
               <android.opengl.GLSurfaceView android:id="@+id/gl_view"
                   android:layout_width="match_parent" android:layout_height="match_parent" />
-              <View android:id="@+id/look_zone" android:layout_width="match_parent" android:layout_height="match_parent" />
-              <View android:id="@+id/joy_base" android:layout_width="120dp" android:layout_height="120dp"
-                  android:layout_alignParentBottom="true" android:layout_alignParentLeft="true"
-                  android:layout_marginBottom="40dp" android:layout_marginLeft="40dp"
-                  android:background="@drawable/joystick_base" />
+              
+              <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal">
+                  <RelativeLayout android:id="@+id/move_zone" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent">
+                      <FrameLayout android:id="@+id/joy_container" android:layout_width="120dp" android:layout_height="120dp"
+                          android:layout_alignParentBottom="true" android:layout_centerHorizontal="true" android:layout_marginBottom="40dp"
+                          android:background="@drawable/joy_base">
+                          <View android:id="@+id/joy_center" android:layout_width="50dp" android:layout_height="50dp"
+                              android:layout_gravity="center" android:background="@drawable/joy_stick" />
+                      </FrameLayout>
+                  </RelativeLayout>
+                  <View android:id="@+id/look_zone" android:layout_width="0dp" android:layout_weight="2" android:layout_height="match_parent" />
+              </LinearLayout>
           </RelativeLayout>
           EOF
 
-          # --- 3D Renderer (Полный объем) ---
+          # --- 3. Renderer (Полноценный 3D Блок) ---
           cat <<EOF > app/src/main/java/com/dimos/roblox/GameRenderer.java
           package com.dimos.roblox;
           import android.opengl.GLES30;
@@ -63,14 +75,14 @@ jobs:
           import javax.microedition.khronos.opengles.GL10;
 
           public class GameRenderer implements GLSurfaceView.Renderer {
-              private final float[] mvpM = new float[16], pM = new float[16], vM = new float[16], mM = new float[16];
-              public float pX=0, pY=1.5f, pZ=10, rotY=0, rotX=0;
+              private final float[] mvpM = new float[16], pM = new float[16], vM = new float[16];
+              public float pX=0, pY=2f, pZ=12, rotY=0, rotX=0;
               private int program;
-              private FloatBuffer cubeBuf;
+              private FloatBuffer boxBuf;
 
               @Override
               public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-                  GLES30.glClearColor(0.05f, 0.08f, 0.15f, 1.0f);
+                  GLES30.glClearColor(0.05f, 0.07f, 0.1f, 1.0f);
                   GLES30.glEnable(GLES30.GL_DEPTH_TEST);
                   String vS = "#version 300 es\nuniform mat4 uM; layout(location=0) in vec4 p; void main(){gl_Position=uM*p;}";
                   String fS = "#version 300 es\nprecision mediump float; out vec4 fc; uniform vec4 uC; void main(){fc=uC;}";
@@ -78,10 +90,13 @@ jobs:
                   int vs=sh(35633,vS), fs=sh(35632,fS);
                   GLES30.glAttachShader(program,vs); GLES30.glAttachShader(program,fs); GLES30.glLinkProgram(program);
                   
-                  // Координаты настоящего 3D куба (платформа)
-                  float[] v = {-5,0,-5, 5,0,-5, 5,0,5, -5,0,5, -5,1,-5, 5,1,-5, 5,1,5, -5,1,5}; 
-                  cubeBuf = ByteBuffer.allocateDirect(v.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer();
-                  cubeBuf.put(v).position(0);
+                  // Координаты полноценного 3D блока (куба)
+                  float[] v = {
+                      -4,0,-4,  4,0,-4,  4,0,4, -4,0,4, // низ
+                      -4,1,-4,  4,1,-4,  4,1,4, -4,1,4  // верх
+                  };
+                  boxBuf = ByteBuffer.allocateDirect(v.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer();
+                  boxBuf.put(v).position(0);
               }
 
               @Override public void onSurfaceChanged(GL10 gl, int w, int h) {
@@ -90,35 +105,36 @@ jobs:
 
               @Override public void onDrawFrame(GL10 gl) {
                   GLES30.glClear(16640);
-                  // Расчет направления взгляда (с учетом Pitch - rotX)
                   float vx = (float)(Math.sin(Math.toRadians(rotY)) * Math.cos(Math.toRadians(rotX)));
                   float vy = (float)Math.sin(Math.toRadians(rotX));
                   float vz = (float)(-Math.cos(Math.toRadians(rotY)) * Math.cos(Math.toRadians(rotX)));
-                  
                   Matrix.setLookAtM(vM, 0, pX, pY, pZ, pX+vx, pY+vy, pZ+vz, 0, 1, 0);
                   Matrix.multiplyMM(mvpM, 0, pM, 0, vM, 0);
-                  
                   GLES30.glUseProgram(program);
                   GLES30.glUniform4f(GLES30.glGetUniformLocation(program, "uC"), 0.13f, 0.77f, 0.37f, 1.0f);
                   GLES30.glUniformMatrix4fv(GLES30.glGetUniformLocation(program, "uM"), 1, false, mvpM, 0);
-                  GLES30.glVertexAttribPointer(0, 3, GLES30.GL_FLOAT, false, 0, cubeBuf);
+                  GLES30.glVertexAttribPointer(0, 3, GLES30.GL_FLOAT, false, 0, boxBuf);
                   GLES30.glEnableVertexAttribArray(0);
-                  GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, 8); // Рисуем объем
+                  GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, 4); // Низ
+                  GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 4, 4); // Верх
               }
               private int sh(int t, String s){int i=GLES30.glCreateShader(t);GLES30.glShaderSource(i,s);GLES30.glCompileShader(i);return i;}
           }
           EOF
 
-          # --- MainActivity (Умное управление) ---
+          # --- 4. MainActivity (Раздельное управление) ---
           cat <<EOF > app/src/main/java/com/dimos/roblox/MainActivity.java
           package com.dimos.roblox;
           import android.os.Bundle;
           import android.view.MotionEvent;
+          import android.view.View;
           import androidx.appcompat.app.AppCompatActivity;
 
           public class MainActivity extends AppCompatActivity {
               private GameRenderer ren;
-              private float lX, lY;
+              private float lastLookX, lastLookY;
+              private View joyStick;
+
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
@@ -128,29 +144,44 @@ jobs:
                   ren = new GameRenderer();
                   gv.setRenderer(ren);
 
-                  findViewById(R.id.look_zone).setOnTouchListener((v, e) -> {
-                      if (e.getX() < v.getWidth()/3 && e.getY() > v.getHeight()/2) {
-                          // Логика джойстика (движение)
-                          float dx = (e.getX() - 200)/50f;
-                          float dy = (e.getY() - (v.getHeight()-200))/50f;
-                          ren.pX += dx * 0.1f; ren.pZ += dy * 0.1f;
+                  joyStick = findViewById(R.id.joy_center);
+
+                  // ЗОНА ДВИЖЕНИЯ
+                  findViewById(R.id.move_zone).setOnTouchListener((v, e) -> {
+                      if (e.getAction() == MotionEvent.ACTION_MOVE || e.getAction() == MotionEvent.ACTION_DOWN) {
+                          float dx = e.getX() - v.getWidth()/2;
+                          float dy = e.getY() - (v.getHeight() - 100);
+                          // Ограничиваем движение стика визуально
+                          joyStick.setTranslationX(Math.max(-50, Math.min(50, dx)));
+                          joyStick.setTranslationY(Math.max(-50, Math.min(50, dy)));
+                          // Плавное перемещение персонажа
+                          ren.pX += (joyStick.getTranslationX()/500f);
+                          ren.pZ += (joyStick.getTranslationY()/500f);
                       } else {
-                          // Поворот камеры (весь остальной экран)
-                          if (e.getAction() == MotionEvent.ACTION_MOVE) {
-                              ren.rotY += (e.getX() - lX) * 0.2f;
-                              ren.rotX = Math.max(-80, Math.min(80, ren.rotX - (e.getY() - lY) * 0.2f));
-                          }
+                          joyStick.setTranslationX(0); joyStick.setTranslationY(0);
                       }
-                      lX = e.getX(); lY = e.getY(); return true;
+                      return true;
+                  });
+
+                  // ЗОНА ОБЗОРА
+                  findViewById(R.id.look_zone).setOnTouchListener((v, e) -> {
+                      if (e.getAction() == MotionEvent.ACTION_DOWN) {
+                          lastLookX = e.getX(); lastLookY = e.getY();
+                      } else if (e.getAction() == MotionEvent.ACTION_MOVE) {
+                          ren.rotY += (e.getX() - lastLookX) * 0.3f;
+                          ren.rotX = Math.max(-85, Math.min(85, ren.rotX - (e.getY() - lastLookY) * 0.3f));
+                          lastLookX = e.getX(); lastLookY = e.getY();
+                      }
+                      return true;
                   });
               }
           }
           EOF
 
-          # --- Манифест и Gradle ---
+          # --- Конфиг билда ---
           cat <<EOF > app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="Roblox 3D" android:theme="@style/AppTheme">
+              <application android:label="Roblox 3D Pro" android:theme="@style/AppTheme">
                   <activity android:name="com.dimos.roblox.MainActivity" android:exported="true" android:screenOrientation="landscape">
                       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
                   </activity>
@@ -174,5 +205,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Roblox_3D_Joy_Update
+          name: Roblox_Pro_Controls
           path: app/build/outputs/apk/debug/app-debug.apk
