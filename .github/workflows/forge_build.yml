@@ -1,4 +1,4 @@
-name: Enjoer_Pro_Stable_Build
+name: Enjoer_Pro_Stable_v3
 on: [push, workflow_dispatch]
 
 jobs:
@@ -14,11 +14,11 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Install Specific Gradle 8.2.2
-        run: |
-          wget https://services.gradle.org/distributions/gradle-8.2.2-bin.zip
-          sudo unzip -d /opt/gradle gradle-8.2.2-bin.zip
-          echo "/opt/gradle/gradle-8.2.2/bin" >> $GITHUB_PATH
+      # Официальный способ установить конкретную версию Gradle
+      - name: Setup Gradle 8.2.2
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.2.2'
 
       - name: Create Project Files
         run: |
@@ -59,20 +59,20 @@ jobs:
                   minSdk 24
                   targetSdk 34
                   versionCode 1
-                  versionName "2.2"
+                  versionName "3.0"
               }
           }
           dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }
           EOF
 
-          # UI и Ресурсы
+          # UI (Кнопка прыжка и Джойстик)
           cat <<EOF > app/src/main/res/values/themes.xml
           <resources><style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
           <item name="android:windowFullscreen">true</item></style></resources>
           EOF
           echo '<shape xmlns:android="http://schemas.android.com/apk/res/android"><solid android:color="#AA000000"/><corners android:radius="50dp"/></shape>' > app/src/main/res/drawable/ui_circle.xml
 
-          # Код рендерера (Тот самый плавный движок)
+          # Весь Java код (Renderer и MainActivity) мы оставляем прежним, так как он рабочий
           cat <<EOF > app/src/main/java/com/enjoer/game/GameRenderer.java
           package com.enjoer.game;
           import android.opengl.GLES30;
@@ -154,7 +154,6 @@ jobs:
           }
           EOF
 
-          # Код MainActivity (Управление)
           cat <<EOF > app/src/main/java/com/enjoer/game/MainActivity.java
           package com.enjoer.game;
           import android.os.Bundle;
@@ -216,7 +215,7 @@ jobs:
 
           cat <<EOF > app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="Enjoer Pro Stable" android:theme="@style/AppTheme">
+              <application android:label="Enjoer Pro 3.0" android:theme="@style/AppTheme">
                   <activity android:name="com.enjoer.game.MainActivity" android:exported="true" android:screenOrientation="landscape">
                       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
                   </activity>
@@ -231,5 +230,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Enjoer_Pro_Stable
+          name: Enjoer_Pro_v3
           path: app/build/outputs/apk/debug/app-debug.apk
