@@ -1,4 +1,4 @@
-name: Enjoer_1.0_Final_Fix
+name: Enjoer_1.0_Final_Fixed
 on: [push, workflow_dispatch]
 
 jobs:
@@ -41,16 +41,11 @@ jobs:
               <solid android:color="#AA000000"/><stroke android:width="2dp" android:color="#222"/>
           </shape>
           EOF
-          cat <<EOF > app/src/main/res/drawable/joy_stick.xml
-          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
-              <solid android:color="#FF444444"/>
-          </shape>
-          EOF
 
           # --- Layout ---
           cat <<EOF > app/src/main/res/layout/activity_main.xml
           <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000">
+              android:layout_width="match_parent" android:layout_height="match_parent">
               <android.opengl.GLSurfaceView android:id="@+id/gl_view"
                   android:layout_width="match_parent" android:layout_height="match_parent" />
               <RelativeLayout android:layout_width="match_parent" android:layout_height="match_parent">
@@ -68,7 +63,7 @@ jobs:
                   <View android:id="@+id/joy_stick" android:layout_width="60dp" android:layout_height="60dp"
                       android:layout_alignLeft="@id/joy_base" android:layout_alignTop="@id/joy_base"
                       android:layout_marginLeft="40dp" android:layout_marginTop="40dp"
-                      android:background="@drawable/joy_stick" />
+                      android:background="@drawable/joy_base" android:backgroundTint="#555" />
                   <Button android:id="@+id/btn_jump" android:layout_width="100dp" android:layout_height="100dp"
                       android:layout_alignParentRight="true" android:layout_alignParentBottom="true"
                       android:layout_margin="40dp" android:text="JUMP" android:background="@drawable/joy_base" android:textColor="#FFF"/>
@@ -78,12 +73,13 @@ jobs:
                   android:orientation="vertical" android:visibility="gone">
                   <Button android:id="@+id/rtx_off" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="RTX OFF"/>
                   <Button android:id="@+id/rtx_on" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="RTX ON"/>
+                  <Button android:id="@+id/btn_exit" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="EXIT GAME" android:textColor="#F00" android:layout_marginTop="10dp"/>
                   <Button android:id="@+id/rtx_close" android:layout_width="match_parent" android:layout_height="35dp" android:text="CLOSE" android:layout_marginTop="10dp"/>
               </LinearLayout>
           </FrameLayout>
           EOF
 
-          # --- Renderer ---
+          # --- Renderer (Fixed Night & Fog) ---
           cat <<EOF > app/src/main/java/com/enjoer/game/GameRenderer.java
           package com.enjoer.game;
           import android.opengl.GLES30;
@@ -106,10 +102,18 @@ jobs:
                   GLES30.glEnable(GLES30.GL_DEPTH_TEST);
                   GLES30.glEnable(GLES30.GL_BLEND);
                   GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
+                  // Исправленный шейдер: позиция считается корректно
                   String vs="#version 300 es\nin vec4 aP; uniform mat4 uM; uniform mat4 uP; uniform mat4 uV; out vec3 wP; void main(){vec4 pos=uM*aP; wP=pos.xyz; gl_Position=uP*uV*pos;}";
-                  String fs="#version 300 es\nprecision mediump float; in vec3 wP; uniform vec4 uC; uniform float a; uniform vec3 camP; out vec4 fC; void main(){float d=length(wP-camP); float f=clamp((d-15.0)/45.0,0.0,1.0); fC=mix(vec4(uC.rgb, a), vec4(0.05,0.1,0.2,1.0), f);}";
+                  String fs="#version 300 es\nprecision mediump float; in vec3 wP; uniform vec4 uC; uniform float a; uniform vec3 camP; out vec4 fC; void main(){float d=length(wP-camP); float f=clamp((d-10.0)/60.0,0.0,1.0); vec4 color=vec4(uC.rgb, a); fC=mix(color, vec4(0.02, 0.04, 0.08, 1.0), f);}";
                   prog=shP(vs, fs);
-                  float[] vc = {-0.5f,0.5f,0.5f, -0.5f,-0.5f,0.5f, 0.5f,0.5f,0.5f, 0.5f,-0.5f,0.5f, -0.5f,0.5f,-0.5f, -0.5f,-0.5f,-0.5f, 0.5f,0.5f,-0.5f, 0.5f,-0.5f,-0.5f, -0.5f,0.5f,-0.5f, -0.5f,0.5f,0.5f, 0.5f,0.5f,-0.5f, 0.5f,0.5f,0.5f, -0.5f,-0.5f,-0.5f, -0.5f,-0.5f,0.5f, 0.5f,-0.5f,-0.5f, 0.5f,-0.5f,0.5f, -0.5f,0.5f,-0.5f, -0.5f,-0.5f,-0.5f, -0.5f,0.5f,0.5f, -0.5f,-0.5f,0.5f, 0.5f,0.5f,-0.5f, 0.5f,-0.5f,-0.5f, 0.5f,0.5f,0.5f, 0.5f,-0.5f,0.5f};
+                  float[] vc = {
+                      -0.5f,0.5f,0.5f, -0.5f,-0.5f,0.5f, 0.5f,0.5f,0.5f, 0.5f,-0.5f,0.5f, // Front
+                      -0.5f,0.5f,-0.5f, -0.5f,-0.5f,-0.5f, 0.5f,0.5f,-0.5f, 0.5f,-0.5f,-0.5f, // Back
+                      -0.5f,0.5f,-0.5f, -0.5f,0.5f,0.5f, 0.5f,0.5f,-0.5f, 0.5f,0.5f,0.5f, // Top
+                      -0.5f,-0.5f,-0.5f, -0.5f,-0.5f,0.5f, 0.5f,-0.5f,-0.5f, 0.5f,-0.5f,0.5f, // Bottom
+                      -0.5f,0.5f,-0.5f, -0.5f,-0.5f,-0.5f, -0.5f,0.5f,0.5f, -0.5f,-0.5f,0.5f, // Left
+                      0.5f,0.5f,-0.5f, 0.5f,-0.5f,-0.5f, 0.5f,0.5f,0.5f, 0.5f,-0.5f,0.5f // Right
+                  };
                   vBuf=ByteBuffer.allocateDirect(vc.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(vc); vBuf.position(0);
               }
 
@@ -119,45 +123,45 @@ jobs:
 
               @Override public void onDrawFrame(GL10 gl) {
                   update();
-                  GLES30.glClearColor(0.05f, 0.1f, 0.2f, 1.0f);
+                  GLES30.glClearColor(0.02f, 0.04f, 0.08f, 1.0f);
                   GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
+                  
                   float vx=(float)(Math.sin(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
                   float vy=(float)Math.sin(Math.toRadians(rX));
                   float vz=(float)(-Math.cos(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
                   Matrix.setLookAtM(view,0,pX,pY,pZ,pX+vx,pY+vy,pZ+vz,0,1,0);
+                  
                   GLES30.glUseProgram(prog);
                   int uP=GLES30.glGetUniformLocation(prog,"uP"), uV=GLES30.glGetUniformLocation(prog,"uV"), uM=GLES30.glGetUniformLocation(prog,"uM"), uC=GLES30.glGetUniformLocation(prog,"uC"), uA=GLES30.glGetUniformLocation(prog,"a"), uCam=GLES30.glGetUniformLocation(prog,"camP");
                   GLES30.glUniformMatrix4fv(uP,1,false,proj,0); GLES30.glUniformMatrix4fv(uV,1,false,view,0); GLES30.glUniform3f(uCam, pX,pY,pZ);
                   GLES30.glVertexAttribPointer(0,3,GLES30.GL_FLOAT,false,0,vBuf); GLES30.glEnableVertexAttribArray(0);
 
-                  if(rtx) {
-                      for(int i=0; i<3; i++) {
-                          // Черная тень
-                          Matrix.setIdentityM(model,0); Matrix.translateM(model,0,bX[i]+0.8f, 0.05f, bZ[i]+0.8f); Matrix.scaleM(model,0,3.1f, 0.01f, 3.1f);
-                          GLES30.glUniform1f(uA, 0.6f); draw(uM,uC,0,0,0);
-                          // Отражение
-                          Matrix.setIdentityM(model,0); Matrix.translateM(model,0,bX[i], 0.1f, bZ[i]); Matrix.scaleM(model,0,3,0.1f,3);
-                          GLES30.glUniform1f(uA, 0.4f); draw(uM,uC,0.2f,0.7f,0.2f);
-                      }
-                  }
-                  // Пол
-                  Matrix.setIdentityM(model,0); Matrix.scaleM(model,0,1000,0.1f,1000); GLES30.glUniform1f(uA, 1.0f); draw(uM,uC,0.2f,0.7f,0.2f);
-                  // Блоки
+                  // 1. Пол (Трава)
+                  Matrix.setIdentityM(model,0); Matrix.translateM(model, 0, 0, 0, 0); Matrix.scaleM(model,0,500,0.1f,500); 
+                  GLES30.glUniform1f(uA, 1.0f); draw(uM,uC,0.1f, 0.5f, 0.1f);
+
+                  // 2. Блоки и RTX
                   for(int i=0; i<3; i++) {
-                      Matrix.setIdentityM(model,0); Matrix.translateM(model,0,bX[i], 1.55f, bZ[i]); Matrix.scaleM(model,0,3,3,3);
-                      GLES30.glUniform1f(uA, 1.0f); draw(uM,uC,0.8f,0,0);
+                      if(rtx) {
+                          // Тень
+                          Matrix.setIdentityM(model,0); Matrix.translateM(model,0,bX[i]+0.5f, 0.1f, bZ[i]+0.5f); 
+                          Matrix.scaleM(model,0,3.5f, 0.02f, 3.5f); GLES30.glUniform1f(uA, 0.6f); draw(uM,uC,0,0,0);
+                      }
+                      // Сам куб
+                      Matrix.setIdentityM(model,0); Matrix.translateM(model,0,bX[i], 1.6f, bZ[i]); 
+                      Matrix.scaleM(model,0,3,3,3); GLES30.glUniform1f(uA, 1.0f); draw(uM,uC,0.8f, 0.1f, 0.1f);
                   }
               }
 
               private void update() {
                   vY-=0.012f; pY+=vY; float fY = 2.1f;
-                  for(int i=0; i<3; i++){ if(Math.abs(pX-bX[i])<2.0f && Math.abs(pZ-bZ[i])<2.0f && pY>3.0f) fY=4.6f; }
+                  for(int i=0; i<3; i++){ if(Math.abs(pX-bX[i])<2.1f && Math.abs(pZ-bZ[i])<2.1f && pY>3.5f) fY=4.6f; }
                   if(pY<fY){pY=fY; vY=0;}
-                  float s=0.22f, rD=(float)Math.toRadians(rY), dx=((float)Math.sin(rD)*-jY + (float)Math.cos(rD)*jX)*s, dz=((float)-Math.cos(rD)*-jY + (float)Math.sin(rD)*jX)*s;
+                  float s=0.2f, rD=(float)Math.toRadians(rY), dx=((float)Math.sin(rD)*-jY + (float)Math.cos(rD)*jX)*s, dz=((float)-Math.cos(rD)*-jY + (float)Math.sin(rD)*jX)*s;
                   if(!cCol(pX+dx, pZ)) pX+=dx; if(!cCol(pX, pZ+dz)) pZ+=dz;
               }
-              private boolean cCol(float nx, float nz){ for(int i=0; i<3; i++){ if(Math.abs(nx-bX[i])<2.1f && Math.abs(nz-bZ[i])<2.1f && pY<4.0f) return true; } return false; }
-              private void draw(int uM,int uC,float r,float g,float b){ Matrix.setIdentityM(model,0); Matrix.multiplyMM(model,0,model,0,model,0); GLES30.glUniformMatrix4fv(uM,1,false,model,0); GLES30.glUniform4f(uC,r,g,b,1f); for(int i=0; i<6; i++) GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP,i*4,4); }
+              private boolean cCol(float nx, float nz){ for(int i=0; i<3; i++){ if(Math.abs(nx-bX[i])<2.2f && Math.abs(nz-bZ[i])<2.2f && pY<4.5f) return true; } return false; }
+              private void draw(int uM,int uC,float r,float g,float b){ GLES30.glUniformMatrix4fv(uM,1,false,model,0); GLES30.glUniform4f(uC,r,g,b,1f); for(int i=0; i<6; i++) GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP,i*4,4); }
               private int shP(String v,String f){int p=GLES30.glCreateProgram();GLES30.glAttachShader(p,sh(35633,v));GLES30.glAttachShader(p,sh(35632,f));GLES30.glLinkProgram(p);return p;}
               private int sh(int t,String s){int i=GLES30.glCreateShader(t);GLES30.glShaderSource(i,s);GLES30.glCompileShader(i);return i;}
           }
@@ -191,8 +195,9 @@ jobs:
                   findViewById(R.id.rtx_on).setOnClickListener(v -> { ren.rtx=true; rtxPop.setVisibility(View.GONE); });
                   findViewById(R.id.rtx_off).setOnClickListener(v -> { ren.rtx=false; rtxPop.setVisibility(View.GONE); });
                   findViewById(R.id.rtx_close).setOnClickListener(v -> rtxPop.setVisibility(View.GONE));
+                  findViewById(R.id.btn_exit).setOnClickListener(v -> finish());
 
-                  findViewById(R.id.btn_jump).setOnClickListener(v -> { if(ren.vY == 0) ren.vY = 0.32f; });
+                  findViewById(R.id.btn_jump).setOnClickListener(v -> { if(ren.vY == 0) ren.vY = 0.3f; });
                   
                   final View stick = findViewById(R.id.joy_stick);
                   findViewById(R.id.joy_base).setOnTouchListener((v, e) -> {
@@ -232,7 +237,7 @@ jobs:
           echo "allprojects { repositories { google(); mavenCentral() } }" >> build.gradle
           cat <<EOF > app/build.gradle
           plugins { id 'com.android.application' }
-          android { namespace 'com.enjoer.game'; compileSdk 34; defaultConfig { applicationId 'com.enjoer.game'; minSdk 24; targetSdk 34; versionCode 1; versionName "1.0.1" } }
+          android { namespace 'com.enjoer.game'; compileSdk 34; defaultConfig { applicationId 'com.enjoer.game'; minSdk 24; targetSdk 34; versionCode 1; versionName "1.0.2" } }
           dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }
           EOF
 
@@ -244,5 +249,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Enjoer_v1.0.1_Fixed
+          name: Enjoer_v1.0.2_Fixed
           path: app/build/outputs/apk/debug/app-debug.apk
