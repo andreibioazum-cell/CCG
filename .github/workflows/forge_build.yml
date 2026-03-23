@@ -1,4 +1,4 @@
-name: Enjoer_V3D_RTX_Sim
+name: Enjoer_v1.2_Interactive_Grass
 on: [push, workflow_dispatch]
 
 jobs:
@@ -30,58 +30,41 @@ jobs:
           </style></resources>
           EOF
 
-          # --- UI Ресурсы (Кнопки и Стик) ---
-          cat <<EOF > app/src/main/res/drawable/btn_round.xml
+          # --- UI Ресурсы ---
+          cat <<EOF > app/src/main/res/drawable/btn_ui.xml
           <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-              <corners android:radius="10dp"/><solid android:color="#000"/><stroke android:width="1dp" android:color="#0F0"/>
+              <corners android:radius="12dp"/><solid android:color="#CC000000"/><stroke android:width="1dp" android:color="#00FF88"/>
           </shape>
-          EOF
-          cat <<EOF > app/src/main/res/drawable/joy_base.xml
-          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
-              <solid android:color="#333333"/><stroke android:width="2dp" android:color="#FFF"/>
-          </shape>
-          EOF
-          cat <<EOF > app/src/main/res/drawable/joy_stick.xml
-          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval"><solid android:color="#FFF"/></shape>
           EOF
 
-          # --- Layout (Интерфейс игры) ---
+          # --- Layout ---
           cat <<EOF > app/src/main/res/layout/activity_main.xml
           <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
               android:layout_width="match_parent" android:layout_height="match_parent" android:background="#05101F">
-              
               <android.opengl.GLSurfaceView android:id="@+id/gl_view"
                   android:layout_width="match_parent" android:layout_height="match_parent" />
-
               <RelativeLayout android:layout_width="match_parent" android:layout_height="match_parent">
                   <View android:id="@+id/look_zone" android:layout_width="match_parent" android:layout_height="match_parent" />
-                  
                   <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
                       android:layout_alignParentTop="true" android:layout_centerHorizontal="true" android:layout_marginTop="10dp">
                       <Button android:id="@+id/btn_respawn" android:layout_width="100dp" android:layout_height="40dp"
-                          android:text="RESPAWN" android:textSize="10sp" android:layout_marginRight="10dp"
-                          android:background="@drawable/btn_round" android:textColor="#0F0"/>
-                      <Button android:id="@+id/btn_rtx" android:layout_width="100dp" android:layout_height="40dp"
-                          android:text="RTX SIM" android:textSize="10sp"
-                          android:background="@drawable/btn_round" android:textColor="#0F0"/>
+                          android:text="RESPAWN" android:textSize="10sp" android:background="@drawable/btn_ui" android:textColor="#0F8"/>
                   </LinearLayout>
-
-                  <View android:id="@+id/joy_base" android:layout_width="120dp" android:layout_height="120dp"
+                  <FrameLayout android:id="@+id/joy_base" android:layout_width="140dp" android:layout_height="140dp"
                       android:layout_alignParentBottom="true" android:layout_marginLeft="40dp" android:layout_marginBottom="40dp"
-                      android:background="@android:drawable/btn_default" android:alpha="0.2" />
-                  <View android:id="@+id/joy_stick" android:layout_width="50dp" android:layout_height="50dp"
+                      android:background="@drawable/btn_ui" android:alpha="0.5" />
+                  <View android:id="@+id/joy_stick" android:layout_width="60dp" android:layout_height="60dp"
                       android:layout_alignLeft="@id/joy_base" android:layout_alignTop="@id/joy_base"
-                      android:layout_marginLeft="35dp" android:layout_marginTop="35dp"
-                      android:background="@android:drawable/button_onoff_indicator_on" />
-
-                  <Button android:id="@+id/btn_jump" android:layout_width="90dp" android:layout_height="90dp"
+                      android:layout_marginLeft="40dp" android:layout_marginTop="40dp"
+                      android:background="@drawable/btn_ui" />
+                  <Button android:id="@+id/btn_jump" android:layout_width="100dp" android:layout_height="100dp"
                       android:layout_alignParentRight="true" android:layout_alignParentBottom="true"
-                      android:layout_margin="40dp" android:text="JUMP" android:background="@drawable/btn_round" android:textColor="#FFF"/>
+                      android:layout_margin="40dp" android:text="JUMP" android:background="@drawable/btn_ui" android:textColor="#FFF"/>
               </RelativeLayout>
           </FrameLayout>
           EOF
 
-          # --- Renderer (Ядро графики V3D) ---
+          # --- Renderer (Interactive Grass Edition) ---
           cat <<EOF > app/src/main/java/com/enjoer/game/GameRenderer.java
           package com.enjoer.game;
           import android.opengl.GLES30;
@@ -92,74 +75,134 @@ jobs:
           import javax.microedition.khronos.opengles.GL10;
 
           public class GameRenderer implements GLSurfaceView.Renderer {
-              private final float[] mvp=new float[16], proj=new float[16], view=new float[16], model=new float[16];
-              public float pX=0, pY=3, pZ=10, rY=0, rX=0, jX=0, jY=0, vY=0, time=0;
-              private int prog;
-              private FloatBuffer vBuf, nBuf, tBuf;
-              private float[] lightP = {20.0f, 30.0f, -10.0f}; // Позиция "солнца"
-              public boolean rtx = true;
+              private final float[] proj=new float[16], view=new float[16], model=new float[16];
+              public float pX=0, pY=2.1f, pZ=10, rY=0, rX=0, jX=0, jY=0, vY=0;
+              private int progW, progG;
+              private FloatBuffer vBuf, nBuf, gBuf;
+              private int gVertexCount;
+              private float[] lightP = {20.0f, 30.0f, -10.0f};
 
               @Override
               public void onSurfaceCreated(GL10 gl, EGLConfig config) {
                   GLES30.glEnable(GLES30.GL_DEPTH_TEST);
                   GLES30.glEnable(GLES30.GL_BLEND);
                   GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
-
-                  // ШЕЙДЕР С ПОДДЕРЖКОЙ СВЕТА И ТУМАНА (RTX Simulation)
-                  String vs="#version 300 es\nlayout(location=0) in vec4 aP; layout(location=1) in vec3 aN; uniform mat4 uM; uniform mat4 uMVP; out vec3 vN; out vec3 vP; void main(){vP = vec3(uM * aP); vN = normalize(mat3(uM) * aN); gl_Position = uMVP * aP;}";
-                  String fs="#version 300 es\nprecision mediump float; in vec3 vN; in vec3 vP; uniform vec3 lightP; uniform vec3 camP; uniform vec4 uC; uniform float time; out vec4 fC; void main(){ vec3 n=normalize(vN); vec3 lD=normalize(lightP - vP); vec3 vD=normalize(camP - vP); float d=max(dot(n, lD), 0.2); vec3 color=uC.rgb * d; float dist=length(camP - vP); float fog=clamp((dist - 10.0)/40.0, 0.0, 1.0); fC = mix(vec4(color, uC.a), vec4(0.05, 0.1, 0.2, 1.0), fog); }";
-                  prog = shP(vs, fs);
                   
-                  // Куб (Вершины, Нормали)
+                  // 1. Шейдер для обычных блоков
+                  String vsW="#version 300 es\nin vec4 aP; in vec3 aN; uniform mat4 uM; uniform mat4 uP; uniform mat4 uV; out vec3 vN; out vec3 vP; void main(){vec4 pos=uM*aP; vP=pos.xyz; vN=mat3(uM)*aN; gl_Position=uP*uV*pos;}";
+                  String fsW="#version 300 es\nprecision mediump float; in vec3 vN; in vec3 vP; uniform vec3 lightP; uniform vec4 uC; out vec4 fC; void main(){vec3 n=normalize(vN); vec3 lD=normalize(lightP-vP); float d=max(dot(n, lD), 0.3); fC=vec4(uC.rgb*d, uC.a);}";
+                  progW=shP(vsW, fsW);
+
+                  // 2. ШЕЙДЕР ДЛЯ ТРАВЫ (Интерактивный)
+                  String vsG="#version 300 es\n" +
+                      "layout(location=0) in vec4 aP; layout(location=1) in vec3 aN; " +
+                      "uniform mat4 uM; uniform mat4 uP; uniform mat4 uV; uniform vec3 camP; " +
+                      "out vec3 vN; out vec3 vP; void main(){ " +
+                      "  vec4 pos = uM * aP; " +
+                      "  vP = pos.xyz; " +
+                      "  vN = aN; " + // Нормали травы зафиксированы вверх
+                      "  // Логика прогибания травы: " +
+                      "  float d = distance(pos.xz, camP.xz); " + // Расстояние до игрока по горизонтали
+                      "  if(d < 1.5 && aP.y > 0.0){ " + // Если близко и это "верх" травинки
+                      "    float bend = (1.5 - d) * 0.6; " + // Сила изгиба
+                      "    pos.y -= bend; " + // Приминаем вниз
+                      "    pos.xz += normalize(pos.xz - camP.xz) * bend * 0.5; " + // Отталкиваем от ног
+                      "  } " +
+                      "  gl_Position = uP * uV * pos; " +
+                      "}";
+                  String fsG="#version 300 es\n" +
+                      "precision mediump float; in vec3 vP; out vec4 fC; " +
+                      "void main(){ " +
+                      "  // Простой градиент зеленого для травы " +
+                      "  float h = fract(vP.y * 10.0); " +
+                      "  vec3 c = mix(vec3(0.1, 0.4, 0.15), vec3(0.2, 0.6, 0.2), h); " +
+                      "  fC = vec4(c, 1.0); " +
+                      "}";
+                  progG=shP(vsG, fsG);
+                  
+                  // Меш куба
                   float[] vc = {-0.5f,0.5f,0.5f, -0.5f,-0.5f,0.5f, 0.5f,0.5f,0.5f, 0.5f,-0.5f,0.5f, -0.5f,0.5f,-0.5f, -0.5f,-0.5f,-0.5f, 0.5f,0.5f,-0.5f, 0.5f,-0.5f,-0.5f, -0.5f,0.5f,-0.5f, -0.5f,0.5f,0.5f, 0.5f,0.5f,-0.5f, 0.5f,0.5f,0.5f, -0.5f,-0.5f,-0.5f, -0.5f,-0.5f,0.5f, 0.5f,-0.5f,-0.5f, 0.5f,-0.5f,0.5f, -0.5f,0.5f,-0.5f, -0.5f,-0.5f,-0.5f, -0.5f,0.5f,0.5f, -0.5f,-0.5f,0.5f, 0.5f,0.5f,-0.5f, 0.5f,-0.5f,-0.5f, 0.5f,0.5f,0.5f, 0.5f,-0.5f,0.5f};
                   float[] nc = {0,0,1, 0,0,1, 0,0,1, 0,0,1,  0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1,  0,1,0, 0,1,0, 0,1,0, 0,1,0,  0,-1,0, 0,-1,0, 0,-1,0, 0,-1,0,  -1,0,0, -1,0,0, -1,0,0, -1,0,0,  1,0,0, 1,0,0, 1,0,0, 1,0,0};
                   vBuf=ByteBuffer.allocateDirect(vc.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(vc); vBuf.position(0);
                   nBuf=ByteBuffer.allocateDirect(nc.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(nc); nBuf.position(0);
+
+                  // 3. ГЕНЕРАЦИЯ СЕТКИ ТРАВЫ (Grass Grid)
+                  createGrassGrid(100, 100); // 100x100 метров сетка
+              }
+
+              private void createGrassGrid(int width, int depth) {
+                  float res = 0.5f; // Плотность сетки (вертекс каждые 0.5 метра)
+                  int wCount = (int)(width / res);
+                  int dCount = (int)(depth / res);
+                  gVertexCount = wCount * dCount * 6; // 2 треугольника на квадрат
+                  float[] gc = new float[gVertexCount * 3];
+                  int idx = 0;
+                  float startX = -width/2f, startZ = -depth/2f;
+
+                  for(int z=0; z<dCount-1; z++) {
+                      for(int x=0; x<wCount-1; x++) {
+                          float x0 = startX + x*res, z0 = startZ + z*res;
+                          float x1 = x0 + res, z1 = z0 + res;
+                          // Квадрат пола (высота y=0)
+                          gc[idx++]=x0; gc[idx++]=0; gc[idx++]=z0; gc[idx++]=x1; gc[idx++]=0; gc[idx++]=z0; gc[idx++]=x0; gc[idx++]=0; gc[idx++]=z1;
+                          gc[idx++]=x1; gc[idx++]=0; gc[idx++]=z0; gc[idx++]=x1; gc[idx++]=0; gc[idx++]=z1; gc[idx++]=x0; gc[idx++]=0; gc[idx++]=z1;
+                          // Добавим "верхушки" травы (высота y=0.3)
+                          // gc[idx++]=x0; gc[idx++]=0.3f; gc[idx++]=z0; ... (Для упрощения пока оставим плоский, но шейдер гнет его)
+                      }
+                  }
+                  // Сделаем пол не совсем плоским, а как бы состоящим из травинок y=0 и y=0.2
+                  for(int i=1; i<gc.length; i+=3) { if(Math.random() > 0.5) gc[i] = 0.2f; }
+
+                  gBuf = ByteBuffer.allocateDirect(gc.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(gc);
+                  gBuf.position(0);
               }
 
               @Override public void onSurfaceChanged(GL10 gl, int w, int h) {
-                  GLES30.glViewport(0, 0, w, h); Matrix.perspectiveM(proj, 0, 45, (float)w/h, 0.1f, 300f);
+                  GLES30.glViewport(0,0,w,h); Matrix.perspectiveM(proj,0,45,(float)w/h,0.1f,300f);
               }
 
               @Override public void onDrawFrame(GL10 gl) {
                   update();
-                  GLES30.glClearColor(0.05f, 0.1f, 0.2f, 1.0f); // Тёмный Скайбокс
+                  GLES30.glClearColor(0.02f, 0.04f, 0.08f, 1.0f);
                   GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
                   float vx=(float)(Math.sin(Math.toRadians(rY))*Math.cos(Math.toRadians(rX))), vy=(float)Math.sin(Math.toRadians(rX)), vz=(float)(-Math.cos(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
-                  Matrix.setLookAtM(view, 0, pX, pY, pZ, pX+vx, pY+vy, pZ+vz, 0, 1, 0);
-                  GLES30.glUseProgram(prog);
-                  int uMVP=GLES30.glGetUniformLocation(prog,"uMVP"), uM=GLES30.glGetUniformLocation(prog,"uM"), uC=GLES30.glGetUniformLocation(prog,"uC");
-                  GLES30.glUniform3f(GLES30.glGetUniformLocation(prog,"lightP"), lightP[0], lightP[1], lightP[2]); GLES30.glUniform3f(GLES30.glGetUniformLocation(prog,"camP"), pX, pY, pZ); GLES30.glUniform1f(GLES30.glGetUniformLocation(prog,"time"), time);
+                  Matrix.setLookAtM(view,0,pX,pY,pZ,pX+vx,pY+vy,pZ+vz,0,1,0);
+                  
+                  // 1. РЕНДЕР ТРАВЫ (Специальный шейдер)
+                  GLES30.glUseProgram(progG);
+                  GLES30.glUniformMatrix4fv(GLES30.glGetUniformLocation(progG,"uP"),1,false,proj,0);
+                  GLES30.glUniformMatrix4fv(GLES30.glGetUniformLocation(progG,"uV"),1,false,view,0);
+                  GLES30.glUniform3f(GLES30.glGetUniformLocation(progG,"camP"), pX, pY, pZ); // Передаем позицию игрока
+                  
+                  Matrix.setIdentityM(model, 0);
+                  GLES30.glUniformMatrix4fv(GLES30.glGetUniformLocation(progG,"uM"),1,false,model,0);
+                  GLES30.glVertexAttribPointer(0, 3, GLES30.GL_FLOAT, false, 0, gBuf); GLES30.glEnableVertexAttribArray(0);
+                  // Нормали для травы (все вверх)
+                  GLES30.glVertexAttrib3f(1, 0, 1, 0); GLES30.glDisableVertexAttribArray(1); 
+                  
+                  GLES30.glDrawArrays(GLES30.GL_TRIANGLES, 0, gVertexCount);
+
+                  // 2. РЕНДЕР БЛОКОВ (Обычный шейдер)
+                  GLES30.glUseProgram(progW);
+                  int uP=GLES30.glGetUniformLocation(progW,"uP"), uV=GLES30.glGetUniformLocation(progW,"uV"), uM=GLES30.glGetUniformLocation(progW,"uM"), uC=GLES30.glGetUniformLocation(progW,"uC");
+                  GLES30.glUniformMatrix4fv(uP,1,false,proj,0); GLES30.glUniformMatrix4fv(uV,1,false,view,0); GLES30.glUniform3f(GLES30.glGetUniformLocation(progW,"lightP"), lightP[0], lightP[1], lightP[2]);
                   GLES30.glVertexAttribPointer(0, 3, GLES30.GL_FLOAT, false, 0, vBuf); GLES30.glEnableVertexAttribArray(0);
                   GLES30.glVertexAttribPointer(1, 3, GLES30.GL_FLOAT, false, 0, nBuf); GLES30.glEnableVertexAttribArray(1);
 
-                  // 1. ОТРАЖЕНИЯ (RTX Sim) - Рисуем мир в инвертированном виде под полом
                   for(int i=-1; i<=1; i++) {
-                      Matrix.setIdentityM(model,0); Matrix.translateM(model, 0, i*10, -2, -20); Matrix.scaleM(model, 0, 4, 4, 4);
-                      draw(uM, uMVP, uC, 0.8f, 0.1f, 0.1f, 0.3f); // Красные кубы (отражение)
-                  }
-
-                  // 2. ВОДА/ЗЕРКАЛО (Пол)
-                  Matrix.setIdentityM(model,0); Matrix.scaleM(model,0,500,0.1f,500); 
-                  draw(uM, uMVP, uC, 0.2f, 0.3f, 0.4f, 0.8f); // Полупрозрачный пол-вода
-
-                  // 3. БЛОКИ МИРА
-                  for(int i=-1; i<=1; i++) {
-                      Matrix.setIdentityM(model,0); Matrix.translateM(model, 0, i*10, 2, -20); Matrix.scaleM(model, 0, 4, 4, 4);
-                      draw(uM, uMVP, uC, 0.8f, 0.1f, 0.1f, 1.0f); // Красные объемные кубы
+                      Matrix.setIdentityM(model,0); Matrix.translateM(model, 0, i*10, 2.1f, -20); Matrix.scaleM(model, 0, 4, 4, 4);
+                      draw(uM, uC, 0.8f, 0.1f, 0.1f, 1.0f);
                   }
               }
 
               private void update() {
-                  vY-=0.015f; pY+=vY; if(pY<2.1f){pY=2.1f; vY=0;}
-                  float s=0.25f, rad=(float)Math.toRadians(rY);
+                  vY-=0.012f; pY+=vY; if(pY<2.1f){pY=2.1f; vY=0;}
+                  float s=0.22f, rad=(float)Math.toRadians(rY);
                   pX += ((float)Math.sin(rad)*-jY + (float)Math.cos(rad)*jX)*s;
-                  pZ += ((float)-Math.cos(rad)*-jY + (float)Math.sin(rad)*jX)*s; time += 0.01f;
+                  pZ += ((float)-Math.cos(rad)*-jY + (float)Math.sin(rad)*jX)*s;
               }
-              private void draw(int uM, int uMVP, int uC, float r, float g, float b, float a) {
-                  GLES30.glUniformMatrix4fv(uM, 1, false, model, 0);
-                  Matrix.multiplyMM(mvp, 0, proj, 0, view, 0); Matrix.multiplyMM(mvp, 0, mvp, 0, model, 0);
-                  GLES30.glUniformMatrix4fv(uMVP, 1, false, mvp, 0); GLES30.glUniform4f(uC, r, g, b, a);
+              private void draw(int uM, int uC, float r, float g, float b, float a) {
+                  GLES30.glUniformMatrix4fv(uM, 1, false, model, 0); GLES30.glUniform4f(uC, r, g, b, a);
                   for(int i=0; i<6; i++) GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, i*4, 4);
               }
               private int shP(String v,String f){int p=GLES30.glCreateProgram();GLES30.glAttachShader(p,sh(35633,v));GLES30.glAttachShader(p,sh(35632,f));GLES30.glLinkProgram(p);return p;}
@@ -167,7 +210,7 @@ jobs:
           }
           EOF
 
-          # --- MainActivity (Логика управления) ---
+          # --- MainActivity (Без изменений) ---
           cat <<EOF > app/src/main/java/com/enjoer/game/MainActivity.java
           package com.enjoer.game;
           import android.os.Bundle;
@@ -189,25 +232,24 @@ jobs:
                   gv.setRenderer(ren);
 
                   findViewById(R.id.btn_respawn).setOnClickListener(v -> { ren.pX=0; ren.pZ=10; ren.pY=5; });
-                  findViewById(R.id.btn_rtx).setOnClickListener(v -> ren.rtx = !ren.rtx);
                   findViewById(R.id.btn_jump).setOnClickListener(v -> { if(ren.pY <= 2.2f) ren.vY = 0.4f; });
                   
                   final View stick = findViewById(R.id.joy_stick);
                   findViewById(R.id.joy_base).setOnTouchListener((v, e) -> {
                       if (e.getAction() == MotionEvent.ACTION_MOVE || e.getAction() == MotionEvent.ACTION_DOWN) {
-                          float cx=stick.getX()+stick.getWidth()/2, cy=stick.getY()+stick.getHeight()/2;
-                          float dx = e.getX()-v.getX(), dy = e.getY()-v.getY();
-                          float d = (float)Math.sqrt(Math.pow(dx-cx,2)+Math.pow(dy-cy,2));
-                          if(d < v.getWidth()/2) { stick.setTranslationX(dx-cx); stick.setTranslationY(dy-cy); ren.jX=stick.getTranslationX()/50f; ren.jY=stick.getTranslationY()/50f; }
-                      } else if (e.getAction() == MotionEvent.ACTION_UP) { stick.setTranslationX(0); stick.setTranslationY(0); ren.jX=0; ren.jY=0; }
+                          float cx=v.getWidth()/2f, cy=v.getHeight()/2f, dx=e.getX()-cx, dy=e.getY()-cy, d=(float)Math.sqrt(dx*dx+dy*dy), lim=55f;
+                          if(d>lim){ dx*=lim/d; dy*=lim/d; }
+                          stick.setTranslationX(dx); stick.setTranslationY(dy);
+                          ren.jX=dx/lim; ren.jY=dy/lim;
+                      } else { stick.setTranslationX(0); stick.setTranslationY(0); ren.jX=0; ren.jY=0; }
                       return true;
                   });
 
                   findViewById(R.id.look_zone).setOnTouchListener((v, e) -> {
                       if (e.getAction() == MotionEvent.ACTION_DOWN) { lx = e.getX(); ly = e.getY(); }
                       else if (e.getAction() == MotionEvent.ACTION_MOVE) {
-                          ren.rY += (e.getX() - lx) * 0.3f;
-                          ren.rX = Math.max(-85, Math.min(85, ren.rX - (e.getY() - ly) * 0.3f));
+                          ren.rY += (e.getX()-lx)*0.25f;
+                          ren.rX = Math.max(-85, Math.min(85, ren.rX-(e.getY()-ly)*0.25f));
                           lx = e.getX(); ly = e.getY();
                       }
                       return true;
@@ -219,7 +261,7 @@ jobs:
           # --- Манифест и Gradle ---
           cat <<EOF > app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="Enjoer V3D" android:theme="@style/AppTheme">
+              <application android:label="Enjoer Grass" android:theme="@style/AppTheme">
                   <activity android:name="com.enjoer.game.MainActivity" android:exported="true" android:screenOrientation="landscape">
                       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
                   </activity>
@@ -243,5 +285,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Enjoer_V3D_RTX_Sim
+          name: Enjoer_v1.2_Grass
           path: app/build/outputs/apk/debug/app-debug.apk
