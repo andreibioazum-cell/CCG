@@ -1,4 +1,4 @@
-name: Roblox_V25_RTX_Sim
+name: Roblox_V26_Fix_UI_Spawn
 on: [push, workflow_dispatch]
 
 jobs:
@@ -30,10 +30,21 @@ jobs:
           </style></resources>
           EOF
 
-          # --- UI Ресурсы ---
+          # --- НОВЫЕ ЦВЕТА ДЖОЙСТИКА ---
+          cat <<EOF > app/src/main/res/drawable/joy_base_black.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+              <solid android:color="#CC000000"/> <stroke android:width="2dp" android:color="#FF555555"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/joy_stick_grey.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+              <solid android:color="#FF444444"/> </shape>
+          EOF
+
           cat <<EOF > app/src/main/res/drawable/btn_menu_round.xml
           <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-              <corners android:radius="15dp"/><solid android:color="#CC111111"/><stroke android:width="1dp" android:color="#00FFFF"/>
+              <corners android:radius="15dp"/><solid android:color="#EE111111"/><stroke android:width="1dp" android:color="#00FFFF"/>
           </shape>
           EOF
 
@@ -54,31 +65,23 @@ jobs:
                           android:text="RTX SET" android:textSize="10sp"
                           android:background="@drawable/btn_menu_round" android:textColor="#0FF"/>
                   </LinearLayout>
-                  <View android:id="@+id/joy_base" android:layout_width="120dp" android:layout_height="120dp"
+                  
+                  <FrameLayout android:id="@+id/joy_base" android:layout_width="120dp" android:layout_height="120dp"
                       android:layout_alignParentBottom="true" android:layout_marginLeft="40dp" android:layout_marginBottom="40dp"
-                      android:background="@android:drawable/presence_invisible" android:alpha="0.2" />
+                      android:background="@drawable/joy_base_black" />
                   <View android:id="@+id/joy_stick" android:layout_width="50dp" android:layout_height="50dp"
                       android:layout_alignLeft="@id/joy_base" android:layout_alignTop="@id/joy_base"
                       android:layout_marginLeft="35dp" android:layout_marginTop="35dp"
-                      android:background="@android:drawable/presence_online" />
+                      android:background="@drawable/joy_stick_grey" />
+                      
                   <Button android:id="@+id/btn_jump" android:layout_width="90dp" android:layout_height="90dp"
                       android:layout_alignParentRight="true" android:layout_alignParentBottom="true"
-                      android:layout_margin="40dp" android:text="JUMP" android:background="@drawable/btn_menu_round" android:textColor="#FFF"/>
+                      android:layout_margin="40dp" android:text="JUMP" android:background="@drawable/joy_base_black" android:textColor="#FFF"/>
               </RelativeLayout>
-              <LinearLayout android:id="@+id/settings_menu" android:layout_width="220dp" android:layout_height="wrap_content"
-                  android:layout_gravity="center" android:background="#F2000000" android:padding="20dp"
-                  android:orientation="vertical" android:visibility="gone">
-                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" 
-                      android:text="RTX SIMULATION" android:textColor="#0FF" android:layout_gravity="center" android:layout_marginBottom="10dp"/>
-                  <Button android:id="@+id/gfx_min" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="OFF (Low)"/>
-                  <Button android:id="@+id/gfx_norm" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="ON (Medium)"/>
-                  <Button android:id="@+id/gfx_max" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="ULTRA (Reflections)"/>
-                  <Button android:id="@+id/close_settings" android:layout_width="match_parent" android:layout_height="35dp" android:text="APPLY" android:layout_marginTop="10dp"/>
-              </LinearLayout>
           </FrameLayout>
           EOF
 
-          # --- Renderer с симуляцией трассировки ---
+          # --- Renderer (Фикс Спавна и Слоев) ---
           cat <<EOF > app/src/main/java/com/dimos/roblox/GameRenderer.java
           package com.dimos.roblox;
           import android.opengl.GLES30;
@@ -90,7 +93,8 @@ jobs:
 
           public class GameRenderer implements GLSurfaceView.Renderer {
               private final float[] mvp=new float[16], proj=new float[16], view=new float[16], model=new float[16];
-              public float pX=0, pY=3, pZ=10, rY=0, rX=0, jX=0, jY=0, vY=0;
+              // ИСПРАВЛЕННЫЙ СПАВН: pY = 2.5f (на земле)
+              public float pX=0, pY=2.5f, pZ=10, rY=0, rX=0, jX=0, jY=0, vY=0;
               public int gfxMode = 0; 
               private int prog;
               private FloatBuffer vBuf;
@@ -100,11 +104,9 @@ jobs:
                   GLES30.glEnable(GLES30.GL_DEPTH_TEST);
                   GLES30.glEnable(GLES30.GL_BLEND);
                   GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
-                  
-                  String vs="#version 300 es\nin vec4 aP; uniform mat4 uM; out vec3 vP; void main(){gl_Position=uM*aP; vP=aP.xyz;}";
-                  String fs="#version 300 es\nprecision mediump float; in vec3 vP; uniform vec4 uC; uniform float alpha; void main(){fC=vec4(uC.rgb, alpha);} out vec4 fC;";
+                  String vs="#version 300 es\nin vec4 aP; uniform mat4 uM; void main(){gl_Position=uM*aP;}";
+                  String fs="#version 300 es\nprecision mediump float; uniform vec4 uC; uniform float alpha; out vec4 fC; void main(){fC=vec4(uC.rgb, alpha);}";
                   prog=shP(vs, fs);
-                  
                   float[] vc = {-0.5f,0.5f,0.5f, -0.5f,-0.5f,0.5f, 0.5f,0.5f,0.5f, 0.5f,-0.5f,0.5f, -0.5f,0.5f,-0.5f, -0.5f,-0.5f,-0.5f, 0.5f,0.5f,-0.5f, 0.5f,-0.5f,-0.5f, -0.5f,0.5f,-0.5f, -0.5f,0.5f,0.5f, 0.5f,0.5f,-0.5f, 0.5f,0.5f,0.5f, -0.5f,-0.5f,-0.5f, -0.5f,-0.5f,0.5f, 0.5f,-0.5f,-0.5f, 0.5f,-0.5f,0.5f, -0.5f,0.5f,-0.5f, -0.5f,-0.5f,-0.5f, -0.5f,0.5f,0.5f, -0.5f,-0.5f,0.5f, 0.5f,0.5f,-0.5f, 0.5f,-0.5f,-0.5f, 0.5f,0.5f,0.5f, 0.5f,-0.5f,0.5f};
                   vBuf=ByteBuffer.allocateDirect(vc.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(vc); vBuf.position(0);
               }
@@ -117,40 +119,28 @@ jobs:
                   update();
                   GLES30.glClearColor(0.5f, 0.7f, 0.9f, 1.0f);
                   GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
-                  
                   float vx=(float)(Math.sin(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
                   float vy=(float)Math.sin(Math.toRadians(rX));
                   float vz=(float)(-Math.cos(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
                   Matrix.setLookAtM(view,0,pX,pY,pZ,pX+vx,pY+vy,pZ+vz,0,1,0);
-
                   GLES30.glUseProgram(prog);
                   int uM=GLES30.glGetUniformLocation(prog,"uM"), uC=GLES30.glGetUniformLocation(prog,"uC"), uA=GLES30.glGetUniformLocation(prog,"alpha");
                   GLES30.glVertexAttribPointer(0,3,GLES30.GL_FLOAT,false,0,vBuf); GLES30.glEnableVertexAttribArray(0);
 
-                  // 1. Отражения (RTX Sim) - Рисуем перевернутые объекты под полом
-                  if(gfxMode == 2) {
-                      for(int i=-1; i<=1; i++) {
-                          Matrix.setIdentityM(model,0); Matrix.translateM(model,0,i*10,-2, -20); // Отражение (Y < 0)
-                          Matrix.scaleM(model,0,4,4,4); GLES30.glUniform1f(uA, 0.3f); draw(uM,uC,0.8f,0.2f,0.2f);
-                      }
-                  }
-
-                  // 2. Пол (Зеркальная поверхность)
+                  // Пол (Отрисовка)
                   Matrix.setIdentityM(model,0); Matrix.scaleM(model,0,500,0.1f,500); 
-                  GLES30.glUniform1f(uA, gfxMode == 2 ? 0.7f : 1.0f); draw(uM,uC,0.3f,0.3f,0.35f);
+                  GLES30.glUniform1f(uA, 1.0f); draw(uM,uC,0.3f,0.3f,0.35f);
 
-                  // 3. Реальные объекты
+                  // Кубы
                   for(int i=-1; i<=1; i++) {
                       Matrix.setIdentityM(model,0); Matrix.translateM(model,0,i*10,2.1f, -20);
-                      Matrix.scaleM(model,0,4,4,4); GLES30.glUniform1f(uA, 1.0f); 
-                      float shade = (gfxMode >= 1) ? 0.9f : 1.0f; // Имитация затенения
-                      draw(uM,uC,0.8f*shade,0.2f*shade,0.2f*shade);
+                      Matrix.scaleM(model,0,4,4,4); GLES30.glUniform1f(uA, 1.0f); draw(uM,uC,0.8f,0.1f,0.1f);
                   }
               }
 
               private void update() {
                   vY-=0.015f; pY+=vY; if(pY<2.1f){pY=2.1f; vY=0;}
-                  float s=0.25f, rad=(float)Math.toRadians(rY);
+                  float s=0.22f, rad=(float)Math.toRadians(rY);
                   pX += ((float)Math.sin(rad)*-jY + (float)Math.cos(rad)*jX)*s;
                   pZ += ((float)-Math.cos(rad)*-jY + (float)Math.sin(rad)*jX)*s;
               }
@@ -164,7 +154,7 @@ jobs:
           }
           EOF
 
-          # --- Остальные файлы без изменений ---
+          # --- MainActivity (Фикс координат нажатий) ---
           cat <<EOF > app/src/main/java/com/dimos/roblox/MainActivity.java
           package com.dimos.roblox;
           import android.os.Bundle;
@@ -185,25 +175,20 @@ jobs:
                   ren = new GameRenderer();
                   gv.setRenderer(ren);
 
-                  View sMenu = findViewById(R.id.settings_menu);
-                  findViewById(R.id.btn_settings).setOnClickListener(v -> sMenu.setVisibility(View.VISIBLE));
-                  findViewById(R.id.close_settings).setOnClickListener(v -> sMenu.setVisibility(View.GONE));
-
-                  findViewById(R.id.gfx_min).setOnClickListener(v -> ren.gfxMode = 0);
-                  findViewById(R.id.gfx_norm).setOnClickListener(v -> ren.gfxMode = 1);
-                  findViewById(R.id.gfx_max).setOnClickListener(v -> ren.gfxMode = 2);
-
                   findViewById(R.id.btn_reset).setOnClickListener(v -> { ren.pX=0; ren.pZ=10; ren.pY=5; });
                   findViewById(R.id.btn_jump).setOnClickListener(v -> { if(ren.pY <= 2.2f) ren.vY = 0.4f; });
                   
+                  View stick = findViewById(R.id.joy_stick);
                   findViewById(R.id.joy_base).setOnTouchListener((v, e) -> {
+                      float cx = v.getWidth()/2f, cy = v.getHeight()/2f;
                       if (e.getAction() == MotionEvent.ACTION_MOVE || e.getAction() == MotionEvent.ACTION_DOWN) {
-                          float dx = e.getX() - 60, dy = e.getY() - 60, d = (float)Math.sqrt(dx*dx + dy*dy);
-                          if (d > 40) { dx *= 40/d; dy *= 40/d; }
-                          findViewById(R.id.joy_stick).setTranslationX(dx); 
-                          findViewById(R.id.joy_stick).setTranslationY(dy);
-                          ren.jX = dx/40f; ren.jY = dy/40f;
-                      } else { ren.jX = 0; ren.jY = 0; }
+                          float dx = e.getX() - cx, dy = e.getY() - cy;
+                          float d = (float)Math.sqrt(dx*dx + dy*dy);
+                          float limit = 35f;
+                          if (d > limit) { dx *= limit/d; dy *= limit/d; }
+                          stick.setTranslationX(dx); stick.setTranslationY(dy);
+                          ren.jX = dx/limit; ren.jY = dy/limit;
+                      } else { stick.setTranslationX(0); stick.setTranslationY(0); ren.jX = 0; ren.jY = 0; }
                       return true;
                   });
 
@@ -222,7 +207,7 @@ jobs:
 
           cat <<EOF > app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="RTX Engine" android:theme="@style/AppTheme">
+              <application android:label="Engine Fix" android:theme="@style/AppTheme">
                   <activity android:name="com.dimos.roblox.MainActivity" android:exported="true" android:screenOrientation="landscape">
                       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
                   </activity>
@@ -246,5 +231,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Roblox_V25_RTX_Sim
+          name: Engine_V26_Fixed
           path: app/build/outputs/apk/debug/app-debug.apk
