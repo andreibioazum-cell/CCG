@@ -1,4 +1,4 @@
-name: Enjoer_v1.3_Fixed
+name: Enjoer_1.0_GreenFloor
 on: [push, workflow_dispatch]
 
 jobs:
@@ -30,41 +30,49 @@ jobs:
           </style></resources>
           EOF
 
-          # --- Красивый UI (Черный + Зеленый неон) ---
-          cat <<EOF > app/src/main/res/drawable/btn_ui.xml
+          # --- UI Ресурсы (Black & Green Neo) ---
+          cat <<EOF > app/src/main/res/drawable/btn_round.xml
           <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-              <corners android:radius="15dp"/><solid android:color="#E6000000"/><stroke android:width="2dp" android:color="#00FF44"/>
+              <corners android:radius="12dp"/><solid android:color="#000"/><stroke android:width="1dp" android:color="#0F0"/>
           </shape>
+          EOF
+          cat <<EOF > app/src/main/res/drawable/joy_base.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+              <solid android:color="#CC000000"/> <stroke android:width="2dp" android:color="#00FF00"/> </shape>
+          EOF
+          cat <<EOF > app/src/main/res/drawable/joy_stick.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+              <solid android:color="#00FF00"/> </shape>
           EOF
 
           # --- Layout ---
           cat <<EOF > app/src/main/res/layout/activity_main.xml
           <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:layout_width="match_parent" android:layout_height="match_parent" android:background="#02050A">
+              android:layout_width="match_parent" android:layout_height="match_parent" android:background="#05101F">
               <android.opengl.GLSurfaceView android:id="@+id/gl_view"
                   android:layout_width="match_parent" android:layout_height="match_parent" />
               <RelativeLayout android:layout_width="match_parent" android:layout_height="match_parent">
                   <View android:id="@+id/look_zone" android:layout_width="match_parent" android:layout_height="match_parent" />
-                  <Button android:id="@+id/btn_respawn" android:layout_width="120dp" android:layout_height="45dp"
-                      android:layout_alignParentTop="true" android:layout_centerHorizontal="true" android:layout_marginTop="10dp"
-                      android:text="RESPAWN" android:background="@drawable/btn_ui" android:textColor="#0F4"/>
-                  
-                  <FrameLayout android:id="@+id/joy_base" android:layout_width="150dp" android:layout_height="150dp"
-                      android:layout_alignParentBottom="true" android:layout_marginLeft="30dp" android:layout_marginBottom="30dp"
-                      android:background="@drawable/btn_ui" android:alpha="0.4" />
-                  <View android:id="@+id/joy_stick" android:layout_width="70dp" android:layout_height="70dp"
+                  <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
+                      android:layout_alignParentTop="true" android:layout_centerHorizontal="true" android:layout_marginTop="10dp">
+                      <Button android:id="@+id/btn_respawn" android:layout_width="100dp" android:layout_height="40dp"
+                          android:text="RESPAWN" android:textSize="10sp" android:background="@drawable/btn_round" android:textColor="#0F0"/>
+                  </LinearLayout>
+                  <FrameLayout android:id="@+id/joy_base" android:layout_width="140dp" android:layout_height="140dp"
+                      android:layout_alignParentBottom="true" android:layout_marginLeft="40dp" android:layout_marginBottom="40dp"
+                      android:background="@drawable/joy_base" />
+                  <View android:id="@+id/joy_stick" android:layout_width="60dp" android:layout_height="60dp"
                       android:layout_alignLeft="@id/joy_base" android:layout_alignTop="@id/joy_base"
                       android:layout_marginLeft="40dp" android:layout_marginTop="40dp"
-                      android:background="@drawable/btn_ui" />
-
-                  <Button android:id="@+id/btn_jump" android:layout_width="110dp" android:layout_height="110dp"
+                      android:background="@drawable/joy_stick" />
+                  <Button android:id="@+id/btn_jump" android:layout_width="100dp" android:layout_height="100dp"
                       android:layout_alignParentRight="true" android:layout_alignParentBottom="true"
-                      android:layout_margin="30dp" android:text="JUMP" android:background="@drawable/btn_ui" android:textColor="#FFF"/>
+                      android:layout_margin="40dp" android:text="JUMP" android:background="@drawable/btn_round" android:textColor="#FFF"/>
               </RelativeLayout>
           </FrameLayout>
           EOF
 
-          # --- Renderer (FIXED COLORS & GRID) ---
+          # --- Renderer (High Player & Green Floor) ---
           cat <<EOF > app/src/main/java/com/enjoer/game/GameRenderer.java
           package com.enjoer.game;
           import android.opengl.GLES30;
@@ -76,81 +84,76 @@ jobs:
 
           public class GameRenderer implements GLSurfaceView.Renderer {
               private final float[] proj=new float[16], view=new float[16], model=new float[16];
-              public float pX=0, pY=4.0f, pZ=10, rY=0, rX=0, jX=0, jY=0, vY=0;
+              public float pX=0, pY=4, pZ=10, rY=0, rX=0, jX=0, jY=0, vY=0;
               private int prog;
-              private FloatBuffer vBuf, nBuf, gBuf;
-              private int gCount;
+              private FloatBuffer vBuf, nBuf;
+              private float[] lightP = {20.0f, 30.0f, -10.0f};
 
               @Override
               public void onSurfaceCreated(GL10 gl, EGLConfig config) {
                   GLES30.glEnable(GLES30.GL_DEPTH_TEST);
-                  
-                  // ЧИСТЫЙ И ПОНЯТНЫЙ ШЕЙДЕР
-                  String vs="#version 300 es\nlayout(location=0) in vec4 aP; layout(location=1) in vec3 aN; uniform mat4 uMVP; uniform vec3 camP; out float vH; void main(){ vec4 p=aP; if(length(p.xz-camP.xz)<2.0 && p.y > 0.1) p.y -= 0.3; vH=aP.y; gl_Position=uMVP*p; }";
-                  String fs="#version 300 es\nprecision mediump float; in float vH; uniform vec4 uC; out vec4 fC; void main(){ vec3 grass = mix(vec3(0.0, 0.4, 0.1), vec3(0.1, 0.8, 0.2), vH*2.0); fC=vec4(uC.rgb * grass, uC.a); if(uC.a < 0.9) fC=vec4(grass, 1.0); }";
+                  GLES30.glEnable(GLES30.GL_BLEND);
+                  GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
+                  String vs="#version 300 es\nlayout(location=0) in vec4 aP; layout(location=1) in vec3 aN; uniform mat4 uMVP; uniform mat4 uM; out vec3 vN; out vec3 vP; void main(){vP=vec3(uM*aP); vN=normalize(mat3(uM)*aN); gl_Position=uMVP*aP;}";
+                  String fs="#version 300 es\nprecision mediump float; in vec3 vN; in vec3 vP; uniform vec3 lightP; uniform vec3 camP; uniform vec4 uC; out vec4 fC; void main(){vec3 n=normalize(vN); vec3 lD=normalize(lightP-vP); float d=max(dot(n, lD), 0.2); vec3 color=uC.rgb*d; float dist=length(camP-vP); float fog=clamp((dist-10.0)/60.0, 0.0, 1.0); fC=mix(vec4(color, uC.a), vec4(0.02, 0.04, 0.08, 1.0), fog);}";
                   prog=shP(vs, fs);
-                  
-                  // Куб
-                  float[] vc={-0.5f,0.5f,0.5f,-0.5f,-0.5f,0.5f,0.5f,0.5f,0.5f,0.5f,-0.5f,0.5f,-0.5f,0.5f,-0.5f,-0.5f,-0.5f,-0.5f,0.5f,0.5f,-0.5f,0.5f,-0.5f,-0.5f,-0.5f,0.5f,-0.5f,-0.5f,0.5f,0.5f,0.5f,0.5f,-0.5f,0.5f,0.5f,0.5f,-0.5f,-0.5f,-0.5f,-0.5f,-0.5f,0.5f,0.5f,-0.5f,-0.5f,0.5f,-0.5f,0.5f,-0.5f,0.5f,-0.5f,-0.5f,-0.5f,-0.5f,-0.5f,0.5f,0.5f,-0.5f,-0.5f,0.5f,0.5f,0.5f,-0.5f,0.5f,-0.5f,-0.5f,0.5f,0.5f,0.5f,0.5f,-0.5f,0.5f};
+                  float[] vc = {-0.5f,0.5f,0.5f, -0.5f,-0.5f,0.5f, 0.5f,0.5f,0.5f, 0.5f,-0.5f,0.5f, -0.5f,0.5f,-0.5f, -0.5f,-0.5f,-0.5f, 0.5f,0.5f,-0.5f, 0.5f,-0.5f,-0.5f, -0.5f,0.5f,-0.5f, -0.5f,0.5f,0.5f, 0.5f,0.5f,-0.5f, 0.5f,0.5f,0.5f, -0.5f,-0.5f,-0.5f, -0.5f,-0.5f,0.5f, 0.5f,-0.5f,-0.5f, 0.5f,-0.5f,0.5f, -0.5f,0.5f,-0.5f, -0.5f,-0.5f,-0.5f, -0.5f,0.5f,0.5f, -0.5f,-0.5f,0.5f, 0.5f,0.5f,-0.5f, 0.5f,-0.5f,-0.5f, 0.5f,0.5f,0.5f, 0.5f,-0.5f,0.5f};
+                  float[] nc = {0,0,1, 0,0,1, 0,0,1, 0,0,1,  0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1,  0,1,0, 0,1,0, 0,1,0, 0,1,0,  0,-1,0, 0,-1,0, 0,-1,0, 0,-1,0,  -1,0,0, -1,0,0, -1,0,0, -1,0,0,  1,0,0, 1,0,0, 1,0,0, 1,0,0};
                   vBuf=ByteBuffer.allocateDirect(vc.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(vc); vBuf.position(0);
-
-                  // ГЕНЕРАЦИЯ ПОЛА (БЕЗОПАСНАЯ СЕТКА)
-                  int size=40; float step=1.0f;
-                  gCount = size * size * 6;
-                  float[] gData = new float[gCount * 3];
-                  int idx=0;
-                  for(int z=0; z<size; z++){
-                      for(int x=0; x<size; x++){
-                          float x0=x-size/2f, z0=z-size/2f, x1=x0+step, z1=z0+step;
-                          gData[idx++]=x0; gData[idx++]=0; gData[idx++]=z0; gData[idx++]=x1; gData[idx++]=0; gData[idx++]=z0; gData[idx++]=x0; gData[idx++]=0.3f; gData[idx++]=z1;
-                          gData[idx++]=x1; gData[idx++]=0; gData[idx++]=z0; gData[idx++]=x1; gData[idx++]=0.3f; gData[idx++]=z1; gData[idx++]=x0; gData[idx++]=0.3f; gData[idx++]=z1;
-                      }
-                  }
-                  gBuf=ByteBuffer.allocateDirect(gData.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(gData); gBuf.position(0);
+                  nBuf=ByteBuffer.allocateDirect(nc.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(nc); nBuf.position(0);
               }
 
               @Override public void onSurfaceChanged(GL10 gl, int w, int h) {
-                  GLES30.glViewport(0,0,w,h); Matrix.perspectiveM(proj,0,45,(float)w/h,0.1f,200f);
+                  GLES30.glViewport(0,0,w,h); Matrix.perspectiveM(proj,0,45,(float)w/h,0.1f,300f);
               }
 
               @Override public void onDrawFrame(GL10 gl) {
-                  vY-=0.015f; pY+=vY; if(pY<2.1f){pY=2.1f; vY=0;}
-                  float s=0.25f, rad=(float)Math.toRadians(rY);
-                  pX += ((float)Math.sin(rad)*-jY + (float)Math.cos(rad)*jX)*s;
-                  pZ += ((float)-Math.cos(rad)*-jY + (float)Math.sin(rad)*jX)*s;
-
-                  GLES30.glClearColor(0.01f, 0.02f, 0.05f, 1.0f);
+                  update();
+                  GLES30.glClearColor(0.02f, 0.04f, 0.08f, 1.0f);
                   GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
-                  float vx=(float)(Math.sin(Math.toRadians(rY))*Math.cos(Math.toRadians(rX))), vy=(float)Math.sin(Math.toRadians(rX)), vz=(float)(-Math.cos(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
+                  float vx=(float)(Math.sin(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
+                  float vy=(float)Math.sin(Math.toRadians(rX));
+                  float vz=(float)(-Math.cos(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
                   Matrix.setLookAtM(view,0,pX,pY,pZ,pX+vx,pY+vy,pZ+vz,0,1,0);
-                  
                   GLES30.glUseProgram(prog);
-                  int uMVP=GLES30.glGetUniformLocation(prog,"uMVP"), uC=GLES30.glGetUniformLocation(prog,"uC");
-                  GLES30.glUniform3f(GLES30.glGetUniformLocation(prog,"camP"), pX, pY, pZ);
+                  int uMVP=GLES30.glGetUniformLocation(prog,"uMVP"), uM=GLES30.glGetUniformLocation(prog,"uM"), uC=GLES30.glGetUniformLocation(prog,"uC");
+                  GLES30.glUniform3f(GLES30.glGetUniformLocation(prog,"lightP"), lightP[0], lightP[1], lightP[2]); GLES30.glUniform3f(GLES30.glGetUniformLocation(prog,"camP"), pX, pY, pZ);
+                  GLES30.glVertexAttribPointer(0, 3, GLES30.GL_FLOAT, false, 0, vBuf); GLES30.glEnableVertexAttribArray(0);
+                  GLES30.glVertexAttribPointer(1, 3, GLES30.GL_FLOAT, false, 0, nBuf); GLES30.glEnableVertexAttribArray(1);
 
-                  // РИСУЕМ ПОЛ (ТРАВА)
-                  Matrix.setIdentityM(model,0);
-                  draw(uMVP, uC, 1,1,1, 0.5f, gBuf, gCount);
-
-                  // РИСУЕМ КУБЫ
+                  // 1. Отражения (RTX Sim)
                   for(int i=-1; i<=1; i++) {
-                      Matrix.setIdentityM(model,0); Matrix.translateM(model, 0, i*8, 2, -15); Matrix.scaleM(model, 0, 3, 3, 3);
-                      draw(uMVP, uC, 1.0f, 0.2f, 0.2f, 1.0f, vBuf, 36);
+                      Matrix.setIdentityM(model,0); Matrix.translateM(model, 0, i*10, -2, -20); Matrix.scaleM(model, 0, 4, 4, 4);
+                      draw(uM, uMVP, uC, 0.8f, 0.1f, 0.1f, 0.3f);
+                  }
+                  // 2. ЗЕЛЕНЫЙ ПОЛ
+                  Matrix.setIdentityM(model,0); Matrix.scaleM(model,0,500,0.1f,500); 
+                  draw(uM, uMVP, uC, 0.13f, 0.54f, 0.13f, 1.0f); // Насыщенный зеленый
+                  // 3. Блоки Мира
+                  for(int i=-1; i<=1; i++) {
+                      Matrix.setIdentityM(model,0); Matrix.translateM(model, 0, i*10, 2, -20); Matrix.scaleM(model, 0, 4, 4, 4);
+                      draw(uM, uMVP, uC, 0.8f, 0.1f, 0.1f, 1.0f);
                   }
               }
 
-              private void draw(int uMVP, int uC, float r, float g, float b, float a, FloatBuffer bfr, int count) {
-                  float[] res=new float[16]; Matrix.multiplyMM(res,0,proj,0,view,0); Matrix.multiplyMM(res,0,res,0,model,0);
-                  GLES30.glUniformMatrix4fv(uMVP,1,false,res,0); GLES30.glUniform4f(uC,r,g,b,a);
-                  GLES30.glVertexAttribPointer(0,3,GLES30.GL_FLOAT,false,0,bfr); GLES30.glEnableVertexAttribArray(0);
-                  GLES30.glDrawArrays(GLES30.GL_TRIANGLES,0,count);
+              private void update() {
+                  vY-=0.015f; pY+=vY; if(pY<2.1f){pY=2.1f; vY=0;} 
+                  float s=0.22f, rad=(float)Math.toRadians(rY);
+                  pX += ((float)Math.sin(rad)*-jY + (float)Math.cos(rad)*jX)*s;
+                  pZ += ((float)-Math.cos(rad)*-jY + (float)Math.sin(rad)*jX)*s;
+              }
+              private void draw(int uM, int uMVP, int uC, float r, float g, float b, float a) {
+                  GLES30.glUniformMatrix4fv(uM, 1, false, model, 0);
+                  float[] res=new float[16]; Matrix.multiplyMM(res, 0, proj, 0, view, 0); Matrix.multiplyMM(res, 0, res, 0, model, 0);
+                  GLES30.glUniformMatrix4fv(uMVP, 1, false, res, 0); GLES30.glUniform4f(uC, r, g, b, a);
+                  for(int i=0; i<6; i++) GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, i*4, 4);
               }
               private int shP(String v,String f){int p=GLES30.glCreateProgram();GLES30.glAttachShader(p,sh(35633,v));GLES30.glAttachShader(p,sh(35632,f));GLES30.glLinkProgram(p);return p;}
               private int sh(int t,String s){int i=GLES30.glCreateShader(t);GLES30.glShaderSource(i,s);GLES30.glCompileShader(i);return i;}
           }
           EOF
 
-          # --- MainActivity (Фикс джойстика) ---
+          # --- MainActivity ---
           cat <<EOF > app/src/main/java/com/enjoer/game/MainActivity.java
           package com.enjoer.game;
           import android.os.Bundle;
@@ -172,24 +175,30 @@ jobs:
                   gv.setRenderer(ren);
 
                   findViewById(R.id.btn_respawn).setOnClickListener(v -> { ren.pX=0; ren.pZ=10; ren.pY=5; });
-                  findViewById(R.id.btn_jump).setOnClickListener(v -> { if(ren.pY <= 2.2f) ren.vY = 0.45f; });
+                  findViewById(R.id.btn_jump).setOnClickListener(v -> { if(ren.pY <= 2.2f) ren.vY = 0.4f; });
                   
                   final View stick = findViewById(R.id.joy_stick);
                   findViewById(R.id.joy_base).setOnTouchListener((v, e) -> {
-                      float cx=v.getWidth()/2f, cy=v.getHeight()/2f, dx=e.getX()-cx, dy=e.getY()-cy, d=(float)Math.sqrt(dx*dx+dy*dy), lim=60f;
-                      if(e.getAction() != MotionEvent.ACTION_UP) {
-                          if(d>lim){ dx*=lim/d; dy*=lim/d; }
+                      float cx = v.getWidth()/2f, cy = v.getHeight()/2f;
+                      if (e.getAction() == MotionEvent.ACTION_MOVE || e.getAction() == MotionEvent.ACTION_DOWN) {
+                          float dx = e.getX() - cx, dy = e.getY() - cy;
+                          float d = (float)Math.sqrt(dx*dx + dy*dy);
+                          float limit = cx - stick.getWidth()/2f;
+                          if (d > limit) { dx *= limit/d; dy *= limit/d; }
                           stick.setTranslationX(dx); stick.setTranslationY(dy);
-                          ren.jX=dx/lim; ren.jY=dy/lim;
-                      } else { stick.setTranslationX(0); stick.setTranslationY(0); ren.jX=0; ren.jY=0; }
+                          ren.jX = dx/limit; ren.jY = dy/limit;
+                      } else if (e.getAction() == MotionEvent.ACTION_UP) {
+                          stick.setTranslationX(0); stick.setTranslationY(0);
+                          ren.jX = 0; ren.jY = 0;
+                      }
                       return true;
                   });
 
                   findViewById(R.id.look_zone).setOnTouchListener((v, e) -> {
                       if (e.getAction() == MotionEvent.ACTION_DOWN) { lx = e.getX(); ly = e.getY(); }
                       else if (e.getAction() == MotionEvent.ACTION_MOVE) {
-                          ren.rY += (e.getX()-lx)*0.3f;
-                          ren.rX = Math.max(-85, Math.min(85, ren.rX-(e.getY()-ly)*0.3f));
+                          ren.rY += (e.getX() - lx) * 0.3f;
+                          ren.rX = Math.max(-85, Math.min(85, ren.rX - (e.getY() - ly) * 0.3f));
                           lx = e.getX(); ly = e.getY();
                       }
                       return true;
@@ -198,10 +207,9 @@ jobs:
           }
           EOF
 
-          # --- Манифест и Gradle ---
           cat <<EOF > app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="Enjoer Fixed" android:theme="@style/AppTheme">
+              <application android:label="Enjoer" android:theme="@style/AppTheme">
                   <activity android:name="com.enjoer.game.MainActivity" android:exported="true" android:screenOrientation="landscape">
                       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
                   </activity>
@@ -225,5 +233,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Enjoer_Fixed_NoHorror
+          name: Enjoer_1.0_GreenFloor
           path: app/build/outputs/apk/debug/app-debug.apk
