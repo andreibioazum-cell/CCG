@@ -1,4 +1,4 @@
-name: Roblox_V22_FPS_Arms
+name: Roblox_V25_RTX_Sim
 on: [push, workflow_dispatch]
 
 jobs:
@@ -14,13 +14,12 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Create Project Structure
+      - name: Create Project
         run: |
           mkdir -p app/src/main/java/com/dimos/roblox
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
           mkdir -p app/src/main/res/drawable
-          mkdir -p app/src/main
 
           echo "android.useAndroidX=true" > gradle.properties
           echo "android.enableJetifier=true" >> gradle.properties
@@ -31,20 +30,10 @@ jobs:
           </style></resources>
           EOF
 
-          # --- Drawable ресурсы (Круглые) ---
-          cat <<EOF > app/src/main/res/drawable/joy_base_round.xml
-          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
-              <solid android:color="#44FFFFFF"/><stroke android:width="2dp" android:color="#88FFFFFF"/>
-          </shape>
-          EOF
-          cat <<EOF > app/src/main/res/drawable/joy_stick_round.xml
-          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
-              <solid android:color="#AAFFFFFF"/>
-          </shape>
-          EOF
+          # --- UI Ресурсы ---
           cat <<EOF > app/src/main/res/drawable/btn_menu_round.xml
           <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-              <corners android:radius="20dp"/><solid android:color="#88000000"/><stroke android:width="1dp" android:color="#FFFFFF"/>
+              <corners android:radius="15dp"/><solid android:color="#CC111111"/><stroke android:width="1dp" android:color="#00FFFF"/>
           </shape>
           EOF
 
@@ -57,32 +46,39 @@ jobs:
               <RelativeLayout android:layout_width="match_parent" android:layout_height="match_parent">
                   <View android:id="@+id/look_zone" android:layout_width="match_parent" android:layout_height="match_parent" />
                   <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
-                      android:layout_alignParentTop="true" android:layout_centerHorizontal="true"
-                      android:layout_marginTop="10dp" android:orientation="horizontal">
+                      android:layout_alignParentTop="true" android:layout_centerHorizontal="true" android:layout_marginTop="10dp">
                       <Button android:id="@+id/btn_reset" android:layout_width="80dp" android:layout_height="40dp"
                           android:text="SPAWN" android:textSize="10sp" android:layout_marginRight="10dp"
-                          android:background="@drawable/btn_menu_round" android:textColor="#FFF"/>
-                      <Button android:id="@+id/btn_exit" android:layout_width="80dp" android:layout_height="40dp"
-                          android:text="EXIT" android:textSize="10sp"
-                          android:background="@drawable/btn_menu_round" android:textColor="#FFF"/>
+                          android:background="@drawable/btn_menu_round" android:textColor="#0FF"/>
+                      <Button android:id="@+id/btn_settings" android:layout_width="80dp" android:layout_height="40dp"
+                          android:text="RTX SET" android:textSize="10sp"
+                          android:background="@drawable/btn_menu_round" android:textColor="#0FF"/>
                   </LinearLayout>
-                  <FrameLayout android:id="@+id/joy_base" android:layout_width="120dp" android:layout_height="120dp"
-                      android:layout_alignParentBottom="true" android:layout_alignParentLeft="true"
-                      android:layout_marginLeft="40dp" android:layout_marginBottom="40dp"
-                      android:background="@drawable/joy_base_round" />
+                  <View android:id="@+id/joy_base" android:layout_width="120dp" android:layout_height="120dp"
+                      android:layout_alignParentBottom="true" android:layout_marginLeft="40dp" android:layout_marginBottom="40dp"
+                      android:background="@android:drawable/presence_invisible" android:alpha="0.2" />
                   <View android:id="@+id/joy_stick" android:layout_width="50dp" android:layout_height="50dp"
                       android:layout_alignLeft="@id/joy_base" android:layout_alignTop="@id/joy_base"
                       android:layout_marginLeft="35dp" android:layout_marginTop="35dp"
-                      android:background="@drawable/joy_stick_round" />
+                      android:background="@android:drawable/presence_online" />
                   <Button android:id="@+id/btn_jump" android:layout_width="90dp" android:layout_height="90dp"
                       android:layout_alignParentRight="true" android:layout_alignParentBottom="true"
-                      android:layout_margin="40dp" android:text="JUMP" 
-                      android:background="@drawable/joy_base_round" android:textColor="#FFF"/>
+                      android:layout_margin="40dp" android:text="JUMP" android:background="@drawable/btn_menu_round" android:textColor="#FFF"/>
               </RelativeLayout>
+              <LinearLayout android:id="@+id/settings_menu" android:layout_width="220dp" android:layout_height="wrap_content"
+                  android:layout_gravity="center" android:background="#F2000000" android:padding="20dp"
+                  android:orientation="vertical" android:visibility="gone">
+                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" 
+                      android:text="RTX SIMULATION" android:textColor="#0FF" android:layout_gravity="center" android:layout_marginBottom="10dp"/>
+                  <Button android:id="@+id/gfx_min" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="OFF (Low)"/>
+                  <Button android:id="@+id/gfx_norm" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="ON (Medium)"/>
+                  <Button android:id="@+id/gfx_max" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="ULTRA (Reflections)"/>
+                  <Button android:id="@+id/close_settings" android:layout_width="match_parent" android:layout_height="35dp" android:text="APPLY" android:layout_marginTop="10dp"/>
+              </LinearLayout>
           </FrameLayout>
           EOF
 
-          # --- Renderer (Визуальные руки FPS) ---
+          # --- Renderer с симуляцией трассировки ---
           cat <<EOF > app/src/main/java/com/dimos/roblox/GameRenderer.java
           package com.dimos.roblox;
           import android.opengl.GLES30;
@@ -95,33 +91,22 @@ jobs:
           public class GameRenderer implements GLSurfaceView.Renderer {
               private final float[] mvp=new float[16], proj=new float[16], view=new float[16], model=new float[16];
               public float pX=0, pY=3, pZ=10, rY=0, rX=0, jX=0, jY=0, vY=0;
-              private int progWorld, progArms;
-              private FloatBuffer vBufCube, vBufArm;
-              private float[] obsX={-20,20,0,-20,20}, obsZ={-20,-20,-30,20,20};
-              private float obsSize=3.2f; 
+              public int gfxMode = 0; 
+              private int prog;
+              private FloatBuffer vBuf;
 
               @Override
               public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-                  GLES30.glClearColor(0.5f, 0.8f, 1.0f, 1.0f);
                   GLES30.glEnable(GLES30.GL_DEPTH_TEST);
+                  GLES30.glEnable(GLES30.GL_BLEND);
+                  GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
                   
-                  // 1. Шейдер для мира
-                  String vsW="#version 300 es\nin vec4 aP; uniform mat4 uM; void main(){gl_Position=uM*aP;}";
-                  String fsW="#version 300 es\nprecision mediump float; uniform vec4 uC; out vec4 fC; void main(){fC=uC;}";
-                  progWorld=shP(vsW, fsW);
-
-                  // 2. Шейдер для рук (идентичный, но отдельный для удобства)
-                  String vsA="#version 300 es\nin vec4 aP; uniform mat4 uM; void main(){gl_Position=uM*aP;}";
-                  String fsA="#version 300 es\nprecision mediump float; uniform vec4 uC; out vec4 fC; void main(){fC=uC;}";
-                  progArms=shP(vsA, fsA);
+                  String vs="#version 300 es\nin vec4 aP; uniform mat4 uM; out vec3 vP; void main(){gl_Position=uM*aP; vP=aP.xyz;}";
+                  String fs="#version 300 es\nprecision mediump float; in vec3 vP; uniform vec4 uC; uniform float alpha; void main(){fC=vec4(uC.rgb, alpha);} out vec4 fC;";
+                  prog=shP(vs, fs);
                   
-                  // Меш куба (стандартный)
                   float[] vc = {-0.5f,0.5f,0.5f, -0.5f,-0.5f,0.5f, 0.5f,0.5f,0.5f, 0.5f,-0.5f,0.5f, -0.5f,0.5f,-0.5f, -0.5f,-0.5f,-0.5f, 0.5f,0.5f,-0.5f, 0.5f,-0.5f,-0.5f, -0.5f,0.5f,-0.5f, -0.5f,0.5f,0.5f, 0.5f,0.5f,-0.5f, 0.5f,0.5f,0.5f, -0.5f,-0.5f,-0.5f, -0.5f,-0.5f,0.5f, 0.5f,-0.5f,-0.5f, 0.5f,-0.5f,0.5f, -0.5f,0.5f,-0.5f, -0.5f,-0.5f,-0.5f, -0.5f,0.5f,0.5f, -0.5f,-0.5f,0.5f, 0.5f,0.5f,-0.5f, 0.5f,-0.5f,-0.5f, 0.5f,0.5f,0.5f, 0.5f,-0.5f,0.5f};
-                  vBufCube=ByteBuffer.allocateDirect(vc.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(vc); vBufCube.position(0);
-
-                  // Меш руки (чуть тоньше и длиннее куба)
-                  float[] va = {-0.1f,0.1f,0.4f, -0.1f,-0.1f,0.4f, 0.1f,0.1f,0.4f, 0.1f,-0.1f,0.4f, -0.1f,0.1f,-0.4f, -0.1f,-0.1f,-0.4f, 0.1f,0.1f,-0.4f, 0.1f,-0.1f,-0.4f, -0.1f,0.1f,-0.4f, -0.1f,0.1f,0.4f, 0.1f,0.1f,-0.4f, 0.1f,0.1f,0.4f, -0.1f,-0.1f,-0.4f, -0.1f,-0.1f,0.4f, 0.1f,-0.1f,-0.4f, 0.1f,-0.1f,0.4f, -0.1f,0.1f,-0.4f, -0.1f,-0.1f,-0.4f, -0.1f,0.1f,0.4f, -0.1f,-0.1f,0.4f, 0.1f,0.1f,-0.4f, 0.1f,-0.1f,-0.4f, 0.1f,0.1f,0.4f, 0.1f,-0.1f,0.4f};
-                  vBufArm=ByteBuffer.allocateDirect(va.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(va); vBufArm.position(0);
+                  vBuf=ByteBuffer.allocateDirect(vc.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(vc); vBuf.position(0);
               }
 
               @Override public void onSurfaceChanged(GL10 gl, int w, int h) {
@@ -130,93 +115,61 @@ jobs:
 
               @Override public void onDrawFrame(GL10 gl) {
                   update();
-                  GLES30.glClear(16640);
+                  GLES30.glClearColor(0.5f, 0.7f, 0.9f, 1.0f);
+                  GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
+                  
                   float vx=(float)(Math.sin(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
                   float vy=(float)Math.sin(Math.toRadians(rX));
                   float vz=(float)(-Math.cos(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
                   Matrix.setLookAtM(view,0,pX,pY,pZ,pX+vx,pY+vy,pZ+vz,0,1,0);
 
-                  // --- 1. Рендеринг Мира ---
-                  GLES30.glEnable(GLES30.GL_DEPTH_TEST); // Включаем тест глубины для мира
-                  GLES30.glUseProgram(progWorld);
-                  int uMw=GLES30.glGetUniformLocation(progWorld,"uM"), uCw=GLES30.glGetUniformLocation(progWorld,"uC");
-                  GLES30.glVertexAttribPointer(0,3,GLES30.GL_FLOAT,false,0,vBufCube); GLES30.glEnableVertexAttribArray(0);
+                  GLES30.glUseProgram(prog);
+                  int uM=GLES30.glGetUniformLocation(prog,"uM"), uC=GLES30.glGetUniformLocation(prog,"uC"), uA=GLES30.glGetUniformLocation(prog,"alpha");
+                  GLES30.glVertexAttribPointer(0,3,GLES30.GL_FLOAT,false,0,vBuf); GLES30.glEnableVertexAttribArray(0);
 
-                  Matrix.setIdentityM(model,0); Matrix.scaleM(model,0,500,0.1f,500); draw(uMw,uCw,0.3f,0.6f,0.3f);
-                  for(int i=0; i<5; i++){
-                      Matrix.setIdentityM(model,0); Matrix.translateM(model,0,obsX[i],5,obsZ[i]); Matrix.scaleM(model,0,4,10,4);
-                      draw(uMw,uCw,0.6f,0.4f,0.2f);
+                  // 1. Отражения (RTX Sim) - Рисуем перевернутые объекты под полом
+                  if(gfxMode == 2) {
+                      for(int i=-1; i<=1; i++) {
+                          Matrix.setIdentityM(model,0); Matrix.translateM(model,0,i*10,-2, -20); // Отражение (Y < 0)
+                          Matrix.scaleM(model,0,4,4,4); GLES30.glUniform1f(uA, 0.3f); draw(uM,uC,0.8f,0.2f,0.2f);
+                      }
                   }
 
-                  // --- 2. Рендеринг Рук (Viewmodel) ---
-                  GLES30.glDisable(GLES30.GL_DEPTH_TEST); // Отключаем тест глубины, чтобы руки были поверх всего
-                  GLES30.glUseProgram(progArms);
-                  int uMa=GLES30.glGetUniformLocation(progArms,"uM"), uCa=GLES30.glGetUniformLocation(progArms,"uC");
-                  GLES30.glVertexAttribPointer(0,3,GLES30.GL_FLOAT,false,0,vBufArm); GLES30.glEnableVertexAttribArray(0);
-                  GLES30.glUniform4f(uCa, 0.9f, 0.7f, 0.6f, 1f); // Телесный цвет рук
+                  // 2. Пол (Зеркальная поверхность)
+                  Matrix.setIdentityM(model,0); Matrix.scaleM(model,0,500,0.1f,500); 
+                  GLES30.glUniform1f(uA, gfxMode == 2 ? 0.7f : 1.0f); draw(uM,uC,0.3f,0.3f,0.35f);
 
-                  // Левая рука
-                  Matrix.setIdentityM(model,0);
-                  // Привязываем к камере: позиция игрока + небольшой сдвиг
-                  Matrix.translateM(model,0,pX,pY,pZ);
-                  // Поворот камеры
-                  Matrix.rotateM(model, 0, -rY, 0, 1, 0);
-                  Matrix.rotateM(model, 0, rX, 1, 0, 0);
-                  // Позиционирование viewmodel (левее, ниже, чуть впереди глаза)
-                  Matrix.translateM(model,0, -0.35f, -0.4f, -0.6f);
-                  // Небольшой наклон внутрь
-                  Matrix.rotateM(model, 0, 10, 0, 1, 0);
-                  
-                  Matrix.multiplyMM(mvp,0,proj,0,view,0); // Используем ту же view матрицу
-                  float[] resL=new float[16]; Matrix.multiplyMM(resL,0,mvp,0,model,0);
-                  GLES30.glUniformMatrix4fv(uMa,1,false,resL,0);
-                  for(int i=0; i<6; i++) GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP,i*4,4);
-
-                  // Правая рука (симметрично)
-                  Matrix.setIdentityM(model,0);
-                  Matrix.translateM(model,0,pX,pY,pZ);
-                  Matrix.rotateM(model, 0, -rY, 0, 1, 0);
-                  Matrix.rotateM(model, 0, rX, 1, 0, 0);
-                  Matrix.translateM(model,0, 0.35f, -0.4f, -0.6f); // Правее
-                  Matrix.rotateM(model, 0, -10, 0, 1, 0); // Наклон в другую сторону
-
-                  float[] resR=new float[16]; Matrix.multiplyMM(resR,0,mvp,0,model,0);
-                  GLES30.glUniformMatrix4fv(uMa,1,false,resR,0);
-                  for(int i=0; i<6; i++) GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP,i*4,4);
+                  // 3. Реальные объекты
+                  for(int i=-1; i<=1; i++) {
+                      Matrix.setIdentityM(model,0); Matrix.translateM(model,0,i*10,2.1f, -20);
+                      Matrix.scaleM(model,0,4,4,4); GLES30.glUniform1f(uA, 1.0f); 
+                      float shade = (gfxMode >= 1) ? 0.9f : 1.0f; // Имитация затенения
+                      draw(uM,uC,0.8f*shade,0.2f*shade,0.2f*shade);
+                  }
               }
 
               private void update() {
-                  vY-=0.015f; pY+=vY; if(pY<2.5f){pY=2.5f; vY=0;}
-                  float s=0.2f, rad=(float)Math.toRadians(rY);
-                  float dx = ((float)Math.sin(rad)*-jY + (float)Math.cos(rad)*jX)*s;
-                  float dz = ((float)-Math.cos(rad)*-jY + (float)Math.sin(rad)*jX)*s;
-                  if(!checkCollision(pX + dx, pZ)) pX += dx;
-                  if(!checkCollision(pX, pZ + dz)) pZ += dz;
+                  vY-=0.015f; pY+=vY; if(pY<2.1f){pY=2.1f; vY=0;}
+                  float s=0.25f, rad=(float)Math.toRadians(rY);
+                  pX += ((float)Math.sin(rad)*-jY + (float)Math.cos(rad)*jX)*s;
+                  pZ += ((float)-Math.cos(rad)*-jY + (float)Math.sin(rad)*jX)*s;
               }
-              private boolean checkCollision(float nextX, float nextZ) {
-                  for(int i=0; i<5; i++) { if(Math.abs(nextX-obsX[i])<obsSize && Math.abs(nextZ-obsZ[i])<obsSize) return true; }
-                  return false;
+              private void draw(int uM,int uC,float r,float g,float b){
+                  float[] res=new float[16]; Matrix.multiplyMM(res,0,proj,0,view,0); Matrix.multiplyMM(res,0,res,0,model,0);
+                  GLES30.glUniformMatrix4fv(uM,1,false,res,0); GLES30.glUniform4f(uC,r,g,b,1f);
+                  for(int i=0; i<6; i++) GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP,i*4,4);
               }
-              private void draw(int uM, int uC, float r, float g, float b) {
-                  float[] res=new float[16]; Matrix.multiplyMM(res,0,proj,0,view,0);
-                  Matrix.multiplyMM(res,0,res,0,model,0); GLES30.glUniformMatrix4fv(uM,1,false,res,0);
-                  GLES30.glUniform4f(uC,r,g,b,1f); for(int i=0; i<6; i++) GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP,i*4,4);
-              }
-              private int shP(String vs, String fs){
-                  int prog=GLES30.glCreateProgram();
-                  int vsh=sh(35633,vs), fsh=sh(35632,fs);
-                  GLES30.glAttachShader(prog,vsh); GLES30.glAttachShader(prog,fsh); GLES30.glLinkProgram(prog); return prog;
-              }
+              private int shP(String v,String f){int p=GLES30.glCreateProgram();GLES30.glAttachShader(p,sh(35633,v));GLES30.glAttachShader(p,sh(35632,f));GLES30.glLinkProgram(p);return p;}
               private int sh(int t,String s){int i=GLES30.glCreateShader(t);GLES30.glShaderSource(i,s);GLES30.glCompileShader(i);return i;}
           }
           EOF
 
-          # --- MainActivity (Без изменений) ---
+          # --- Остальные файлы без изменений ---
           cat <<EOF > app/src/main/java/com/dimos/roblox/MainActivity.java
           package com.dimos.roblox;
           import android.os.Bundle;
-          import android.view.MotionEvent;
           import android.view.View;
+          import android.view.MotionEvent;
           import androidx.appcompat.app.AppCompatActivity;
 
           public class MainActivity extends AppCompatActivity {
@@ -232,24 +185,25 @@ jobs:
                   ren = new GameRenderer();
                   gv.setRenderer(ren);
 
+                  View sMenu = findViewById(R.id.settings_menu);
+                  findViewById(R.id.btn_settings).setOnClickListener(v -> sMenu.setVisibility(View.VISIBLE));
+                  findViewById(R.id.close_settings).setOnClickListener(v -> sMenu.setVisibility(View.GONE));
+
+                  findViewById(R.id.gfx_min).setOnClickListener(v -> ren.gfxMode = 0);
+                  findViewById(R.id.gfx_norm).setOnClickListener(v -> ren.gfxMode = 1);
+                  findViewById(R.id.gfx_max).setOnClickListener(v -> ren.gfxMode = 2);
+
                   findViewById(R.id.btn_reset).setOnClickListener(v -> { ren.pX=0; ren.pZ=10; ren.pY=5; });
-                  findViewById(R.id.btn_exit).setOnClickListener(v -> finish());
-                  findViewById(R.id.btn_jump).setOnClickListener(v -> { if(ren.pY <= 2.6f) ren.vY = 0.35f; });
+                  findViewById(R.id.btn_jump).setOnClickListener(v -> { if(ren.pY <= 2.2f) ren.vY = 0.4f; });
                   
-                  View stick = findViewById(R.id.joy_stick);
                   findViewById(R.id.joy_base).setOnTouchListener((v, e) -> {
-                      float cx = v.getWidth()/2f, cy = v.getHeight()/2f;
                       if (e.getAction() == MotionEvent.ACTION_MOVE || e.getAction() == MotionEvent.ACTION_DOWN) {
-                          float dx = e.getX() - cx, dy = e.getY() - cy;
-                          float d = (float)Math.sqrt(dx*dx + dy*dy);
-                          float limit = 35f;
-                          if (d > limit) { dx *= limit/d; dy *= limit/d; }
-                          stick.setTranslationX(dx); stick.setTranslationY(dy);
-                          ren.jX = dx/limit; ren.jY = dy/limit;
-                      } else {
-                          stick.setTranslationX(0); stick.setTranslationY(0);
-                          ren.jX = 0; ren.jY = 0;
-                      }
+                          float dx = e.getX() - 60, dy = e.getY() - 60, d = (float)Math.sqrt(dx*dx + dy*dy);
+                          if (d > 40) { dx *= 40/d; dy *= 40/d; }
+                          findViewById(R.id.joy_stick).setTranslationX(dx); 
+                          findViewById(R.id.joy_stick).setTranslationY(dy);
+                          ren.jX = dx/40f; ren.jY = dy/40f;
+                      } else { ren.jX = 0; ren.jY = 0; }
                       return true;
                   });
 
@@ -266,10 +220,9 @@ jobs:
           }
           EOF
 
-          # --- Манифест и Gradle ---
           cat <<EOF > app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="Roblox FPS" android:theme="@style/AppTheme">
+              <application android:label="RTX Engine" android:theme="@style/AppTheme">
                   <activity android:name="com.dimos.roblox.MainActivity" android:exported="true" android:screenOrientation="landscape">
                       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
                   </activity>
@@ -293,5 +246,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Roblox_V22_FPS_Arms
+          name: Roblox_V25_RTX_Sim
           path: app/build/outputs/apk/debug/app-debug.apk
