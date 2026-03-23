@@ -1,4 +1,4 @@
-name: Roblox_GLES3_Perfect_Controls
+name: Roblox_GLES3_Perfect_Movement_v7
 on: [push, workflow_dispatch]
 
 jobs:
@@ -43,28 +43,28 @@ jobs:
           </style></resources>
           EOF
 
-          # --- Интерфейс ---
+          # --- Интерфейс (Сетка зон) ---
           cat <<EOF > app/src/main/res/layout/activity_main.xml
           <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
               android:layout_width="match_parent" android:layout_height="match_parent">
               <android.opengl.GLSurfaceView android:id="@+id/gl_view"
                   android:layout_width="match_parent" android:layout_height="match_parent" />
               
-              <RelativeLayout android:id="@+id/move_zone" android:layout_width="250dp" android:layout_height="match_parent">
-                  <FrameLayout android:id="@+id/joy_container" android:layout_width="120dp" android:layout_height="120dp"
-                      android:layout_alignParentBottom="true" android:layout_centerHorizontal="true" android:layout_marginBottom="50dp"
-                      android:background="@drawable/joy_base">
-                      <View android:id="@+id/joy_center" android:layout_width="50dp" android:layout_height="50dp"
-                          android:layout_gravity="center" android:background="@drawable/joy_stick" />
-                  </FrameLayout>
-              </RelativeLayout>
-
-              <View android:id="@+id/look_zone" android:layout_width="match_parent" android:layout_height="match_parent" 
-                  android:layout_toRightOf="@id/move_zone" />
+              <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal">
+                  <RelativeLayout android:id="@+id/move_zone" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent">
+                      <FrameLayout android:id="@+id/joy_container" android:layout_width="140dp" android:layout_height="140dp"
+                          android:layout_alignParentBottom="true" android:layout_centerHorizontal="true" android:layout_marginBottom="60dp"
+                          android:background="@drawable/joy_base">
+                          <View android:id="@+id/joy_center" android:layout_width="60dp" android:layout_height="60dp"
+                              android:layout_gravity="center" android:background="@drawable/joy_stick" />
+                      </FrameLayout>
+                  </RelativeLayout>
+                  <View android:id="@+id/look_zone" android:layout_width="0dp" android:layout_weight="1.5" android:layout_height="match_parent" />
+              </LinearLayout>
           </RelativeLayout>
           EOF
 
-          # --- Renderer (3D Блок + Умная Камера) ---
+          # --- Renderer (Оптимизированная камера и 3D блок) ---
           cat <<EOF > app/src/main/java/com/dimos/roblox/GameRenderer.java
           package com.dimos.roblox;
           import android.opengl.GLES30;
@@ -90,12 +90,11 @@ jobs:
                   int vs=sh(35633,vS), fs=sh(35632,fS);
                   GLES30.glAttachShader(program,vs); GLES30.glAttachShader(program,fs); GLES30.glLinkProgram(program);
                   
-                  // Координаты 3D куба (Платформа)
                   float[] v = {
                       -5,0,-5, 5,0,-5, 5,0,5, -5,0,5, // Низ
                       -5,1,-5, 5,1,-5, 5,1,5, -5,1,5, // Верх
                       -5,0,-5, -5,1,-5, 5,1,-5, 5,0,-5, // Стенка 1
-                      -5,0,5, -5,1,5, 5,1,5, 5,0,5    // Стенка 2
+                      -5,0,5, -5,1,5, 5,1,5, 5,0,5     // Стенка 2
                   };
                   boxBuf = ByteBuffer.allocateDirect(v.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer();
                   boxBuf.put(v).position(0);
@@ -107,7 +106,6 @@ jobs:
 
               @Override public void onDrawFrame(GL10 gl) {
                   GLES30.glClear(16640);
-                  // Направление взгляда
                   float vx = (float)(Math.sin(Math.toRadians(rotY)) * Math.cos(Math.toRadians(rotX)));
                   float vy = (float)Math.sin(Math.toRadians(rotX));
                   float vz = (float)(-Math.cos(Math.toRadians(rotY)) * Math.cos(Math.toRadians(rotX)));
@@ -126,7 +124,7 @@ jobs:
           }
           EOF
 
-          # --- MainActivity (Исправленное управление) ---
+          # --- MainActivity (Исправленная Векторная Ходьба) ---
           cat <<EOF > app/src/main/java/com/dimos/roblox/MainActivity.java
           package com.dimos.roblox;
           import android.os.Bundle;
@@ -149,7 +147,6 @@ jobs:
                   gv.setRenderer(ren);
                   stick = findViewById(R.id.joy_center);
 
-                  // ДВИЖЕНИЕ (Левая зона)
                   findViewById(R.id.move_zone).setOnTouchListener((v, e) -> {
                       if (e.getAction() == MotionEvent.ACTION_DOWN) {
                           sJoyX = e.getX(); sJoyY = e.getY();
@@ -157,27 +154,34 @@ jobs:
                           float dx = e.getX() - sJoyX;
                           float dy = e.getY() - sJoyY;
                           float dist = (float)Math.sqrt(dx*dx + dy*dy);
-                          if (dist > 50) { dx *= 50/dist; dy *= 50/dist; }
+                          if (dist > 70) { dx *= 70/dist; dy *= 70/dist; }
                           stick.setTranslationX(dx); stick.setTranslationY(dy);
 
-                          // Ходьба относительно направления камеры
-                          float speed = 0.08f;
+                          // Расчет движения относительно взгляда камеры
+                          float speed = 0.25f; // Увеличил скорость для теста
                           float rad = (float)Math.toRadians(ren.rotY);
-                          ren.pX += (dx * Math.cos(rad) + dy * Math.sin(rad)) * speed / 50f;
-                          ren.pZ += (dy * Math.cos(rad) - dx * Math.sin(rad)) * speed / 50f;
+                          
+                          // Вектор вперед (по направлению rotY)
+                          float fX = (float)Math.sin(rad);
+                          float fZ = (float)-Math.cos(rad);
+                          // Вектор вбок (перпендикуляр)
+                          float sX = (float)Math.cos(rad);
+                          float sZ = (float)Math.sin(rad);
+
+                          // dy инвертирован (минус перед dy), чтобы тянуть вверх = идти вперед
+                          ren.pX += (fX * -dy + sX * dx) * speed / 70f;
+                          ren.pZ += (fZ * -dy + sZ * dx) * speed / 70f;
                       } else {
                           stick.setTranslationX(0); stick.setTranslationY(0);
                       }
                       return true;
                   });
 
-                  // ОБЗОР (Правая зона)
                   findViewById(R.id.look_zone).setOnTouchListener((v, e) -> {
                       if (e.getAction() == MotionEvent.ACTION_DOWN) {
                           lLookX = e.getX(); lLookY = e.getY();
                       } else if (e.getAction() == MotionEvent.ACTION_MOVE) {
                           ren.rotY += (e.getX() - lLookX) * 0.3f;
-                          // Убираем инверсию: теперь палец вверх - камера вверх
                           ren.rotX = Math.max(-85, Math.min(85, ren.rotX - (e.getY() - lLookY) * 0.3f));
                           lLookX = e.getX(); lLookY = e.getY();
                       }
@@ -190,7 +194,7 @@ jobs:
           # --- Манифест и Gradle ---
           cat <<EOF > app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="Roblox 3D Final" android:theme="@style/AppTheme">
+              <application android:label="Roblox v7" android:theme="@style/AppTheme">
                   <activity android:name="com.dimos.roblox.MainActivity" android:exported="true" android:screenOrientation="landscape">
                       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
                   </activity>
@@ -214,5 +218,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Roblox_Final_Controls
+          name: Roblox_V7_Fixed_Movement
           path: app/build/outputs/apk/debug/app-debug.apk
