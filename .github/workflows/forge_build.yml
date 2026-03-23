@@ -1,4 +1,4 @@
-name: Roblox_V17_AndroidX_Fix
+name: Roblox_V18_Full_Volume
 on: [push, workflow_dispatch]
 
 jobs:
@@ -22,7 +22,6 @@ jobs:
           mkdir -p app/src/main/res/drawable
           mkdir -p app/src/main
 
-          # --- ИСПРАВЛЕНИЕ: Включаем AndroidX ---
           echo "android.useAndroidX=true" > gradle.properties
           echo "android.enableJetifier=true" >> gradle.properties
 
@@ -53,7 +52,7 @@ jobs:
           </FrameLayout>
           EOF
 
-          # --- Renderer (3D + Шум пола) ---
+          # --- Renderer (Честный объемный куб) ---
           cat <<EOF > app/src/main/java/com/dimos/roblox/GameRenderer.java
           package com.dimos.roblox;
           import android.opengl.GLES30;
@@ -65,7 +64,7 @@ jobs:
 
           public class GameRenderer implements GLSurfaceView.Renderer {
               private final float[] mvp = new float[16], proj = new float[16], view = new float[16], model = new float[16];
-              public float pX=0, pY=3.5f, pZ=15, rY=0, rX=0, jX=0, jY=0, vY=0;
+              public float pX=0, pY=4, pZ=20, rY=0, rX=0, jX=0, jY=0, vY=0;
               private int prog;
               private FloatBuffer vBuf;
 
@@ -74,27 +73,33 @@ jobs:
                   GLES30.glClearColor(0.5f, 0.8f, 1.0f, 1.0f);
                   GLES30.glEnable(GLES30.GL_DEPTH_TEST);
                   
-                  // Шейдер с поддержкой координат для шума
-                  String vsS = "#version 300 es\nin vec4 aP; uniform mat4 uM; out vec3 vP; void main(){gl_Position=uM*aP; vP=aP.xyz;}";
-                  String fsS = "#version 300 es\nprecision mediump float; in vec3 vP; uniform vec4 uC; uniform bool isF; out vec4 fC; void main(){" +
-                               "if(isF){ float d = mod(floor(vP.x*10.0)+floor(vP.z*10.0), 2.0); fC = mix(uC, uC*0.85, d); } else { fC = uC; }}";
+                  String vs = "#version 300 es\nin vec4 aP; uniform mat4 uM; out vec3 vP; void main(){gl_Position=uM*aP; vP=aP.xyz;}";
+                  String fs = "#version 300 es\nprecision mediump float; in vec3 vP; uniform vec4 uC; uniform bool isF; out vec4 fC; void main(){" +
+                               "if(isF){ float d = mod(floor(vP.x*0.2)+floor(vP.z*0.2), 2.0); fC = mix(uC, uC*0.9, d); } else { fC = uC; }}";
                   prog = GLES30.glCreateProgram();
-                  int vs=sh(35633,vsS), fs=sh(35632,fsS);
-                  GLES30.glAttachShader(prog,vs); GLES30.glAttachShader(prog,fs); GLES30.glLinkProgram(prog);
+                  int vsh=sh(35633,vs), fsh=sh(35632,fs);
+                  GLES30.glAttachShader(prog,vsh); GLES30.glAttachShader(prog,fsh); GLES30.glLinkProgram(prog);
                   
-                  float[] v = {-0.5f,-0.5f,-0.5f, 0.5f,-0.5f,-0.5f, 0.5f,0.5f,-0.5f, -0.5f,0.5f,-0.5f,
-                               -0.5f,-0.5f,0.5f, 0.5f,-0.5f,0.5f, 0.5f,0.5f,0.5f, -0.5f,0.5f,0.5f};
+                  // Полный набор вершин для 6 граней куба (каждая грань - 4 вершины)
+                  float[] v = {
+                      -0.5f,0.5f,0.5f, -0.5f,-0.5f,0.5f, 0.5f,0.5f,0.5f, 0.5f,-0.5f,0.5f, // Front
+                      -0.5f,0.5f,-0.5f, -0.5f,-0.5f,-0.5f, 0.5f,0.5f,-0.5f, 0.5f,-0.5f,-0.5f, // Back
+                      -0.5f,0.5f,-0.5f, -0.5f,0.5f,0.5f, 0.5f,0.5f,-0.5f, 0.5f,0.5f,0.5f, // Top
+                      -0.5f,-0.5f,-0.5f, -0.5f,-0.5f,0.5f, 0.5f,-0.5f,-0.5f, 0.5f,-0.5f,0.5f, // Bottom
+                      -0.5f,0.5f,-0.5f, -0.5f,-0.5f,-0.5f, -0.5f,0.5f,0.5f, -0.5f,-0.5f,0.5f, // Left
+                      0.5f,0.5f,-0.5f, 0.5f,-0.5f,-0.5f, 0.5f,0.5f,0.5f, 0.5f,-0.5f,0.5f // Right
+                  };
                   vBuf = ByteBuffer.allocateDirect(v.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(v);
                   vBuf.position(0);
               }
 
               @Override public void onSurfaceChanged(GL10 gl, int w, int h) {
-                  GLES30.glViewport(0, 0, w, h); Matrix.perspectiveM(proj, 0, 45, (float)w/h, 0.1f, 300f);
+                  GLES30.glViewport(0, 0, w, h); Matrix.perspectiveM(proj, 0, 45, (float)w/h, 0.1f, 500f);
               }
 
               @Override public void onDrawFrame(GL10 gl) {
                   vY -= 0.015f; pY += vY; if(pY < 2.5f){ pY=2.5f; vY=0; }
-                  float s=0.18f, rad=(float)Math.toRadians(rY);
+                  float s=0.2f, rad=(float)Math.toRadians(rY);
                   pX += (Math.sin(rad)*-jY + Math.cos(rad)*jX)*s;
                   pZ += (-Math.cos(rad)*-jY + Math.sin(rad)*jX)*s;
 
@@ -109,15 +114,24 @@ jobs:
                   GLES30.glVertexAttribPointer(0, 3, GLES30.GL_FLOAT, false, 0, vBuf);
                   GLES30.glEnableVertexAttribArray(0);
 
-                  // ПОЛ (Зеленый с шахматкой)
-                  Matrix.setIdentityM(model, 0); Matrix.scaleM(model, 0, 800, 0.1f, 800);
-                  draw(uM, uC, isF, 0.2f, 0.8f, 0.3f, true);
+                  // 1. Зеленый ПОЛ
+                  Matrix.setIdentityM(model, 0); Matrix.translateM(model, 0, 0, 0, 0); Matrix.scaleM(model, 0, 1000, 0.1f, 1000);
+                  draw(uM, uC, isF, 0.2f, 0.7f, 0.3f, true);
                   
-                  // Колонны (Коричневые)
-                  for(int i=-3; i<=3; i++) {
-                      if(i==0) continue;
-                      Matrix.setIdentityM(model, 0); Matrix.translateM(model, 0, i*15, 4, -i*5); Matrix.scaleM(model, 0, 3, 8, 3);
-                      draw(uM, uC, isF, 0.6f, 0.4f, 0.2f, false);
+                  // 2. Коричневые СТРУКТУРЫ (Теперь это кубы!)
+                  GLES30.glUniform1i(isF, 0);
+                  GLES30.glUniform4f(uC, 0.6f, 0.4f, 0.2f, 1.0f);
+                  for(int i=-2; i<=2; i++) {
+                      for(int j=-2; j<=2; j++) {
+                          if(i==0 && j==0) continue;
+                          Matrix.setIdentityM(model, 0); 
+                          Matrix.translateM(model, 0, i*20, 5, j*20); 
+                          Matrix.scaleM(model, 0, 4, 10, 4);
+                          Matrix.multiplyMM(mvp, 0, proj, 0, view, 0);
+                          float[] res = new float[16]; Matrix.multiplyMM(res, 0, mvp, 0, model, 0);
+                          GLES30.glUniformMatrix4fv(uM, 1, false, res, 0);
+                          for(int k=0; k<6; k++) GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, k*4, 4);
+                      }
                   }
               }
 
@@ -127,7 +141,7 @@ jobs:
                   GLES30.glUniformMatrix4fv(uM, 1, false, res, 0);
                   GLES30.glUniform4f(uC, r, g, b, 1.0f);
                   GLES30.glUniform1i(isFL, f ? 1 : 0);
-                  for(int i=0; i<6; i++) GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN, 0, 4);
+                  for(int i=0; i<6; i++) GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, i*4, 4);
               }
               private int sh(int t, String s){int i=GLES30.glCreateShader(t);GLES30.glShaderSource(i,s);GLES30.glCompileShader(i);return i;}
           }
@@ -153,7 +167,7 @@ jobs:
                   ren = new GameRenderer();
                   gv.setRenderer(ren);
 
-                  findViewById(R.id.btn_jump).setOnClickListener(v -> { if(ren.pY <= 2.6f) ren.vY = 0.35f; });
+                  findViewById(R.id.btn_jump).setOnClickListener(v -> { if(ren.pY <= 2.6f) ren.vY = 0.38f; });
                   
                   View stick = findViewById(R.id.joy_stick);
                   findViewById(R.id.joy_base).setOnTouchListener((v, e) -> {
@@ -181,10 +195,9 @@ jobs:
           }
           EOF
 
-          # --- Манифест и Gradle ---
           cat <<EOF > app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="Roblox Fixed" android:theme="@style/AppTheme">
+              <application android:label="Roblox 3D" android:theme="@style/AppTheme">
                   <activity android:name="com.dimos.roblox.MainActivity" android:exported="true" android:screenOrientation="landscape">
                       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
                   </activity>
@@ -208,5 +221,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Roblox_V17_Working
+          name: Roblox_V18_Full3D
           path: app/build/outputs/apk/debug/app-debug.apk
