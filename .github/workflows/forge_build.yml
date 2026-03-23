@@ -1,4 +1,4 @@
-name: Enjoer_Engine_Fixed
+name: Enjoer_Pro_Engine_v1.7
 on: [push, workflow_dispatch]
 
 jobs:
@@ -28,113 +28,149 @@ jobs:
           </style></resources>
           EOF
 
-          # UI Стили (Neon Green)
-          cat <<EOF > app/src/main/res/drawable/btn_neon.xml
+          # UI: Кнопки и Джойстик
+          cat <<EOF > app/src/main/res/drawable/ui_element.xml
           <shape xmlns:android="http://schemas.android.com/apk/res/android">
-              <solid android:color="#1A2A4A"/><corners android:radius="30dp"/><stroke android:width="2dp" android:color="#22C55E"/>
+              <solid android:color="#CC050A18"/><corners android:radius="25dp"/><stroke android:width="2dp" android:color="#22C55E"/>
           </shape>
           EOF
 
-          # Layout с разделением зон касания
+          # Layout
           cat <<EOF > app/src/main/res/layout/activity_main.xml
           <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:layout_width="match_parent" android:layout_height="match_parent" android:background="#050A18">
-              
-              <FrameLayout android:id="@+id/game_screen" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
-                  <android.opengl.GLSurfaceView android:id="@+id/gl_view" android:layout_width="match_parent" android:layout_height="match_parent" />
-                  
-                  <RelativeLayout android:id="@+id/input_overlay" android:layout_width="match_parent" android:layout_height="match_parent">
-                      <Button android:id="@+id/btn_exit" android:layout_width="50dp" android:layout_height="50dp" android:text="✕" android:layout_margin="20dp" android:background="@drawable/btn_neon" android:textColor="#FFF"/>
-                      
-                      <FrameLayout android:id="@+id/joy_base" android:layout_width="150dp" android:layout_height="150dp" android:layout_alignParentBottom="true" android:layout_marginLeft="40dp" android:layout_marginBottom="40dp" android:background="@drawable/btn_neon" android:alpha="0.5" />
-                      <View android:id="@+id/joy_stick" android:layout_width="60dp" android:layout_height="60dp" android:layout_alignLeft="@id/joy_base" android:layout_alignTop="@id/joy_base" android:layout_marginLeft="45dp" android:layout_marginTop="45dp" android:background="#22C55E" />
-                      
-                      <Button android:id="@+id/btn_jump" android:layout_width="100dp" android:layout_height="100dp" android:layout_alignParentRight="true" android:layout_alignParentBottom="true" android:layout_margin="40dp" android:text="⬆" android:background="@drawable/btn_neon" android:textColor="#FFF" android:textSize="35sp"/>
-                  </RelativeLayout>
-              </FrameLayout>
-
-              <LinearLayout android:id="@+id/menu_screen" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="30dp" android:gravity="center">
-                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="ENJOER ENGINE v1.6" android:textColor="#22C55E" android:textSize="32sp" android:textStyle="bold" />
-                  <Button android:id="@+id/btn_start" android:layout_width="250dp" android:layout_height="60dp" android:text="START ENGINE" android:layout_marginTop="50dp" android:background="@drawable/btn_neon" android:textColor="#FFF"/>
-              </LinearLayout>
+              android:layout_width="match_parent" android:layout_height="match_parent">
+              <android.opengl.GLSurfaceView android:id="@+id/gl_view" android:layout_width="match_parent" android:layout_height="match_parent" />
+              <RelativeLayout android:id="@+id/input_zone" android:layout_width="match_parent" android:layout_height="match_parent">
+                  <View android:id="@+id/btn_jump" android:layout_width="90dp" android:layout_height="90dp"
+                      android:layout_alignParentRight="true" android:layout_alignParentBottom="true"
+                      android:layout_margin="50dp" android:background="@drawable/ui_element" />
+                  <FrameLayout android:id="@+id/joy_base" android:layout_width="140dp" android:layout_height="140dp"
+                      android:layout_alignParentBottom="true" android:layout_marginLeft="50dp" android:layout_marginBottom="50dp"
+                      android:background="@drawable/ui_element" android:alpha="0.7" />
+                  <View android:id="@+id/joy_stick" android:layout_width="50dp" android:layout_height="50dp"
+                      android:layout_alignLeft="@id/joy_base" android:layout_alignTop="@id/joy_base"
+                      android:layout_marginLeft="45dp" android:layout_marginTop="45dp" android:background="#22C55E" />
+              </RelativeLayout>
           </FrameLayout>
           EOF
 
-          # Renderer (High Graphics & Clear Logic)
+          # --- ENGINE: RENDERER & PHYSICS ---
           cat <<EOF > app/src/main/java/com/enjoer/game/GameRenderer.java
           package com.enjoer.game;
           import android.opengl.GLES30;
           import android.opengl.GLSurfaceView;
           import android.opengl.Matrix;
           import java.nio.*;
+          import java.util.ArrayList;
           import javax.microedition.khronos.egl.EGLConfig;
           import javax.microedition.khronos.opengles.GL10;
 
           public class GameRenderer implements GLSurfaceView.Renderer {
               private final float[] proj=new float[16], view=new float[16], model=new float[16];
-              public float pX=0, pY=2.1f, pZ=5, rY=0, rX=0, jX=0, jY=0, vY=0;
+              public float pX=0, pY=2.1f, pZ=5, rY=0, rX=0, jX=0, jY=0, vY=0, walkAnim=0;
               private int prog;
-              private FloatBuffer vBuf, nBuf;
+              private FloatBuffer vBuf;
+              public boolean gunEquipped = false;
+
+              public static class Box {
+                  float x, y, z, sx, sy, sz, r, g, b;
+                  Box(float x, float y, float z, float sx, float sy, float sz, float r, float g, float b) 
+                  { this.x=x; this.y=y; this.z=z; this.sx=sx; this.sy=sy; this.sz=sz; this.r=r; this.g=g; this.b=b; }
+                  
+                  boolean checkCol(float px, float py, float pz) {
+                      return px > x-sx/2-0.3f && px < x+sx/2+0.3f && pz > z-sz/2-0.3f && pz < z+sz/2+0.3f && py > y-sy/2-2.1f && py < y+sy/2;
+                  }
+              }
+              private ArrayList<Box> map = new ArrayList<>();
 
               @Override
               public void onSurfaceCreated(GL10 gl, EGLConfig config) {
                   GLES30.glEnable(GLES30.GL_DEPTH_TEST);
-                  GLES30.glEnable(GLES30.GL_CULL_FACE);
-                  // Шейдеры с улучшенным расчетом света
-                  String vs="#version 300 es\nlayout(location=0) in vec4 aP; layout(location=1) in vec3 aN; uniform mat4 uMVP; uniform mat4 uM; out vec3 vN; out vec3 vP; void main(){vP=vec3(uM*aP); vN=mat3(uM)*aN; gl_Position=uMVP*aP;}";
-                  String fs="#version 300 es\nprecision highp float; in vec3 vN; in vec3 vP; uniform vec3 lightP; uniform vec4 uC; uniform vec3 camP; out vec4 fC; void main(){ vec3 n=normalize(vN); vec3 lD=normalize(lightP-vP); float diff=max(dot(n, lD), 0.2); float dist=length(camP-vP); float fog=clamp((dist-20.0)/100.0, 0.0, 1.0); vec3 finalC=uC.rgb*diff; fC=mix(vec4(finalC, 1.0), vec4(0.02, 0.04, 0.1, 1.0), fog); }";
+                  String vs="#version 300 es\nlayout(location=0) in vec4 aP; uniform mat4 uMVP; out float vZ; void main(){gl_Position=uMVP*aP; vZ=gl_Position.z;}";
+                  String fs="#version 300 es\nprecision highp float; in float vZ; uniform vec4 uC; out vec4 fC; void main(){ float f=0.0; if(vZ>20.0) f=clamp((vZ-20.0)/100.0, 0.0, 1.0); fC=mix(uC, vec4(0.02, 0.04, 0.08, 1.0), f); }";
                   prog=shP(vs, fs);
-                  
-                  float[] vc={-0.5f,0.5f,0.5f,-0.5f,-0.5f,0.5f,0.5f,0.5f,0.5f,0.5f,-0.5f,0.5f,-0.5f,0.5f,-0.5f,-0.5f,-0.5f,-0.5f,0.5f,0.5f,-0.5f,0.5f,-0.5f,-0.5f,0.5f,0.5f,0.5f,0.5f,0.5f,-0.5f,-0.5f,0.5f,0.5f,-0.5f,0.5f,-0.5f,-0.5f,-0.5f,-0.5f,0.5f,-0.5f,-0.5f,-0.5f,-0.5f,0.5f,0.5f,-0.5f,0.5f,-0.5f,0.5f,-0.5f,-0.5f,-0.5f,-0.5f,-0.5f,0.5f,0.5f,-0.5f,-0.5f,0.5f,0.5f,0.5f,-0.5f,0.5f,-0.5f,-0.5f,0.5f,0.5f,0.5f,0.5f,-0.5f,0.5f};
-                  float[] nc={0,0,1,0,0,1,0,0,1,0,0,1, 0,0,-1,0,0,-1,0,0,-1,0,0,-1, 0,1,0,0,1,0,0,1,0,0,1, 0,-1,0,0,-1,0,0,-1,0,0,-1, -1,0,0,-1,0,0,-1,0,0,-1,0,0, 1,0,0,1,0,0,1,0,0,1,0,0};
+                  float[] vc={-0.5f,0.5f,0.5f,-0.5f,-0.5f,0.5f,0.5f,0.5f,0.5f,0.5f,-0.5f,0.5f, -0.5f,0.5f,-0.5f,-0.5f,-0.5f,-0.5f,0.5f,0.5f,-0.5f,0.5f,-0.5f,-0.5f, -0.5f,0.5f,-0.5f,-0.5f,0.5f,0.5f,0.5f,0.5f,-0.5f,0.5f,0.5f,0.5f, -0.5f,-0.5f,-0.5f,-0.5f,-0.5f,0.5f,0.5f,-0.5f,-0.5f,0.5f,-0.5f,0.5f, -0.5f,0.5f,-0.5f,-0.5f,-0.5f,-0.5f,-0.5f,0.5f,0.5f,-0.5f,-0.5f,0.5f, 0.5f,0.5f,-0.5f,0.5f,-0.5f,-0.5f,0.5f,0.5f,0.5f,0.5f,-0.5f,0.5f};
                   vBuf=ByteBuffer.allocateDirect(vc.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(vc); vBuf.position(0);
-                  nBuf=ByteBuffer.allocateDirect(nc.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(nc); nBuf.position(0);
+                  
+                  // Плейс: Паркур
+                  map.add(new Box(0, 0, 0, 15, 0.2f, 15, 0.1f, 0.1f, 0.15f));
+                  map.add(new Box(0, 1.5f, -12, 4, 1, 4, 0.14f, 0.77f, 0.36f));
+                  map.add(new Box(7, 3.0f, -20, 4, 1, 4, 0.14f, 0.77f, 0.36f));
+                  map.add(new Box(-2, 5.0f, -30, 4, 1, 4, 0.14f, 0.77f, 0.36f));
+                  map.add(new Box(-10, 6.5f, -40, 6, 0.5f, 6, 0.9f, 0.1f, 0.1f)); // Финиш
+                  map.add(new Box(-10, 7.5f, -40, 0.4f, 1.5f, 0.4f, 1, 1, 0)); // Пушка
               }
 
               @Override public void onSurfaceChanged(GL10 gl, int w, int h) {
-                  GLES30.glViewport(0,0,w,h); Matrix.perspectiveM(proj,0,50,(float)w/h,0.1f,500f);
+                  GLES30.glViewport(0,0,w,h); Matrix.perspectiveM(proj,0,65,(float)w/h,0.1f,500f);
               }
 
               @Override public void onDrawFrame(GL10 gl) {
-                  update();
-                  GLES30.glClearColor(0.02f, 0.04f, 0.1f, 1.0f);
+                  physics();
+                  GLES30.glClearColor(0.02f, 0.04f, 0.08f, 1.0f);
                   GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
                   
+                  float b = (Math.abs(jX)>0.1f || Math.abs(jY)>0.1f) ? (float)Math.sin(walkAnim*0.15f)*0.04f : 0;
                   float vx=(float)(Math.sin(Math.toRadians(rY))*Math.cos(Math.toRadians(rX))), vy=(float)Math.sin(Math.toRadians(rX)), vz=(float)(-Math.cos(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
-                  Matrix.setLookAtM(view,0,pX,pY,pZ,pX+vx,pY+vy,pZ+vz,0,1,0);
-                  
+                  Matrix.setLookAtM(view,0,pX,pY+b,pZ,pX+vx,pY+vy+b,pZ+vz,0,1,0);
+
                   GLES30.glUseProgram(prog);
-                  int uMVP=GLES30.glGetUniformLocation(prog,"uMVP"), uM=GLES30.glGetUniformLocation(prog,"uM"), uC=GLES30.glGetUniformLocation(prog,"uC");
-                  GLES30.glUniform3f(GLES30.glGetUniformLocation(prog,"lightP"), 50, 100, 50);
-                  GLES30.glUniform3f(GLES30.glGetUniformLocation(prog,"camP"), pX, pY, pZ);
-                  
+                  int uMVP=GLES30.glGetUniformLocation(prog,"uMVP"), uC=GLES30.glGetUniformLocation(prog,"uC");
                   GLES30.glVertexAttribPointer(0, 3, GLES30.GL_FLOAT, false, 0, vBuf); GLES30.glEnableVertexAttribArray(0);
-                  GLES30.glVertexAttribPointer(1, 3, GLES30.GL_FLOAT, false, 0, nBuf); GLES30.glEnableVertexAttribArray(1);
 
-                  // Baseplate
-                  Matrix.setIdentityM(model,0); Matrix.scaleM(model,0,200,0.1f,200);
-                  drawObj(uMVP, uM, uC, 0.2f, 0.2f, 0.3f);
+                  for(Box box : map) {
+                      Matrix.setIdentityM(model,0); Matrix.translateM(model,0,box.x,box.y,box.z); Matrix.scaleM(model,0,box.sx,box.sy,box.sz);
+                      draw(uMVP, uC, box.r, box.g, box.b);
+                  }
+                  renderPlayerAssets(uMVP, uC, b);
+              }
+
+              private void renderPlayerAssets(int uMVP, int uC, float b) {
+                  GLES30.glClear(GLES30.GL_DEPTH_BUFFER_BIT);
+                  // Левая рука
+                  drawPart(-0.45f, -0.5f+b, -0.7f, 0.12f, 0.12f, 0.5f, 0.8f, 0.6f, 0.4f, uMVP, uC);
+                  // Правая рука
+                  drawPart(0.45f, -0.5f+b, -0.7f, 0.12f, 0.12f, 0.5f, 0.8f, 0.6f, 0.4f, uMVP, uC);
                   
-                  // Стилизованный домик
-                  drawBox(uMVP, uM, uC, 0, 2.5f, -10, 5, 5, 5, 0.8f, 0.8f, 0.8f);
-                  drawBox(uMVP, uM, uC, 0, 5.5f, -10, 6, 1, 6, 0.1f, 0.8f, 0.1f);
+                  if(gunEquipped) {
+                      // Лазерная пушка
+                      drawPart(0.45f, -0.35f+b, -1.1f, 0.1f, 0.15f, 0.45f, 0.2f, 0.2f, 0.2f, uMVP, uC);
+                      // ЛАЗЕР (светится)
+                      drawPart(0.45f, -0.32f+b, -10f, 0.015f, 0.015f, 18f, 0, 1, 0, uMVP, uC);
+                  }
               }
 
-              private void update() {
-                  vY-=0.02f; pY+=vY; if(pY<2.1f){pY=2.1f; vY=0;}
-                  float s=0.3f, rad=(float)Math.toRadians(rY);
-                  pX += ((float)Math.sin(rad)*-jY + (float)Math.cos(rad)*jX)*s;
-                  pZ += ((float)-Math.cos(rad)*-jY + (float)Math.sin(rad)*jX)*s;
+              private void physics() {
+                  vY -= 0.018f; pY += vY;
+                  boolean onGround = false;
+                  for(Box b : map) {
+                      if(b.checkCol(pX, pY, pZ)) {
+                          if(vY < 0) { pY = b.y + b.sy/2 + 2.1f; vY = 0; onGround = true; }
+                      }
+                  }
+                  if(pY < -20) { pX=0; pY=5; pZ=5; vY=0; } // Respawn
+                  
+                  float s=0.18f, rad=(float)Math.toRadians(rY);
+                  float nextX = pX + ((float)Math.sin(rad)*-jY + (float)Math.cos(rad)*jX)*s;
+                  float nextZ = pZ + ((float)-Math.cos(rad)*-jY + (float)Math.sin(rad)*jX)*s;
+                  
+                  // Коллизия стен
+                  boolean wall = false;
+                  for(Box b : map) if(b.checkCol(nextX, pY, nextZ) && Math.abs(pY - (b.y+b.sy/2+2.1f)) > 0.5f) wall=true;
+                  if(!wall) { pX=nextX; pZ=nextZ; }
+                  
+                  if(Math.abs(jX)>0 || Math.abs(jY)>0) walkAnim += 1.2f;
+                  if(Math.abs(pX+10)<2 && Math.abs(pZ+40)<2) gunEquipped = true;
               }
-              private void drawBox(int uMVP, int uM, int uC, float x, float y, float z, float sx, float sy, float sz, float r, float g, float b) {
-                  Matrix.setIdentityM(model,0); Matrix.translateM(model,0,x,y,z); Matrix.scaleM(model,0,sx,sy,sz);
-                  drawObj(uMVP, uM, uC, r, g, b);
+
+              private void drawPart(float x, float y, float z, float sx, float sy, float sz, float r, float g, float b, int uMVP, int uC) {
+                  Matrix.setIdentityM(model, 0); Matrix.translateM(model, 0, x, y, z); Matrix.scaleM(model, 0, sx, sy, sz);
+                  draw(uMVP, uC, r, g, b);
               }
-              private void drawObj(int uMVP, int uM, int uC, float r, float g, float b) {
+
+              private void draw(int uMVP, int uC, float r, float g, float b) {
                   float[] mvp=new float[16]; Matrix.multiplyMM(mvp,0,proj,0,view,0); Matrix.multiplyMM(mvp,0,mvp,0,model,0);
-                  GLES30.glUniformMatrix4fv(uMVP, 1, false, mvp, 0);
-                  GLES30.glUniformMatrix4fv(uM, 1, false, model, 0);
-                  GLES30.glUniform4f(uC, r, g, b, 1.0f);
+                  GLES30.glUniformMatrix4fv(uMVP, 1, false, mvp, 0); GLES30.glUniform4f(uC, r, g, b, 1.0f);
                   for(int i=0; i<6; i++) GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, i*4, 4);
               }
               private int shP(String v,String f){int p=GLES30.glCreateProgram();GLES30.glAttachShader(p,sh(35633,v));GLES30.glAttachShader(p,sh(35632,f));GLES30.glLinkProgram(p);return p;}
@@ -142,7 +178,7 @@ jobs:
           }
           EOF
 
-          # MainActivity (ФИКС МУЛЬТИТАЧА)
+          # --- MAIN ACTIVITY: INSTANT JUMP & SMOOTH LOOK ---
           cat <<EOF > app/src/main/java/com/enjoer/game/MainActivity.java
           package com.enjoer.game;
           import android.os.Bundle;
@@ -153,81 +189,60 @@ jobs:
           public class MainActivity extends AppCompatActivity {
               private GameRenderer ren;
               private float lastX, lastY;
-              private int lookPtrId = -1, joyPtrId = -1;
+              private int lookID = -1, joyID = -1;
 
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
                   setContentView(R.layout.activity_main);
-                  
-                  View menu = findViewById(R.id.menu_screen);
-                  View game = findViewById(R.id.game_screen);
                   android.opengl.GLSurfaceView gv = findViewById(R.id.gl_view);
                   gv.setEGLContextClientVersion(3);
                   ren = new GameRenderer();
                   gv.setRenderer(ren);
 
-                  findViewById(R.id.btn_start).setOnClickListener(v -> { menu.setVisibility(View.GONE); game.setVisibility(View.VISIBLE); });
-                  findViewById(R.id.btn_exit).setOnClickListener(v -> { game.setVisibility(View.GONE); menu.setVisibility(View.VISIBLE); });
-                  findViewById(R.id.btn_jump).setOnClickListener(v -> { if(ren.pY <= 2.2f) ren.vY = 0.5f; });
+                  // МГНОВЕННЫЙ ПРЫЖОК ПО НАЖАТИЮ
+                  findViewById(R.id.btn_jump).setOnTouchListener((v, e) -> {
+                      if(e.getAction() == MotionEvent.ACTION_DOWN && ren.vY == 0) ren.vY = 0.42f;
+                      return true;
+                  });
 
                   View stick = findViewById(R.id.joy_stick);
-                  View joyBase = findViewById(R.id.joy_base);
-                  View overlay = findViewById(R.id.input_overlay);
+                  View base = findViewById(R.id.joy_base);
+                  findViewById(R.id.input_zone).setOnTouchListener((v, e) -> {
+                      int act = e.getActionMasked(), idx = e.getActionIndex(), id = e.getPointerId(idx);
+                      float x = e.getX(idx), y = e.getY(idx);
 
-                  overlay.setOnTouchListener((v, e) -> {
-                      int action = e.getActionMasked();
-                      int ptrIdx = e.getActionIndex();
-                      int ptrId = e.getPointerId(ptrIdx);
-                      float x = e.getX(ptrIdx), y = e.getY(ptrIdx);
-
-                      switch (action) {
-                          case MotionEvent.ACTION_DOWN:
-                          case MotionEvent.ACTION_POINTER_DOWN:
-                              if (x < v.getWidth()/2f && joyPtrId == -1) {
-                                  joyPtrId = ptrId;
-                                  updateJoy(x, y, joyBase, stick);
-                              } else if (lookPtrId == -1) {
-                                  lookPtrId = ptrId;
-                                  lastX = x; lastY = y;
+                      if(act==MotionEvent.ACTION_DOWN || act==MotionEvent.ACTION_POINTER_DOWN) {
+                          if(x < v.getWidth()/2f && joyID == -1) joyID = id;
+                          else if(lookID == -1) { lookID = id; lastX = x; lastY = y; }
+                      } else if(act==MotionEvent.ACTION_MOVE) {
+                          for(int i=0; i<e.getPointerCount(); i++) {
+                              int pid = e.getPointerId(i);
+                              if(pid == joyID) {
+                                  float dx = e.getX(i)-(base.getLeft()+70), dy = e.getY(i)-(base.getTop()+70), d=(float)Math.sqrt(dx*dx+dy*dy);
+                                  if(d>60){ dx*=60/d; dy*=60/d; }
+                                  stick.setTranslationX(dx); stick.setTranslationY(dy);
+                                  ren.jX = dx/60f; ren.jY = dy/60f;
+                              } else if(pid == lookID) {
+                                  // Плавный поворот без вязкости
+                                  ren.rY += (e.getX(i)-lastX)*0.12f;
+                                  ren.rX = Math.max(-88, Math.min(88, ren.rX-(e.getY(i)-lastY)*0.12f));
+                                  lastX = e.getX(i); lastY = e.getY(i);
                               }
-                              break;
-                          case MotionEvent.ACTION_MOVE:
-                              for (int i=0; i<e.getPointerCount(); i++) {
-                                  int id = e.getPointerId(i);
-                                  if (id == joyPtrId) updateJoy(e.getX(i), e.getY(i), joyBase, stick);
-                                  else if (id == lookPtrId) {
-                                      ren.rY += (e.getX(i) - lastX) * 0.4f;
-                                      ren.rX = Math.max(-85, Math.min(85, ren.rX - (e.getY(i) - lastY) * 0.4f));
-                                      lastX = e.getX(i); lastY = e.getY(i);
-                                  }
-                              }
-                              break;
-                          case MotionEvent.ACTION_UP:
-                          case MotionEvent.ACTION_POINTER_UP:
-                          case MotionEvent.ACTION_CANCEL:
-                              if (ptrId == joyPtrId) { joyPtrId = -1; ren.jX = 0; ren.jY = 0; stick.setTranslationX(0); stick.setTranslationY(0); }
-                              else if (ptrId == lookPtrId) lookPtrId = -1;
-                              break;
+                          }
+                      } else if(act==MotionEvent.ACTION_UP || act==MotionEvent.ACTION_POINTER_UP) {
+                          if(id == joyID) { joyID = -1; ren.jX=0; ren.jY=0; stick.setTranslationX(0); stick.setTranslationY(0); }
+                          else if(id == lookID) lookID = -1;
                       }
                       return true;
                   });
               }
-
-              private void updateJoy(float tx, float ty, View base, View stick) {
-                  float cx = base.getLeft() + base.getWidth()/2f, cy = base.getTop() + base.getHeight()/2f;
-                  float dx = tx - cx, dy = ty - cy, d = (float)Math.sqrt(dx*dx+dy*dy), lim = base.getWidth()/2f - 30;
-                  if (d > lim) { dx *= lim/d; dy *= lim/d; }
-                  stick.setTranslationX(dx); stick.setTranslationY(dy);
-                  ren.jX = dx/lim; ren.jY = dy/lim;
-              }
           }
           EOF
 
-          # Gradle & Manifest
+          # Build Config
           echo "include ':app'" > settings.gradle
-          echo "buildscript { repositories { google(); mavenCentral() }; dependencies { classpath 'com.android.tools.build:gradle:8.2.2' } }" > build.gradle
-          echo "allprojects { repositories { google(); mavenCentral() } }" >> build.gradle
+          echo "allprojects { repositories { google(); mavenCentral() } }" > build.gradle
           cat <<EOF > app/build.gradle
           plugins { id 'com.android.application' }
           android { namespace 'com.enjoer.game'; compileSdk 34; defaultConfig { applicationId 'com.enjoer.game'; minSdk 24; targetSdk 34 } }
@@ -235,7 +250,7 @@ jobs:
           EOF
           cat <<EOF > app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="Enjoer Fix" android:theme="@style/AppTheme">
+              <application android:label="Enjoer Pro" android:theme="@style/AppTheme">
                   <activity android:name="com.enjoer.game.MainActivity" android:exported="true" android:screenOrientation="landscape">
                       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
                   </activity>
@@ -251,5 +266,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Enjoer_Engine_Fixed
+          name: Enjoer_Pro_Engine
           path: app/build/outputs/apk/debug/app-debug.apk
