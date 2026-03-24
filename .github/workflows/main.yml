@@ -1,4 +1,4 @@
-name: Enjoer_5.0_Save_System
+name: Enjoer_6.0_RTX
 on: [push, workflow_dispatch]
 
 jobs:
@@ -25,75 +25,69 @@ jobs:
           echo "android.enableJetifier=true" >> gradle.properties
 
           cat <<EOF > app/src/main/res/values/themes.xml
-          <resources><style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+          <resources>
+            <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
               <item name="android:windowFullscreen">true</item>
-          </style></resources>
+            </style>
+          </resources>
           EOF
 
           cat <<EOF > app/src/main/res/drawable/btn_blue.xml
           <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-              <corners android:radius="12dp"/><solid android:color="#101820"/><stroke android:width="2dp" android:color="#00BFFF"/>
+            <corners android:radius="12dp"/><solid android:color="#101820"/><stroke android:width="2dp" android:color="#00BFFF"/>
           </shape>
           EOF
 
           cat <<EOF > app/src/main/res/drawable/btn_blue_filled.xml
           <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-              <corners android:radius="12dp"/><solid android:color="#00BFFF"/>
+            <corners android:radius="12dp"/><solid android:color="#00BFFF"/>
           </shape>
           EOF
 
           cat <<EOF > app/src/main/res/drawable/btn_red.xml
           <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-              <corners android:radius="12dp"/><solid android:color="#101820"/><stroke android:width="2dp" android:color="#FF4444"/>
+            <corners android:radius="12dp"/><solid android:color="#101820"/><stroke android:width="2dp" android:color="#FF4444"/>
           </shape>
           EOF
 
           cat <<EOF > app/src/main/res/drawable/btn_green.xml
           <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-              <corners android:radius="12dp"/><solid android:color="#44FF44"/>
-          </shape>
-          EOF
-
-          cat <<EOF > app/src/main/res/drawable/btn_orange.xml
-          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-              <corners android:radius="12dp"/><solid android:color="#FF8800"/>
+            <corners android:radius="12dp"/><solid android:color="#44FF44"/>
           </shape>
           EOF
 
           cat <<EOF > app/src/main/res/drawable/joy_base.xml
           <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
-              <solid android:color="#CC101820"/><stroke android:width="2dp" android:color="#00BFFF"/>
+            <solid android:color="#CC101820"/><stroke android:width="2dp" android:color="#00BFFF"/>
           </shape>
           EOF
 
           cat <<EOF > app/src/main/res/drawable/joy_stick.xml
           <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
-              <solid android:color="#00BFFF"/>
+            <solid android:color="#00BFFF"/>
           </shape>
           EOF
 
           cat <<EOF > app/src/main/res/drawable/panel_bg.xml
           <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-              <corners android:radius="8dp"/><solid android:color="#E6101820"/><stroke android:width="1dp" android:color="#00BFFF"/>
+            <corners android:radius="8dp"/><solid android:color="#E6101820"/><stroke android:width="1dp" android:color="#00BFFF"/>
           </shape>
           EOF
 
           cat <<EOF > app/src/main/res/drawable/color_btn.xml
           <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
-              <solid android:color="#FFF"/><stroke android:width="2dp" android:color="#00BFFF"/>
+            <solid android:color="#FFF"/><stroke android:width="2dp" android:color="#00BFFF"/>
           </shape>
           EOF
 
-          # === LAYOUT ===
-          cat <<'LAYOUTEOF' > app/src/main/res/layout/activity_main.xml
+          cat <<'LAYOUT' > app/src/main/res/layout/activity_main.xml
           <?xml version="1.0" encoding="utf-8"?>
           <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:layout_width="match_parent" android:layout_height="match_parent" android:background="#050A12">
+              android:layout_width="match_parent" android:layout_height="match_parent" android:background="#02050A">
               
               <android.opengl.GLSurfaceView android:id="@+id/gl_view"
                   android:layout_width="match_parent" android:layout_height="match_parent"/>
               
-              <!-- Game UI -->
               <RelativeLayout android:id="@+id/game_ui" android:layout_width="match_parent" 
                   android:layout_height="match_parent" android:visibility="gone">
                   <View android:id="@+id/look_zone" android:layout_width="match_parent" android:layout_height="match_parent"/>
@@ -101,291 +95,164 @@ jobs:
                       android:layout_margin="10dp" android:text="≡" android:textSize="24sp" 
                       android:background="@drawable/btn_blue" android:textColor="#00BFFF"/>
                   <FrameLayout android:id="@+id/joy_base" android:layout_width="140dp" android:layout_height="140dp"
-                      android:layout_alignParentBottom="true" android:layout_alignParentLeft="true"
+                      android:layout_alignParentBottom="true" android:layout_alignParentLeft="true" 
                       android:layout_marginLeft="40dp" android:layout_marginBottom="40dp" android:background="@drawable/joy_base"/>
                   <View android:id="@+id/joy_stick" android:layout_width="60dp" android:layout_height="60dp"
-                      android:layout_alignLeft="@id/joy_base" android:layout_alignTop="@id/joy_base"
+                      android:layout_alignLeft="@id/joy_base" android:layout_alignTop="@id/joy_base" 
                       android:layout_marginLeft="40dp" android:layout_marginTop="40dp" android:background="@drawable/joy_stick"/>
-                  <Button android:id="@+id/btn_jump" android:layout_width="100dp" android:layout_height="100dp"
-                      android:layout_alignParentRight="true" android:layout_alignParentBottom="true"
-                      android:layout_marginRight="40dp" android:layout_marginBottom="40dp"
-                      android:text="JUMP" android:textSize="16sp" android:background="@drawable/btn_blue" android:textColor="#FFF"/>
+                  <Button android:id="@+id/btn_jump" android:layout_width="90dp" android:layout_height="90dp"
+                      android:layout_alignParentRight="true" android:layout_alignParentBottom="true" 
+                      android:layout_marginRight="40dp" android:layout_marginBottom="40dp" 
+                      android:text="▲" android:textSize="28sp" android:background="@drawable/btn_blue" android:textColor="#FFF"/>
               </RelativeLayout>
 
-              <!-- Engine UI -->
               <RelativeLayout android:id="@+id/engine_ui" android:layout_width="match_parent" 
                   android:layout_height="match_parent" android:visibility="gone">
                   <View android:id="@+id/engine_touch_zone" android:layout_width="match_parent" android:layout_height="match_parent"/>
-                  
-                  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" 
                       android:layout_alignParentTop="true" android:orientation="horizontal" android:padding="10dp">
-                      <Button android:id="@+id/btn_engine_menu" android:layout_width="50dp" android:layout_height="50dp"
+                      <Button android:id="@+id/btn_engine_menu" android:layout_width="50dp" android:layout_height="50dp" 
                           android:text="≡" android:textSize="24sp" android:background="@drawable/btn_blue" android:textColor="#00BFFF"/>
                       <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1"/>
-                      <Button android:id="@+id/btn_save" android:layout_width="70dp" android:layout_height="50dp"
-                          android:text="SAVE" android:textSize="12sp" android:background="@drawable/btn_orange" android:textColor="#000"/>
-                      <Button android:id="@+id/btn_load" android:layout_width="70dp" android:layout_height="50dp"
-                          android:text="LOAD" android:textSize="12sp" android:background="@drawable/btn_blue" android:textColor="#00BFFF" android:layout_marginLeft="10dp"/>
-                      <Button android:id="@+id/btn_play_level" android:layout_width="50dp" android:layout_height="50dp"
+                      <Button android:id="@+id/btn_save" android:layout_width="90dp" android:layout_height="50dp" 
+                          android:text="EXPORT" android:textSize="12sp" android:background="@drawable/btn_blue" android:textColor="#00BFFF"/>
+                      <Button android:id="@+id/btn_play_level" android:layout_width="50dp" android:layout_height="50dp" 
                           android:text="▶" android:textSize="20sp" android:background="@drawable/btn_green" android:textColor="#000" android:layout_marginLeft="10dp"/>
                   </LinearLayout>
-
-                  <FrameLayout android:id="@+id/engine_joy_base" android:layout_width="130dp" android:layout_height="130dp"
-                      android:layout_alignParentBottom="true" android:layout_alignParentLeft="true"
+                  <FrameLayout android:id="@+id/engine_joy_base" android:layout_width="120dp" android:layout_height="120dp"
+                      android:layout_alignParentBottom="true" android:layout_alignParentLeft="true" 
                       android:layout_marginLeft="30dp" android:layout_marginBottom="30dp" android:background="@drawable/joy_base"/>
-                  <View android:id="@+id/engine_joy_stick" android:layout_width="55dp" android:layout_height="55dp"
-                      android:layout_alignLeft="@id/engine_joy_base" android:layout_alignTop="@id/engine_joy_base"
-                      android:layout_marginLeft="37dp" android:layout_marginTop="37dp" android:background="@drawable/joy_stick"/>
-
+                  <View android:id="@+id/engine_joy_stick" android:layout_width="50dp" android:layout_height="50dp"
+                      android:layout_alignLeft="@id/engine_joy_base" android:layout_alignTop="@id/engine_joy_base" 
+                      android:layout_marginLeft="35dp" android:layout_marginTop="35dp" android:background="@drawable/joy_stick"/>
                   <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
-                      android:layout_above="@id/engine_joy_base" android:layout_alignParentLeft="true"
-                      android:layout_marginLeft="45dp" android:layout_marginBottom="10dp" android:orientation="horizontal">
-                      <Button android:id="@+id/btn_down" android:layout_width="55dp" android:layout_height="55dp"
+                      android:layout_above="@id/engine_joy_base" android:layout_alignParentLeft="true" 
+                      android:layout_marginLeft="35dp" android:layout_marginBottom="10dp" android:orientation="horizontal">
+                      <Button android:id="@+id/btn_down" android:layout_width="50dp" android:layout_height="50dp" 
                           android:text="▼" android:textSize="20sp" android:background="@drawable/btn_blue" android:textColor="#00BFFF"/>
-                      <Button android:id="@+id/btn_up" android:layout_width="55dp" android:layout_height="55dp"
+                      <Button android:id="@+id/btn_up" android:layout_width="50dp" android:layout_height="50dp" 
                           android:text="▲" android:textSize="20sp" android:background="@drawable/btn_blue" android:textColor="#00BFFF" android:layout_marginLeft="10dp"/>
                   </LinearLayout>
-
-                  <ScrollView android:id="@+id/tools_scroll" android:layout_width="180dp" android:layout_height="match_parent"
-                      android:layout_alignParentRight="true" android:layout_marginRight="10dp" android:layout_marginTop="70dp" android:layout_marginBottom="10dp">
-                      <LinearLayout android:id="@+id/tools_panel" android:layout_width="match_parent" android:layout_height="wrap_content"
+                  <ScrollView android:id="@+id/tools_scroll" android:layout_width="170dp" android:layout_height="match_parent"
+                      android:layout_alignParentRight="true" android:layout_marginRight="10dp" 
+                      android:layout_marginTop="70dp" android:layout_marginBottom="10dp">
+                      <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" 
                           android:orientation="vertical" android:background="@drawable/panel_bg" android:padding="10dp">
-                          
-                          <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                              android:text="SHAPE" android:textColor="#00BFFF" android:textSize="11sp" android:layout_marginBottom="5dp"/>
                           <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-                              <Button android:id="@+id/shape_cube" android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1"
-                                  android:text="■" android:textSize="16sp" android:background="@drawable/btn_blue_filled" android:textColor="#000"/>
-                              <Button android:id="@+id/shape_flat" android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1"
-                                  android:text="▬" android:textSize="16sp" android:background="@drawable/btn_blue" android:textColor="#00BFFF" android:layout_marginLeft="4dp"/>
-                              <Button android:id="@+id/shape_tall" android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1"
-                                  android:text="▮" android:textSize="16sp" android:background="@drawable/btn_blue" android:textColor="#00BFFF" android:layout_marginLeft="4dp"/>
+                              <Button android:id="@+id/shape_cube" android:layout_width="0dp" android:layout_height="36dp" 
+                                  android:layout_weight="1" android:text="■" android:background="@drawable/btn_blue_filled" android:textColor="#000"/>
+                              <Button android:id="@+id/shape_flat" android:layout_width="0dp" android:layout_height="36dp" 
+                                  android:layout_weight="1" android:text="▬" android:background="@drawable/btn_blue" android:textColor="#00BFFF" android:layout_marginLeft="4dp"/>
+                              <Button android:id="@+id/shape_tall" android:layout_width="0dp" android:layout_height="36dp" 
+                                  android:layout_weight="1" android:text="▮" android:background="@drawable/btn_blue" android:textColor="#00BFFF" android:layout_marginLeft="4dp"/>
                           </LinearLayout>
-                          
-                          <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                              android:text="SIZE" android:textColor="#00BFFF" android:textSize="11sp" android:layout_marginTop="8dp" android:layout_marginBottom="5dp"/>
-                          <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-                              <Button android:id="@+id/size_s" android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1"
-                                  android:text="S" android:background="@drawable/btn_blue" android:textColor="#00BFFF"/>
-                              <Button android:id="@+id/size_m" android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1"
-                                  android:text="M" android:background="@drawable/btn_blue_filled" android:textColor="#000" android:layout_marginLeft="4dp"/>
-                              <Button android:id="@+id/size_l" android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1"
-                                  android:text="L" android:background="@drawable/btn_blue" android:textColor="#00BFFF" android:layout_marginLeft="4dp"/>
+                          <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" 
+                              android:orientation="horizontal" android:layout_marginTop="8dp">
+                              <Button android:id="@+id/size_s" android:layout_width="0dp" android:layout_height="36dp" 
+                                  android:layout_weight="1" android:text="S" android:background="@drawable/btn_blue" android:textColor="#00BFFF"/>
+                              <Button android:id="@+id/size_m" android:layout_width="0dp" android:layout_height="36dp" 
+                                  android:layout_weight="1" android:text="M" android:background="@drawable/btn_blue_filled" android:textColor="#000" android:layout_marginLeft="4dp"/>
+                              <Button android:id="@+id/size_l" android:layout_width="0dp" android:layout_height="36dp" 
+                                  android:layout_weight="1" android:text="L" android:background="@drawable/btn_blue" android:textColor="#00BFFF" android:layout_marginLeft="4dp"/>
                           </LinearLayout>
-                          
-                          <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                              android:text="COLOR" android:textColor="#00BFFF" android:textSize="11sp" android:layout_marginTop="8dp" android:layout_marginBottom="5dp"/>
-                          <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center">
-                              <View android:id="@+id/color_red" android:layout_width="28dp" android:layout_height="28dp" android:background="@drawable/color_btn" android:backgroundTint="#FF4444"/>
-                              <View android:id="@+id/color_green" android:layout_width="28dp" android:layout_height="28dp" android:background="@drawable/color_btn" android:backgroundTint="#44FF44" android:layout_marginLeft="6dp"/>
-                              <View android:id="@+id/color_blue" android:layout_width="28dp" android:layout_height="28dp" android:background="@drawable/color_btn" android:backgroundTint="#4444FF" android:layout_marginLeft="6dp"/>
-                              <View android:id="@+id/color_yellow" android:layout_width="28dp" android:layout_height="28dp" android:background="@drawable/color_btn" android:backgroundTint="#FFFF44" android:layout_marginLeft="6dp"/>
-                              <View android:id="@+id/color_white" android:layout_width="28dp" android:layout_height="28dp" android:background="@drawable/color_btn" android:backgroundTint="#FFFFFF" android:layout_marginLeft="6dp"/>
+                          <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" 
+                              android:orientation="horizontal" android:gravity="center" android:layout_marginTop="8dp">
+                              <View android:id="@+id/color_red" android:layout_width="26dp" android:layout_height="26dp" 
+                                  android:background="@drawable/color_btn" android:backgroundTint="#FF2222"/>
+                              <View android:id="@+id/color_green" android:layout_width="26dp" android:layout_height="26dp" 
+                                  android:background="@drawable/color_btn" android:backgroundTint="#22FF22" android:layout_marginLeft="5dp"/>
+                              <View android:id="@+id/color_blue" android:layout_width="26dp" android:layout_height="26dp" 
+                                  android:background="@drawable/color_btn" android:backgroundTint="#2288FF" android:layout_marginLeft="5dp"/>
+                              <View android:id="@+id/color_yellow" android:layout_width="26dp" android:layout_height="26dp" 
+                                  android:background="@drawable/color_btn" android:backgroundTint="#FFFF22" android:layout_marginLeft="5dp"/>
+                              <View android:id="@+id/color_white" android:layout_width="26dp" android:layout_height="26dp" 
+                                  android:background="@drawable/color_btn" android:backgroundTint="#FFFFFF" android:layout_marginLeft="5dp"/>
                           </LinearLayout>
-                          
-                          <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                              android:text="DISTANCE" android:textColor="#00BFFF" android:textSize="11sp" android:layout_marginTop="8dp" android:layout_marginBottom="5dp"/>
-                          <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-                              <Button android:id="@+id/dist_near" android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1"
-                                  android:text="3" android:background="@drawable/btn_blue" android:textColor="#00BFFF"/>
-                              <Button android:id="@+id/dist_mid" android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1"
-                                  android:text="6" android:background="@drawable/btn_blue_filled" android:textColor="#000" android:layout_marginLeft="4dp"/>
-                              <Button android:id="@+id/dist_far" android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1"
-                                  android:text="12" android:background="@drawable/btn_blue" android:textColor="#00BFFF" android:layout_marginLeft="4dp"/>
+                          <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" 
+                              android:orientation="horizontal" android:layout_marginTop="8dp">
+                              <Button android:id="@+id/dist_near" android:layout_width="0dp" android:layout_height="36dp" 
+                                  android:layout_weight="1" android:text="3" android:background="@drawable/btn_blue" android:textColor="#00BFFF"/>
+                              <Button android:id="@+id/dist_mid" android:layout_width="0dp" android:layout_height="36dp" 
+                                  android:layout_weight="1" android:text="6" android:background="@drawable/btn_blue_filled" android:textColor="#000" android:layout_marginLeft="4dp"/>
+                              <Button android:id="@+id/dist_far" android:layout_width="0dp" android:layout_height="36dp" 
+                                  android:layout_weight="1" android:text="12" android:background="@drawable/btn_blue" android:textColor="#00BFFF" android:layout_marginLeft="4dp"/>
                           </LinearLayout>
-                          
-                          <Button android:id="@+id/btn_place" android:layout_width="match_parent" android:layout_height="44dp"
+                          <Button android:id="@+id/btn_place" android:layout_width="match_parent" android:layout_height="44dp" 
                               android:text="+ PLACE" android:background="@drawable/btn_blue_filled" android:textColor="#000" android:layout_marginTop="12dp"/>
-                          <Button android:id="@+id/btn_delete" android:layout_width="match_parent" android:layout_height="36dp"
+                          <Button android:id="@+id/btn_delete" android:layout_width="match_parent" android:layout_height="36dp" 
                               android:text="DELETE" android:background="@drawable/btn_red" android:textColor="#FF4444" android:layout_marginTop="8dp"/>
-                          <Button android:id="@+id/btn_deselect" android:layout_width="match_parent" android:layout_height="36dp"
+                          <Button android:id="@+id/btn_deselect" android:layout_width="match_parent" android:layout_height="36dp" 
                               android:text="DESELECT" android:background="@drawable/btn_blue" android:textColor="#00BFFF" android:layout_marginTop="8dp"/>
                       </LinearLayout>
                   </ScrollView>
-
-                  <LinearLayout android:id="@+id/axis_panel" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                      android:layout_alignParentBottom="true" android:layout_centerHorizontal="true" android:layout_marginBottom="20dp"
-                      android:orientation="horizontal" android:background="@drawable/panel_bg" android:padding="8dp" android:visibility="gone">
-                      <Button android:id="@+id/axis_x_minus" android:layout_width="50dp" android:layout_height="50dp"
-                          android:text="X-" android:background="@drawable/btn_blue" android:textColor="#FF4444"/>
-                      <Button android:id="@+id/axis_x_plus" android:layout_width="50dp" android:layout_height="50dp"
-                          android:text="X+" android:background="@drawable/btn_blue" android:textColor="#FF4444" android:layout_marginLeft="4dp"/>
-                      <Button android:id="@+id/axis_y_minus" android:layout_width="50dp" android:layout_height="50dp"
-                          android:text="Y-" android:background="@drawable/btn_blue" android:textColor="#44FF44" android:layout_marginLeft="12dp"/>
-                      <Button android:id="@+id/axis_y_plus" android:layout_width="50dp" android:layout_height="50dp"
-                          android:text="Y+" android:background="@drawable/btn_blue" android:textColor="#44FF44" android:layout_marginLeft="4dp"/>
-                      <Button android:id="@+id/axis_z_minus" android:layout_width="50dp" android:layout_height="50dp"
-                          android:text="Z-" android:background="@drawable/btn_blue" android:textColor="#4444FF" android:layout_marginLeft="12dp"/>
-                      <Button android:id="@+id/axis_z_plus" android:layout_width="50dp" android:layout_height="50dp"
-                          android:text="Z+" android:background="@drawable/btn_blue" android:textColor="#4444FF" android:layout_marginLeft="4dp"/>
+                  <LinearLayout android:id="@+id/axis_panel" android:layout_width="wrap_content" android:layout_height="wrap_content" 
+                      android:layout_alignParentBottom="true" android:layout_centerHorizontal="true" android:layout_marginBottom="20dp" 
+                      android:orientation="horizontal" android:background="@drawable/panel_bg" android:padding="6dp" android:visibility="gone">
+                      <Button android:id="@+id/axis_x_minus" android:layout_width="44dp" android:layout_height="44dp" 
+                          android:text="X-" android:background="@drawable/btn_blue" android:textColor="#FF4444" android:textSize="12sp"/>
+                      <Button android:id="@+id/axis_x_plus" android:layout_width="44dp" android:layout_height="44dp" 
+                          android:text="X+" android:background="@drawable/btn_blue" android:textColor="#FF4444" android:textSize="12sp" android:layout_marginLeft="4dp"/>
+                      <Button android:id="@+id/axis_y_minus" android:layout_width="44dp" android:layout_height="44dp" 
+                          android:text="Y-" android:background="@drawable/btn_blue" android:textColor="#44FF44" android:textSize="12sp" android:layout_marginLeft="10dp"/>
+                      <Button android:id="@+id/axis_y_plus" android:layout_width="44dp" android:layout_height="44dp" 
+                          android:text="Y+" android:background="@drawable/btn_blue" android:textColor="#44FF44" android:textSize="12sp" android:layout_marginLeft="4dp"/>
+                      <Button android:id="@+id/axis_z_minus" android:layout_width="44dp" android:layout_height="44dp" 
+                          android:text="Z-" android:background="@drawable/btn_blue" android:textColor="#4488FF" android:textSize="12sp" android:layout_marginLeft="10dp"/>
+                      <Button android:id="@+id/axis_z_plus" android:layout_width="44dp" android:layout_height="44dp" 
+                          android:text="Z+" android:background="@drawable/btn_blue" android:textColor="#4488FF" android:textSize="12sp" android:layout_marginLeft="4dp"/>
                   </LinearLayout>
-
-                  <View android:id="@+id/crosshair" android:layout_width="8dp" android:layout_height="8dp"
+                  <View android:id="@+id/crosshair" android:layout_width="6dp" android:layout_height="6dp" 
                       android:layout_centerInParent="true" android:background="#00BFFF"/>
               </RelativeLayout>
 
-              <!-- Playtest UI -->
               <RelativeLayout android:id="@+id/playtest_ui" android:layout_width="match_parent" 
                   android:layout_height="match_parent" android:visibility="gone">
                   <View android:id="@+id/playtest_look_zone" android:layout_width="match_parent" android:layout_height="match_parent"/>
-                  <Button android:id="@+id/btn_stop_playtest" android:layout_width="50dp" android:layout_height="50dp"
+                  <Button android:id="@+id/btn_stop_playtest" android:layout_width="50dp" android:layout_height="50dp" 
                       android:layout_margin="10dp" android:text="■" android:textSize="20sp" android:background="@drawable/btn_red" android:textColor="#FFF"/>
-                  <FrameLayout android:id="@+id/playtest_joy_base" android:layout_width="140dp" android:layout_height="140dp"
-                      android:layout_alignParentBottom="true" android:layout_alignParentLeft="true"
+                  <FrameLayout android:id="@+id/playtest_joy_base" android:layout_width="140dp" android:layout_height="140dp" 
+                      android:layout_alignParentBottom="true" android:layout_alignParentLeft="true" 
                       android:layout_marginLeft="40dp" android:layout_marginBottom="40dp" android:background="@drawable/joy_base"/>
-                  <View android:id="@+id/playtest_joy_stick" android:layout_width="60dp" android:layout_height="60dp"
-                      android:layout_alignLeft="@id/playtest_joy_base" android:layout_alignTop="@id/playtest_joy_base"
+                  <View android:id="@+id/playtest_joy_stick" android:layout_width="60dp" android:layout_height="60dp" 
+                      android:layout_alignLeft="@id/playtest_joy_base" android:layout_alignTop="@id/playtest_joy_base" 
                       android:layout_marginLeft="40dp" android:layout_marginTop="40dp" android:background="@drawable/joy_stick"/>
-                  <Button android:id="@+id/btn_playtest_jump" android:layout_width="100dp" android:layout_height="100dp"
-                      android:layout_alignParentRight="true" android:layout_alignParentBottom="true"
-                      android:layout_marginRight="40dp" android:layout_marginBottom="40dp"
-                      android:text="JUMP" android:textSize="16sp" android:background="@drawable/btn_blue" android:textColor="#FFF"/>
+                  <Button android:id="@+id/btn_playtest_jump" android:layout_width="90dp" android:layout_height="90dp" 
+                      android:layout_alignParentRight="true" android:layout_alignParentBottom="true" 
+                      android:layout_marginRight="40dp" android:layout_marginBottom="40dp" 
+                      android:text="▲" android:textSize="28sp" android:background="@drawable/btn_blue" android:textColor="#FFF"/>
               </RelativeLayout>
 
-              <!-- Menu UI -->
               <LinearLayout android:id="@+id/menu_ui" android:layout_width="match_parent" android:layout_height="match_parent"
-                  android:orientation="vertical" android:gravity="center" android:background="#F0050A12">
-                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                      android:text="ENJOER" android:textSize="48sp" android:textColor="#00BFFF" android:textStyle="bold"/>
-                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                      android:text="ENGINE" android:textSize="24sp" android:textColor="#0088CC" android:layout_marginBottom="60dp"/>
-                  <Button android:id="@+id/btn_play" android:layout_width="280dp" android:layout_height="60dp"
-                      android:text="PLAY" android:textSize="18sp" android:textColor="#FFF" android:background="@drawable/btn_blue_filled" android:layout_marginBottom="20dp"/>
-                  <Button android:id="@+id/btn_engine" android:layout_width="280dp" android:layout_height="60dp"
-                      android:text="ENGINE" android:textSize="18sp" android:textColor="#00BFFF" android:background="@drawable/btn_blue" android:layout_marginBottom="20dp"/>
-                  <Button android:id="@+id/btn_load_and_play" android:layout_width="280dp" android:layout_height="60dp"
-                      android:text="LOAD LEVEL" android:textSize="18sp" android:textColor="#FF8800" android:background="@drawable/btn_blue"/>
-              </LinearLayout>
-
-              <!-- Save Dialog -->
-              <LinearLayout android:id="@+id/save_dialog" android:layout_width="300dp" android:layout_height="wrap_content"
-                  android:layout_gravity="center" android:orientation="vertical" android:background="@drawable/panel_bg"
-                  android:padding="20dp" android:visibility="gone">
-                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                      android:text="SAVE LEVEL" android:textColor="#00BFFF" android:textSize="18sp" android:layout_marginBottom="15dp"/>
-                  <EditText android:id="@+id/level_name_input" android:layout_width="match_parent" android:layout_height="50dp"
-                      android:hint="Level name" android:textColor="#FFF" android:textColorHint="#666" android:background="@drawable/btn_blue"
-                      android:padding="10dp" android:inputType="text"/>
-                  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                      android:orientation="horizontal" android:layout_marginTop="15dp">
-                      <Button android:id="@+id/btn_cancel_save" android:layout_width="0dp" android:layout_height="45dp" android:layout_weight="1"
-                          android:text="CANCEL" android:background="@drawable/btn_blue" android:textColor="#00BFFF"/>
-                      <Button android:id="@+id/btn_confirm_save" android:layout_width="0dp" android:layout_height="45dp" android:layout_weight="1"
-                          android:text="SAVE" android:background="@drawable/btn_green" android:textColor="#000" android:layout_marginLeft="10dp"/>
-                  </LinearLayout>
-              </LinearLayout>
-
-              <!-- Load Dialog -->
-              <LinearLayout android:id="@+id/load_dialog" android:layout_width="350dp" android:layout_height="wrap_content"
-                  android:layout_gravity="center" android:orientation="vertical" android:background="@drawable/panel_bg"
-                  android:padding="20dp" android:visibility="gone">
-                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                      android:text="LOAD LEVEL" android:textColor="#00BFFF" android:textSize="18sp" android:layout_marginBottom="15dp"/>
-                  <ScrollView android:layout_width="match_parent" android:layout_height="200dp">
-                      <LinearLayout android:id="@+id/levels_list" android:layout_width="match_parent" android:layout_height="wrap_content"
-                          android:orientation="vertical"/>
-                  </ScrollView>
-                  <Button android:id="@+id/btn_cancel_load" android:layout_width="match_parent" android:layout_height="45dp"
-                      android:text="CANCEL" android:background="@drawable/btn_blue" android:textColor="#00BFFF" android:layout_marginTop="15dp"/>
+                  android:orientation="vertical" android:gravity="center" android:background="#02050A">
+                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" 
+                      android:text="ENJOER" android:textSize="52sp" android:textColor="#00BFFF" android:textStyle="bold"/>
+                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" 
+                      android:text="ENGINE 6.0" android:textSize="18sp" android:textColor="#0088CC" android:layout_marginBottom="80dp"/>
+                  <Button android:id="@+id/btn_play" android:layout_width="240dp" android:layout_height="60dp" 
+                      android:text="PLAY" android:textSize="18sp" android:textColor="#000" android:background="@drawable/btn_blue_filled" android:layout_marginBottom="16dp"/>
+                  <Button android:id="@+id/btn_engine" android:layout_width="240dp" android:layout_height="60dp" 
+                      android:text="EDITOR" android:textSize="18sp" android:textColor="#00BFFF" android:background="@drawable/btn_blue" android:layout_marginBottom="16dp"/>
+                  <Button android:id="@+id/btn_load_file" android:layout_width="240dp" android:layout_height="60dp" 
+                      android:text="IMPORT .JSON" android:textSize="16sp" android:textColor="#00BFFF" android:background="@drawable/btn_blue"/>
               </LinearLayout>
           </FrameLayout>
-          LAYOUTEOF
+          LAYOUT
 
-          # === Block.java ===
-          cat <<'BLOCKEOF' > app/src/main/java/com/enjoer/game/Block.java
+          cat <<EOF > app/src/main/java/com/enjoer/game/Block.java
           package com.enjoer.game;
-
           public class Block {
               public float x, y, z, sx, sy, sz, r, g, b;
-              
               public Block(float x, float y, float z, float sx, float sy, float sz, float r, float g, float b) {
-                  this.x = x; this.y = y; this.z = z;
-                  this.sx = sx; this.sy = sy; this.sz = sz;
-                  this.r = r; this.g = g; this.b = b;
+                  this.x=x; this.y=y; this.z=z; this.sx=sx; this.sy=sy; this.sz=sz; this.r=r; this.g=g; this.b=b;
               }
-              
-              public float minX() { return x - sx/2; }
-              public float maxX() { return x + sx/2; }
-              public float minY() { return y - sy/2; }
-              public float maxY() { return y + sy/2; }
-              public float minZ() { return z - sz/2; }
-              public float maxZ() { return z + sz/2; }
+              public float minX(){return x-sx/2;} public float maxX(){return x+sx/2;}
+              public float minY(){return y-sy/2;} public float maxY(){return y+sy/2;}
+              public float minZ(){return z-sz/2;} public float maxZ(){return z+sz/2;}
           }
-          BLOCKEOF
+          EOF
 
-          # === LevelManager.java ===
-          cat <<'LEVELMGREOF' > app/src/main/java/com/enjoer/game/LevelManager.java
+          cat <<'RENDERER' > app/src/main/java/com/enjoer/game/GameRenderer.java
           package com.enjoer.game;
-
-          import android.content.Context;
-          import org.json.JSONArray;
-          import org.json.JSONObject;
-          import java.io.*;
-          import java.util.ArrayList;
-          import java.util.List;
-          import java.util.concurrent.CopyOnWriteArrayList;
-
-          public class LevelManager {
-              private static final String DIR = "levels";
-              
-              public static void saveLevel(Context ctx, String name, CopyOnWriteArrayList<Block> blocks) {
-                  try {
-                      File dir = new File(ctx.getFilesDir(), DIR);
-                      if(!dir.exists()) dir.mkdirs();
-                      JSONObject level = new JSONObject();
-                      level.put("name", name);
-                      JSONArray arr = new JSONArray();
-                      for(Block b : blocks) {
-                          JSONObject o = new JSONObject();
-                          o.put("x", b.x); o.put("y", b.y); o.put("z", b.z);
-                          o.put("sx", b.sx); o.put("sy", b.sy); o.put("sz", b.sz);
-                          o.put("r", b.r); o.put("g", b.g); o.put("b", b.b);
-                          arr.put(o);
-                      }
-                      level.put("blocks", arr);
-                      FileWriter w = new FileWriter(new File(dir, name + ".json"));
-                      w.write(level.toString(2));
-                      w.close();
-                  } catch(Exception e) { e.printStackTrace(); }
-              }
-              
-              public static CopyOnWriteArrayList<Block> loadLevel(Context ctx, String name) {
-                  CopyOnWriteArrayList<Block> blocks = new CopyOnWriteArrayList<>();
-                  try {
-                      File f = new File(new File(ctx.getFilesDir(), DIR), name + ".json");
-                      BufferedReader r = new BufferedReader(new FileReader(f));
-                      StringBuilder sb = new StringBuilder();
-                      String line;
-                      while((line = r.readLine()) != null) sb.append(line);
-                      r.close();
-                      JSONArray arr = new JSONObject(sb.toString()).getJSONArray("blocks");
-                      for(int i = 0; i < arr.length(); i++) {
-                          JSONObject o = arr.getJSONObject(i);
-                          blocks.add(new Block(
-                              (float)o.getDouble("x"), (float)o.getDouble("y"), (float)o.getDouble("z"),
-                              (float)o.getDouble("sx"), (float)o.getDouble("sy"), (float)o.getDouble("sz"),
-                              (float)o.getDouble("r"), (float)o.getDouble("g"), (float)o.getDouble("b")));
-                      }
-                  } catch(Exception e) { e.printStackTrace(); }
-                  return blocks;
-              }
-              
-              public static List<String> getLevelsList(Context ctx) {
-                  List<String> list = new ArrayList<>();
-                  File dir = new File(ctx.getFilesDir(), DIR);
-                  if(dir.exists()) {
-                      File[] files = dir.listFiles((d, n) -> n.endsWith(".json"));
-                      if(files != null) for(File f : files) list.add(f.getName().replace(".json", ""));
-                  }
-                  return list;
-              }
-          }
-          LEVELMGREOF
-
-          # === GameRenderer.java ===
-          cat <<'RENDEREREOF' > app/src/main/java/com/enjoer/game/GameRenderer.java
-          package com.enjoer.game;
-
           import android.opengl.GLES30;
           import android.opengl.GLSurfaceView;
           import android.opengl.Matrix;
@@ -396,398 +263,259 @@ jobs:
 
           public class GameRenderer implements GLSurfaceView.Renderer {
               private final float[] proj=new float[16], view=new float[16], model=new float[16];
-              public float pX=0, pY=8, pZ=15, rY=0, rX=0, jX=0, jY=0, vY=0;
+              public float pX=0, pY=6, pZ=15, rY=0, rX=0, jX=0, jY=0, vY=0;
               public boolean isEngineMode=false, isPlayingLevel=false;
               private int prog;
               private FloatBuffer vBuf, nBuf;
-              
-              public float blockR=0.8f, blockG=0.3f, blockB=0.3f;
-              public float blockSX=4, blockSY=4, blockSZ=4, placeDist=6f;
+              public float blockR=0.8f, blockG=0.3f, blockB=0.3f, blockSX=4, blockSY=4, blockSZ=4, placeDist=6f;
               public CopyOnWriteArrayList<Block> blocks = new CopyOnWriteArrayList<>();
               public int selectedIndex = -1;
               public float screenW=1, screenH=1;
-              
-              private static final float FLOOR_Y=0f, PLAYER_HEIGHT=3.5f, PLAYER_RADIUS=0.5f;
+              private static final float FLOOR_Y=0f, PLAYER_HEIGHT=3.2f, PLAYER_RADIUS=0.5f;
 
               public void loadBuiltInLevel() {
                   blocks.clear();
-                  blocks.add(new Block(0,2,-10, 6,4,6, 0.8f,0.2f,0.2f));
-                  blocks.add(new Block(-12,2,-20, 5,4,5, 0.2f,0.8f,0.2f));
-                  blocks.add(new Block(12,2,-20, 5,4,5, 0.2f,0.2f,0.8f));
-                  blocks.add(new Block(0,1,-35, 12,2,12, 0.8f,0.8f,0.2f));
-                  blocks.add(new Block(-18,5,-45, 5,10,5, 0.8f,0.2f,0.8f));
-                  blocks.add(new Block(18,5,-45, 5,10,5, 0.2f,0.8f,0.8f));
-                  blocks.add(new Block(0,0.5f,-60, 16,1,16, 0.9f,0.9f,0.9f));
+                  blocks.add(new Block(0,2,-10, 6,4,6, 0.9f,0.2f,0.2f));
+                  blocks.add(new Block(-12,2,-22, 5,4,5, 0.2f,0.9f,0.2f));
+                  blocks.add(new Block(12,2,-22, 5,4,5, 0.2f,0.4f,0.9f));
+                  blocks.add(new Block(0,1,-38, 14,2,14, 0.9f,0.9f,0.3f));
+                  blocks.add(new Block(0,0.5f,-60, 18,1,18, 0.95f,0.95f,0.95f));
               }
 
               public void placeBlock() {
                   float vx=(float)(Math.sin(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
                   float vy=(float)Math.sin(Math.toRadians(rX));
                   float vz=(float)(-Math.cos(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
-                  float ny=pY+vy*placeDist;
+                  float nx=pX+vx*placeDist, ny=pY+vy*placeDist, nz=pZ+vz*placeDist;
                   if(ny-blockSY/2<FLOOR_Y) ny=FLOOR_Y+blockSY/2;
-                  blocks.add(new Block(pX+vx*placeDist, ny, pZ+vz*placeDist, blockSX, blockSY, blockSZ, blockR, blockG, blockB));
+                  blocks.add(new Block(nx,ny,nz, blockSX,blockSY,blockSZ, blockR,blockG,blockB));
               }
-              
-              public void deleteSelected() {
-                  if(selectedIndex>=0 && selectedIndex<blocks.size()) { blocks.remove(selectedIndex); selectedIndex=-1; }
-              }
+
+              public void deleteSelected() { if(selectedIndex>=0 && selectedIndex<blocks.size()) { blocks.remove(selectedIndex); selectedIndex=-1; } }
               
               public void moveSelected(float dx, float dy, float dz) {
                   if(selectedIndex>=0 && selectedIndex<blocks.size()) {
-                      Block b=blocks.get(selectedIndex);
-                      b.x+=dx; b.y+=dy; b.z+=dz;
+                      Block b=blocks.get(selectedIndex); b.x+=dx; b.y+=dy; b.z+=dz;
                       if(b.y-b.sy/2<FLOOR_Y) b.y=FLOOR_Y+b.sy/2;
                   }
               }
-              
+
               public int raycastBlock(float tx, float ty) {
                   float ndcX=(2f*tx/screenW)-1f, ndcY=1f-(2f*ty/screenH);
-                  float[] invProj=new float[16], invView=new float[16];
-                  Matrix.invertM(invProj,0,proj,0); Matrix.invertM(invView,0,view,0);
-                  float[] tmp=new float[4], nearW=new float[4], farW=new float[4];
-                  float[] near={ndcX,ndcY,-1,1}, far={ndcX,ndcY,1,1};
-                  Matrix.multiplyMV(tmp,0,invProj,0,near,0); for(int i=0;i<4;i++)tmp[i]/=tmp[3];
-                  Matrix.multiplyMV(nearW,0,invView,0,tmp,0);
-                  Matrix.multiplyMV(tmp,0,invProj,0,far,0); for(int i=0;i<4;i++)tmp[i]/=tmp[3];
-                  Matrix.multiplyMV(farW,0,invView,0,tmp,0);
-                  float dx=farW[0]-nearW[0], dy=farW[1]-nearW[1], dz=farW[2]-nearW[2];
+                  float[] invP=new float[16], invV=new float[16];
+                  Matrix.invertM(invP,0,proj,0); Matrix.invertM(invV,0,view,0);
+                  float[] n={ndcX,ndcY,-1,1}, f={ndcX,ndcY,1,1}, t=new float[4];
+                  Matrix.multiplyMV(t,0,invP,0,n,0); for(int i=0;i<4;i++)t[i]/=t[3];
+                  float[] nW=new float[4]; Matrix.multiplyMV(nW,0,invV,0,t,0);
+                  Matrix.multiplyMV(t,0,invP,0,f,0); for(int i=0;i<4;i++)t[i]/=t[3];
+                  float[] fW=new float[4]; Matrix.multiplyMV(fW,0,invV,0,t,0);
+                  float dx=fW[0]-nW[0], dy=fW[1]-nW[1], dz=fW[2]-nW[2];
                   float len=(float)Math.sqrt(dx*dx+dy*dy+dz*dz); dx/=len; dy/=len; dz/=len;
-                  int closest=-1; float closestDist=Float.MAX_VALUE;
-                  for(int i=0;i<blocks.size();i++) {
-                      float t=rayBox(nearW[0],nearW[1],nearW[2],dx,dy,dz,blocks.get(i));
-                      if(t>0 && t<closestDist) { closestDist=t; closest=i; }
+                  int closest=-1; float cDist=Float.MAX_VALUE;
+                  for(int i=0; i<blocks.size(); i++) {
+                      Block b=blocks.get(i);
+                      float tmin=(b.minX()-nW[0])/dx, tmax=(b.maxX()-nW[0])/dx;
+                      if(tmin>tmax){float tmp=tmin;tmin=tmax;tmax=tmp;}
+                      float tymin=(b.minY()-nW[1])/dy, tymax=(b.maxY()-nW[1])/dy;
+                      if(tymin>tymax){float tmp=tymin;tymin=tymax;tymax=tmp;}
+                      if(tmin>tymax||tymin>tmax)continue;
+                      if(tymin>tmin)tmin=tymin; if(tymax<tmax)tmax=tymax;
+                      float tzmin=(b.minZ()-nW[2])/dz, tzmax=(b.maxZ()-nW[2])/dz;
+                      if(tzmin>tzmax){float tmp=tzmin;tzmin=tzmax;tzmax=tmp;}
+                      if(tmin>tzmax||tzmin>tmax)continue;
+                      if(tzmin>tmin)tmin=tzmin;
+                      if(tmin>0&&tmin<cDist){cDist=tmin;closest=i;}
                   }
                   return closest;
               }
-              
-              private float rayBox(float ox,float oy,float oz,float dx,float dy,float dz,Block b) {
-                  float tmin=(b.minX()-ox)/(dx==0?0.0001f:dx), tmax=(b.maxX()-ox)/(dx==0?0.0001f:dx);
-                  if(tmin>tmax){float t=tmin;tmin=tmax;tmax=t;}
-                  float tymin=(b.minY()-oy)/(dy==0?0.0001f:dy), tymax=(b.maxY()-oy)/(dy==0?0.0001f:dy);
-                  if(tymin>tymax){float t=tymin;tymin=tymax;tymax=t;}
-                  if(tmin>tymax||tymin>tmax)return -1;
-                  if(tymin>tmin)tmin=tymin; if(tymax<tmax)tmax=tymax;
-                  float tzmin=(b.minZ()-oz)/(dz==0?0.0001f:dz), tzmax=(b.maxZ()-oz)/(dz==0?0.0001f:dz);
-                  if(tzmin>tzmax){float t=tzmin;tzmin=tzmax;tzmax=t;}
-                  if(tmin>tzmax||tzmin>tmax)return -1;
-                  if(tzmin>tmin)tmin=tzmin;
-                  return tmin;
-              }
 
-              @Override public void onSurfaceCreated(GL10 gl, EGLConfig config) {
+              @Override
+              public void onSurfaceCreated(GL10 gl, EGLConfig cfg) {
                   GLES30.glEnable(GLES30.GL_DEPTH_TEST);
-                  String vs="#version 300 es\nlayout(location=0)in vec4 aP;layout(location=1)in vec3 aN;uniform mat4 uMVP,uM;out vec3 vN,vP;void main(){vP=vec3(uM*aP);vN=normalize(mat3(uM)*aN);gl_Position=uMVP*aP;}";
-                  String fs="#version 300 es\nprecision mediump float;in vec3 vN,vP;uniform vec3 lP,cP;uniform vec4 uC;uniform float uS;out vec4 fC;void main(){vec3 n=normalize(vN);float d=max(dot(n,normalize(lP-vP)),0.3);vec3 c=uC.rgb*d;if(uS>0.5)c=mix(c,vec3(0.0,0.75,1.0),0.5);float f=clamp((length(cP-vP)-30.0)/120.0,0.0,0.7);fC=mix(vec4(c,uC.a),vec4(0.02,0.04,0.08,1.0),f);}";
-                  prog=shP(vs,fs);
-                  float[] vc={-0.5f,0.5f,0.5f,-0.5f,-0.5f,0.5f,0.5f,0.5f,0.5f,0.5f,-0.5f,0.5f,-0.5f,0.5f,-0.5f,-0.5f,-0.5f,-0.5f,0.5f,0.5f,-0.5f,0.5f,-0.5f,-0.5f,-0.5f,0.5f,-0.5f,-0.5f,0.5f,0.5f,0.5f,0.5f,-0.5f,0.5f,0.5f,0.5f,-0.5f,-0.5f,-0.5f,-0.5f,-0.5f,0.5f,0.5f,-0.5f,-0.5f,0.5f,-0.5f,0.5f,-0.5f,0.5f,-0.5f,-0.5f,-0.5f,-0.5f,-0.5f,0.5f,0.5f,-0.5f,-0.5f,0.5f,0.5f,0.5f,-0.5f,0.5f,-0.5f,-0.5f,0.5f,0.5f,0.5f,0.5f,-0.5f,0.5f};
-                  float[] nc={0,0,1,0,0,1,0,0,1,0,0,1,0,0,-1,0,0,-1,0,0,-1,0,0,-1,0,1,0,0,1,0,0,1,0,0,1,0,0,-1,0,0,-1,0,0,-1,0,0,-1,0,-1,0,0,-1,0,0,-1,0,0,-1,0,0,1,0,0,1,0,0,1,0,0,1,0,0};
+                  String vs="#version 300 es\n"+
+                      "layout(location=0)in vec4 aP;layout(location=1)in vec3 aN;"+
+                      "uniform mat4 uMVP,uM;out vec3 vN,vP;"+
+                      "void main(){vP=vec3(uM*aP);vN=normalize(mat3(uM)*aN);gl_Position=uMVP*aP;}";
+                  String fs="#version 300 es\nprecision highp float;"+
+                      "in vec3 vN,vP;uniform vec3 camP;uniform vec4 uC;uniform float uSel,isFloor;out vec4 fC;"+
+                      "vec3 sky(vec3 d){float t=clamp(d.y*.5+.5,0.,1.);return mix(vec3(.01,.02,.06),vec3(.0,.35,.75),t);}"+
+                      "void main(){"+
+                      "vec3 n=normalize(vN),vD=normalize(camP-vP),lD=normalize(vec3(.4,1.,.2));"+
+                      "float diff=max(dot(n,lD),0.),ao=clamp(vP.y*.08+.6,.3,1.);"+
+                      "vec3 h=normalize(lD+vD);float spec=pow(max(dot(n,h),0.),48.)*.6;"+
+                      "float fres=pow(1.-max(dot(n,vD),0.),4.);"+
+                      "vec3 col=uC.rgb;if(uSel>.5)col+=vec3(0.,.5,.8);"+
+                      "vec3 amb=vec3(.08,.12,.2)*ao;vec3 fin=col*(diff*vec3(1.,.97,.92)+amb)+spec;"+
+                      "fin+=sky(reflect(-vD,n))*fres*.35;"+
+                      "if(isFloor>.5){vec2 g=fract(vP.xz*.2);float ln=step(.94,g.x)+step(.94,g.y);fin=mix(fin,vec3(0.,.5,.9),clamp(ln,0.,1.)*.5);}"+
+                      "float dist=length(camP-vP),fog=1.-exp(-dist*.008);"+
+                      "vec3 c=mix(fin,sky(vD),clamp(fog,0.,.85));"+
+                      "c=(c*(2.51*c+.03))/(c*(2.43*c+.59)+.14);"+
+                      "fC=vec4(c,uC.a);}";
+                  prog=mkProg(vs,fs);
+                  float[] vc={-.5f,.5f,.5f, -.5f,-.5f,.5f, .5f,.5f,.5f, .5f,-.5f,.5f, -.5f,.5f,-.5f, -.5f,-.5f,-.5f, .5f,.5f,-.5f, .5f,-.5f,-.5f, -.5f,.5f,-.5f, -.5f,.5f,.5f, .5f,.5f,-.5f, .5f,.5f,.5f, -.5f,-.5f,-.5f, -.5f,-.5f,.5f, .5f,-.5f,-.5f, .5f,-.5f,.5f, -.5f,.5f,-.5f, -.5f,-.5f,-.5f, -.5f,.5f,.5f, -.5f,-.5f,.5f, .5f,.5f,-.5f, .5f,-.5f,-.5f, .5f,.5f,.5f, .5f,-.5f,.5f};
+                  float[] nc={0,0,1, 0,0,1, 0,0,1, 0,0,1, 0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1, 0,1,0, 0,1,0, 0,1,0, 0,1,0, 0,-1,0, 0,-1,0, 0,-1,0, 0,-1,0, -1,0,0, -1,0,0, -1,0,0, -1,0,0, 1,0,0, 1,0,0, 1,0,0, 1,0,0};
                   vBuf=ByteBuffer.allocateDirect(vc.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(vc);vBuf.position(0);
                   nBuf=ByteBuffer.allocateDirect(nc.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(nc);nBuf.position(0);
                   loadBuiltInLevel();
               }
 
-              @Override public void onSurfaceChanged(GL10 gl,int w,int h) {
-                  GLES30.glViewport(0,0,w,h); Matrix.perspectiveM(proj,0,50,(float)w/h,0.1f,500f);
-                  screenW=w; screenH=h;
-              }
+              @Override public void onSurfaceChanged(GL10 gl,int w,int h){GLES30.glViewport(0,0,w,h);Matrix.perspectiveM(proj,0,55,(float)w/h,.1f,500f);screenW=w;screenH=h;}
 
               @Override public void onDrawFrame(GL10 gl) {
                   update();
-                  GLES30.glClearColor(0.02f,0.04f,0.08f,1f);
+                  GLES30.glClearColor(.01f,.02f,.05f,1f);
                   GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT|GLES30.GL_DEPTH_BUFFER_BIT);
                   float vx=(float)(Math.sin(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
                   float vy=(float)Math.sin(Math.toRadians(rX));
                   float vz=(float)(-Math.cos(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
                   Matrix.setLookAtM(view,0,pX,pY,pZ,pX+vx,pY+vy,pZ+vz,0,1,0);
                   GLES30.glUseProgram(prog);
-                  int uMVP=GLES30.glGetUniformLocation(prog,"uMVP"),uM=GLES30.glGetUniformLocation(prog,"uM");
-                  int uC=GLES30.glGetUniformLocation(prog,"uC"),uS=GLES30.glGetUniformLocation(prog,"uS");
-                  GLES30.glUniform3f(GLES30.glGetUniformLocation(prog,"lP"),30,60,30);
-                  GLES30.glUniform3f(GLES30.glGetUniformLocation(prog,"cP"),pX,pY,pZ);
+                  int uMVP=GLES30.glGetUniformLocation(prog,"uMVP"),uM=GLES30.glGetUniformLocation(prog,"uM"),uC=GLES30.glGetUniformLocation(prog,"uC");
+                  int uSel=GLES30.glGetUniformLocation(prog,"uSel"),uFloor=GLES30.glGetUniformLocation(prog,"isFloor");
+                  GLES30.glUniform3f(GLES30.glGetUniformLocation(prog,"camP"),pX,pY,pZ);
                   GLES30.glVertexAttribPointer(0,3,GLES30.GL_FLOAT,false,0,vBuf);GLES30.glEnableVertexAttribArray(0);
                   GLES30.glVertexAttribPointer(1,3,GLES30.GL_FLOAT,false,0,nBuf);GLES30.glEnableVertexAttribArray(1);
-                  Matrix.setIdentityM(model,0);Matrix.translateM(model,0,0,-0.05f,0);Matrix.scaleM(model,0,1000,0.1f,1000);
-                  GLES30.glUniform1f(uS,0f);draw(uM,uMVP,uC,0.12f,0.16f,0.22f,1f);
-                  for(int i=0;i<blocks.size();i++){
-                      Block b=blocks.get(i);Matrix.setIdentityM(model,0);
-                      Matrix.translateM(model,0,b.x,b.y,b.z);Matrix.scaleM(model,0,b.sx,b.sy,b.sz);
-                      GLES30.glUniform1f(uS,(i==selectedIndex&&isEngineMode&&!isPlayingLevel)?1f:0f);
-                      draw(uM,uMVP,uC,b.r,b.g,b.b,1f);
-                  }
-                  if(isEngineMode&&!isPlayingLevel&&selectedIndex<0){
-                      float px=pX+vx*placeDist,py=pY+vy*placeDist,pz=pZ+vz*placeDist;
-                      if(py-blockSY/2<FLOOR_Y)py=FLOOR_Y+blockSY/2;
-                      Matrix.setIdentityM(model,0);Matrix.translateM(model,0,px,py,pz);Matrix.scaleM(model,0,blockSX,blockSY,blockSZ);
-                      GLES30.glEnable(GLES30.GL_BLEND);GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA,GLES30.GL_ONE_MINUS_SRC_ALPHA);
-                      GLES30.glUniform1f(uS,0f);draw(uM,uMVP,uC,blockR,blockG,blockB,0.35f);
-                      GLES30.glDisable(GLES30.GL_BLEND);
-                  }
+                  Matrix.setIdentityM(model,0);Matrix.translateM(model,0,0,-.05f,0);Matrix.scaleM(model,0,800,.1f,800);
+                  GLES30.glUniform1f(uSel,0f);GLES30.glUniform1f(uFloor,1f);draw(uM,uMVP,uC,.06f,.09f,.14f,1f);
+                  GLES30.glUniform1f(uFloor,0f);
+                  for(int i=0;i<blocks.size();i++){Block b=blocks.get(i);Matrix.setIdentityM(model,0);Matrix.translateM(model,0,b.x,b.y,b.z);Matrix.scaleM(model,0,b.sx,b.sy,b.sz);GLES30.glUniform1f(uSel,(i==selectedIndex&&isEngineMode&&!isPlayingLevel)?1f:0f);draw(uM,uMVP,uC,b.r,b.g,b.b,1f);}
+                  if(isEngineMode&&!isPlayingLevel&&selectedIndex<0){float px=pX+vx*placeDist,py=pY+vy*placeDist,pz=pZ+vz*placeDist;if(py-blockSY/2<FLOOR_Y)py=FLOOR_Y+blockSY/2;Matrix.setIdentityM(model,0);Matrix.translateM(model,0,px,py,pz);Matrix.scaleM(model,0,blockSX,blockSY,blockSZ);GLES30.glEnable(GLES30.GL_BLEND);GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA,GLES30.GL_ONE_MINUS_SRC_ALPHA);GLES30.glUniform1f(uSel,0f);draw(uM,uMVP,uC,blockR,blockG,blockB,.4f);GLES30.glDisable(GLES30.GL_BLEND);}
               }
 
-              private void update() {
-                  float s=0.3f,rad=(float)Math.toRadians(rY),pitch=(float)Math.toRadians(rX);
-                  if(isEngineMode&&!isPlayingLevel){
-                      float fx=(float)Math.sin(rad),fz=(float)-Math.cos(rad),fy=(float)Math.sin(pitch);
-                      pX+=(fx*-jY+(float)Math.cos(rad)*jX)*s;
-                      pZ+=(fz*-jY+(float)Math.sin(rad)*jX)*s;
-                      pY+=(fy*-jY)*s;if(pY<1)pY=1;
-                  }else{
-                      float mx=((float)Math.sin(rad)*-jY+(float)Math.cos(rad)*jX)*s;
-                      float mz=((float)-Math.cos(rad)*-jY+(float)Math.sin(rad)*jX)*s;
-                      vY-=0.025f;float nX=pX+mx,nY=pY+vY,nZ=pZ+mz;
-                      float footY=nY-PLAYER_HEIGHT;
-                      if(footY<FLOOR_Y){nY=FLOOR_Y+PLAYER_HEIGHT;vY=0;}
-                      for(Block b:blocks){
-                          boolean h=nX+PLAYER_RADIUS>b.minX()&&nX-PLAYER_RADIUS<b.maxX()&&nZ+PLAYER_RADIUS>b.minZ()&&nZ-PLAYER_RADIUS<b.maxZ();
-                          if(h){
-                              if(pY-PLAYER_HEIGHT>=b.maxY()-0.15f&&footY<b.maxY()){nY=b.maxY()+PLAYER_HEIGHT;vY=0;}
-                              else if(pY<b.minY()&&nY>b.minY()){nY=b.minY();vY=0;}
-                              else if(nY-PLAYER_HEIGHT<b.maxY()-0.1f&&nY>b.minY()+0.1f){
-                                  float ox1=(nX+PLAYER_RADIUS)-b.minX(),ox2=b.maxX()-(nX-PLAYER_RADIUS);
-                                  float oz1=(nZ+PLAYER_RADIUS)-b.minZ(),oz2=b.maxZ()-(nZ-PLAYER_RADIUS);
-                                  float mo=Math.min(Math.min(ox1,ox2),Math.min(oz1,oz2));
-                                  if(mo==ox1)nX=b.minX()-PLAYER_RADIUS;else if(mo==ox2)nX=b.maxX()+PLAYER_RADIUS;
-                                  else if(mo==oz1)nZ=b.minZ()-PLAYER_RADIUS;else nZ=b.maxZ()+PLAYER_RADIUS;
-                              }
-                          }
-                      }
-                      pX=nX;pY=nY;pZ=nZ;
-                  }
+              private void update(){
+                  float s=.35f,rad=(float)Math.toRadians(rY),pitch=(float)Math.toRadians(rX);
+                  if(isEngineMode&&!isPlayingLevel){float fx=(float)Math.sin(rad),fz=(float)-Math.cos(rad),fy=(float)Math.sin(pitch);pX+=(fx*-jY+(float)Math.cos(rad)*jX)*s;pZ+=(fz*-jY+(float)Math.sin(rad)*jX)*s;pY+=(fy*-jY)*s;if(pY<1)pY=1;}
+                  else{float mX=((float)Math.sin(rad)*-jY+(float)Math.cos(rad)*jX)*s,mZ=((float)-Math.cos(rad)*-jY+(float)Math.sin(rad)*jX)*s;vY-=.025f;float nX=pX+mX,nY=pY+vY,nZ=pZ+mZ,fY=nY-PLAYER_HEIGHT,hY=nY;if(fY<FLOOR_Y){nY=FLOOR_Y+PLAYER_HEIGHT;vY=0;}for(Block b:blocks){if(nX+PLAYER_RADIUS>b.minX()&&nX-PLAYER_RADIUS<b.maxX()&&nZ+PLAYER_RADIUS>b.minZ()&&nZ-PLAYER_RADIUS<b.maxZ()){if(pY-PLAYER_HEIGHT>=b.maxY()-.15f&&fY<b.maxY()){nY=b.maxY()+PLAYER_HEIGHT;vY=0;}else if(pY<b.minY()&&hY>b.minY()){nY=b.minY();vY=0;}else if(fY<b.maxY()-.1f&&hY>b.minY()+.1f){float oX1=(nX+PLAYER_RADIUS)-b.minX(),oX2=b.maxX()-(nX-PLAYER_RADIUS),oZ1=(nZ+PLAYER_RADIUS)-b.minZ(),oZ2=b.maxZ()-(nZ-PLAYER_RADIUS),minO=Math.min(Math.min(oX1,oX2),Math.min(oZ1,oZ2));if(minO==oX1)nX=b.minX()-PLAYER_RADIUS;else if(minO==oX2)nX=b.maxX()+PLAYER_RADIUS;else if(minO==oZ1)nZ=b.minZ()-PLAYER_RADIUS;else nZ=b.maxZ()+PLAYER_RADIUS;}}}pX=nX;pY=nY;pZ=nZ;}
               }
-              
-              public boolean isOnGround(){
-                  float footY=pY-PLAYER_HEIGHT;
-                  if(footY<=FLOOR_Y+0.1f)return true;
-                  for(Block b:blocks){
-                      boolean h=pX+PLAYER_RADIUS>b.minX()&&pX-PLAYER_RADIUS<b.maxX()&&pZ+PLAYER_RADIUS>b.minZ()&&pZ-PLAYER_RADIUS<b.maxZ();
-                      if(h&&Math.abs(footY-b.maxY())<0.15f)return true;
-                  }
-                  return false;
-              }
-              
-              private void draw(int uM,int uMVP,int uC,float r,float g,float b,float a){
-                  GLES30.glUniformMatrix4fv(uM,1,false,model,0);
-                  float[] res=new float[16];Matrix.multiplyMM(res,0,proj,0,view,0);Matrix.multiplyMM(res,0,res,0,model,0);
-                  GLES30.glUniformMatrix4fv(uMVP,1,false,res,0);GLES30.glUniform4f(uC,r,g,b,a);
-                  for(int i=0;i<6;i++)GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP,i*4,4);
-              }
-              private int shP(String v,String f){int p=GLES30.glCreateProgram();GLES30.glAttachShader(p,sh(35633,v));GLES30.glAttachShader(p,sh(35632,f));GLES30.glLinkProgram(p);return p;}
-              private int sh(int t,String s){int i=GLES30.glCreateShader(t);GLES30.glShaderSource(i,s);GLES30.glCompileShader(i);return i;}
+
+              public boolean isOnGround(){if(pY-PLAYER_HEIGHT<=FLOOR_Y+.1f)return true;for(Block b:blocks)if(pX+PLAYER_RADIUS>b.minX()&&pX-PLAYER_RADIUS<b.maxX()&&pZ+PLAYER_RADIUS>b.minZ()&&pZ-PLAYER_RADIUS<b.maxZ()&&Math.abs((pY-PLAYER_HEIGHT)-b.maxY())<.15f)return true;return false;}
+              private void draw(int uM,int uMVP,int uC,float r,float g,float b,float a){GLES30.glUniformMatrix4fv(uM,1,false,model,0);float[] res=new float[16];Matrix.multiplyMM(res,0,proj,0,view,0);Matrix.multiplyMM(res,0,res,0,model,0);GLES30.glUniformMatrix4fv(uMVP,1,false,res,0);GLES30.glUniform4f(uC,r,g,b,a);for(int i=0;i<6;i++)GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP,i*4,4);}
+              private int mkProg(String v,String f){int p=GLES30.glCreateProgram();GLES30.glAttachShader(p,mkSh(35633,v));GLES30.glAttachShader(p,mkSh(35632,f));GLES30.glLinkProgram(p);return p;}
+              private int mkSh(int t,String s){int sh=GLES30.glCreateShader(t);GLES30.glShaderSource(sh,s);GLES30.glCompileShader(sh);return sh;}
           }
-          RENDEREREOF
+          RENDERER
 
-          # === MainActivity.java ===
-          cat <<'MAINEOF' > app/src/main/java/com/enjoer/game/MainActivity.java
+          cat <<'MAINACT' > app/src/main/java/com/enjoer/game/MainActivity.java
           package com.enjoer.game;
-
           import android.annotation.SuppressLint;
+          import android.content.Intent;
+          import android.content.pm.ActivityInfo;
           import android.graphics.drawable.GradientDrawable;
+          import android.net.Uri;
           import android.os.Bundle;
           import android.view.MotionEvent;
           import android.view.View;
           import android.widget.Button;
-          import android.widget.EditText;
-          import android.widget.LinearLayout;
           import android.widget.Toast;
+          import androidx.activity.result.ActivityResultLauncher;
+          import androidx.activity.result.contract.ActivityResultContracts;
           import androidx.appcompat.app.AppCompatActivity;
-          import java.util.List;
-          import java.util.concurrent.CopyOnWriteArrayList;
+          import org.json.JSONArray;
+          import org.json.JSONObject;
+          import java.io.*;
 
           public class MainActivity extends AppCompatActivity {
               private GameRenderer ren;
               private float lx,ly;
-              private Button[] shapeB,sizeB,distB;
-              private View[] colorB;
-              private View axisP,engineUI,playtestUI,saveD,loadD;
-              private LinearLayout levelsList;
-              private EditText nameInput;
-              private boolean loadForPlay=false;
+              private Button[] shapeBtn,sizeBtn,distBtn;
+              private View[] colorBtn;
+              private View axisPanel,menuUI,gameUI,engineUI,playtestUI;
+              private ActivityResultLauncher<Intent> saveLauncher,loadLauncher;
 
               @SuppressLint("ClickableViewAccessibility")
-              @Override protected void onCreate(Bundle b) {
-                  super.onCreate(b);
+              @Override protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
                   setContentView(R.layout.activity_main);
-                  
                   android.opengl.GLSurfaceView gv=findViewById(R.id.gl_view);
                   gv.setEGLContextClientVersion(3);
                   ren=new GameRenderer();
                   gv.setRenderer(ren);
 
-                  View menuUI=findViewById(R.id.menu_ui),gameUI=findViewById(R.id.game_ui);
-                  engineUI=findViewById(R.id.engine_ui);playtestUI=findViewById(R.id.playtest_ui);
-                  axisP=findViewById(R.id.axis_panel);
-                  saveD=findViewById(R.id.save_dialog);loadD=findViewById(R.id.load_dialog);
-                  levelsList=findViewById(R.id.levels_list);nameInput=findViewById(R.id.level_name_input);
+                  menuUI=findViewById(R.id.menu_ui);gameUI=findViewById(R.id.game_ui);engineUI=findViewById(R.id.engine_ui);playtestUI=findViewById(R.id.playtest_ui);axisPanel=findViewById(R.id.axis_panel);
 
-                  findViewById(R.id.btn_play).setOnClickListener(v->{
-                      ren.isEngineMode=false;ren.isPlayingLevel=false;ren.loadBuiltInLevel();
-                      resetPlayer();ren.selectedIndex=-1;
-                      menuUI.setVisibility(View.GONE);gameUI.setVisibility(View.VISIBLE);
-                      engineUI.setVisibility(View.GONE);playtestUI.setVisibility(View.GONE);
-                  });
+                  saveLauncher=registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),res->{
+                      if(res.getResultCode()==RESULT_OK&&res.getData()!=null){
+                          try{OutputStream out=getContentResolver().openOutputStream(res.getData().getData());
+                          JSONArray arr=new JSONArray();for(Block b:ren.blocks){JSONObject o=new JSONObject();o.put("x",b.x);o.put("y",b.y);o.put("z",b.z);o.put("sx",b.sx);o.put("sy",b.sy);o.put("sz",b.sz);o.put("r",b.r);o.put("g",b.g);o.put("b",b.b);arr.put(o);}
+                          JSONObject root=new JSONObject();root.put("blocks",arr);out.write(root.toString().getBytes());out.close();Toast.makeText(this,"Exported!",Toast.LENGTH_SHORT).show();}catch(Exception e){Toast.makeText(this,"Error",Toast.LENGTH_SHORT).show();}}});
 
-                  findViewById(R.id.btn_engine).setOnClickListener(v->{
-                      ren.isEngineMode=true;ren.isPlayingLevel=false;ren.blocks.clear();
-                      ren.pX=0;ren.pY=20;ren.pZ=35;ren.selectedIndex=-1;
-                      menuUI.setVisibility(View.GONE);gameUI.setVisibility(View.GONE);
-                      engineUI.setVisibility(View.VISIBLE);playtestUI.setVisibility(View.GONE);
-                      updateAxis();
-                  });
+                  loadLauncher=registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),res->{
+                      if(res.getResultCode()==RESULT_OK&&res.getData()!=null){
+                          try{InputStream in=getContentResolver().openInputStream(res.getData().getData());BufferedReader rd=new BufferedReader(new InputStreamReader(in));StringBuilder sb=new StringBuilder();String ln;while((ln=rd.readLine())!=null)sb.append(ln);in.close();
+                          JSONObject root=new JSONObject(sb.toString());JSONArray arr=root.getJSONArray("blocks");ren.blocks.clear();
+                          for(int i=0;i<arr.length();i++){JSONObject o=arr.getJSONObject(i);ren.blocks.add(new Block((float)o.getDouble("x"),(float)o.getDouble("y"),(float)o.getDouble("z"),(float)o.getDouble("sx"),(float)o.getDouble("sy"),(float)o.getDouble("sz"),(float)o.getDouble("r"),(float)o.getDouble("g"),(float)o.getDouble("b")));}
+                          setLand();ren.isEngineMode=false;ren.isPlayingLevel=false;resetP();menuUI.setVisibility(View.GONE);gameUI.setVisibility(View.VISIBLE);Toast.makeText(this,"Loaded!",Toast.LENGTH_SHORT).show();}catch(Exception e){Toast.makeText(this,"Invalid file",Toast.LENGTH_SHORT).show();}}});
 
-                  findViewById(R.id.btn_load_and_play).setOnClickListener(v->{loadForPlay=true;showLoad();});
+                  findViewById(R.id.btn_play).setOnClickListener(v->{setLand();ren.isEngineMode=false;ren.isPlayingLevel=false;ren.loadBuiltInLevel();resetP();ren.selectedIndex=-1;menuUI.setVisibility(View.GONE);gameUI.setVisibility(View.VISIBLE);});
+                  findViewById(R.id.btn_engine).setOnClickListener(v->{setLand();ren.isEngineMode=true;ren.isPlayingLevel=false;ren.blocks.clear();ren.pX=0;ren.pY=20;ren.pZ=35;ren.selectedIndex=-1;menuUI.setVisibility(View.GONE);engineUI.setVisibility(View.VISIBLE);updAxis();});
+                  findViewById(R.id.btn_load_file).setOnClickListener(v->{Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("application/json");loadLauncher.launch(i);});
 
-                  View.OnClickListener back=v->{
-                      ren.isPlayingLevel=false;gameUI.setVisibility(View.GONE);
-                      engineUI.setVisibility(View.GONE);playtestUI.setVisibility(View.GONE);
-                      menuUI.setVisibility(View.VISIBLE);
-                  };
-                  findViewById(R.id.btn_menu).setOnClickListener(back);
-                  findViewById(R.id.btn_engine_menu).setOnClickListener(back);
+                  View.OnClickListener back=v->{setPort();ren.isPlayingLevel=false;gameUI.setVisibility(View.GONE);engineUI.setVisibility(View.GONE);playtestUI.setVisibility(View.GONE);menuUI.setVisibility(View.VISIBLE);};
+                  findViewById(R.id.btn_menu).setOnClickListener(back);findViewById(R.id.btn_engine_menu).setOnClickListener(back);
 
-                  findViewById(R.id.btn_play_level).setOnClickListener(v->{
-                      ren.isPlayingLevel=true;resetPlayer();ren.selectedIndex=-1;
-                      engineUI.setVisibility(View.GONE);playtestUI.setVisibility(View.VISIBLE);
-                  });
+                  findViewById(R.id.btn_play_level).setOnClickListener(v->{ren.isPlayingLevel=true;resetP();ren.selectedIndex=-1;engineUI.setVisibility(View.GONE);playtestUI.setVisibility(View.VISIBLE);});
+                  findViewById(R.id.btn_stop_playtest).setOnClickListener(v->{ren.isPlayingLevel=false;ren.pX=0;ren.pY=20;ren.pZ=35;playtestUI.setVisibility(View.GONE);engineUI.setVisibility(View.VISIBLE);updAxis();});
+                  findViewById(R.id.btn_save).setOnClickListener(v->{Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("application/json");i.putExtra(Intent.EXTRA_TITLE,"level.json");saveLauncher.launch(i);});
 
-                  findViewById(R.id.btn_stop_playtest).setOnClickListener(v->{
-                      ren.isPlayingLevel=false;ren.pX=0;ren.pY=20;ren.pZ=35;
-                      playtestUI.setVisibility(View.GONE);engineUI.setVisibility(View.VISIBLE);updateAxis();
-                  });
-
-                  findViewById(R.id.btn_save).setOnClickListener(v->{saveD.setVisibility(View.VISIBLE);nameInput.setText("");});
-                  findViewById(R.id.btn_load).setOnClickListener(v->{loadForPlay=false;showLoad();});
-                  findViewById(R.id.btn_cancel_save).setOnClickListener(v->saveD.setVisibility(View.GONE));
-                  findViewById(R.id.btn_cancel_load).setOnClickListener(v->loadD.setVisibility(View.GONE));
-
-                  findViewById(R.id.btn_confirm_save).setOnClickListener(v->{
-                      String n=nameInput.getText().toString().trim();
-                      if(!n.isEmpty()){LevelManager.saveLevel(this,n,ren.blocks);
-                      Toast.makeText(this,"Saved: "+n,Toast.LENGTH_SHORT).show();saveD.setVisibility(View.GONE);}
-                  });
-
-                  findViewById(R.id.btn_jump).setOnTouchListener((v,e)->{if(e.getAction()==MotionEvent.ACTION_DOWN&&ren.isOnGround())ren.vY=0.55f;return true;});
-                  findViewById(R.id.btn_playtest_jump).setOnTouchListener((v,e)->{if(e.getAction()==MotionEvent.ACTION_DOWN&&ren.isOnGround())ren.vY=0.55f;return true;});
+                  findViewById(R.id.btn_jump).setOnTouchListener((v,e)->{if(e.getAction()==MotionEvent.ACTION_DOWN&&ren.isOnGround())ren.vY=.55f;return true;});
+                  findViewById(R.id.btn_playtest_jump).setOnTouchListener((v,e)->{if(e.getAction()==MotionEvent.ACTION_DOWN&&ren.isOnGround())ren.vY=.55f;return true;});
 
                   findViewById(R.id.btn_place).setOnClickListener(v->{if(ren.selectedIndex<0)ren.placeBlock();});
-                  findViewById(R.id.btn_delete).setOnClickListener(v->{ren.deleteSelected();updateAxis();});
-                  findViewById(R.id.btn_deselect).setOnClickListener(v->{ren.selectedIndex=-1;updateAxis();});
+                  findViewById(R.id.btn_delete).setOnClickListener(v->{ren.deleteSelected();updAxis();});
+                  findViewById(R.id.btn_deselect).setOnClickListener(v->{ren.selectedIndex=-1;updAxis();});
 
-                  setupAxis(R.id.axis_x_plus,1,0,0);setupAxis(R.id.axis_x_minus,-1,0,0);
-                  setupAxis(R.id.axis_y_plus,0,1,0);setupAxis(R.id.axis_y_minus,0,-1,0);
-                  setupAxis(R.id.axis_z_plus,0,0,1);setupAxis(R.id.axis_z_minus,0,0,-1);
+                  axisBtn(R.id.axis_x_plus,1,0,0);axisBtn(R.id.axis_x_minus,-1,0,0);axisBtn(R.id.axis_y_plus,0,1,0);axisBtn(R.id.axis_y_minus,0,-1,0);axisBtn(R.id.axis_z_plus,0,0,1);axisBtn(R.id.axis_z_minus,0,0,-1);
 
-                  findViewById(R.id.btn_up).setOnTouchListener((v,e)->{if(e.getAction()==MotionEvent.ACTION_DOWN||e.getAction()==MotionEvent.ACTION_MOVE)ren.pY+=0.5f;return true;});
-                  findViewById(R.id.btn_down).setOnTouchListener((v,e)->{if(e.getAction()==MotionEvent.ACTION_DOWN||e.getAction()==MotionEvent.ACTION_MOVE){ren.pY-=0.5f;if(ren.pY<1)ren.pY=1;}return true;});
+                  findViewById(R.id.btn_up).setOnTouchListener((v,e)->{if(e.getAction()==MotionEvent.ACTION_DOWN||e.getAction()==MotionEvent.ACTION_MOVE)ren.pY+=.5f;return true;});
+                  findViewById(R.id.btn_down).setOnTouchListener((v,e)->{if(e.getAction()==MotionEvent.ACTION_DOWN||e.getAction()==MotionEvent.ACTION_MOVE){ren.pY-=.5f;if(ren.pY<1)ren.pY=1;}return true;});
 
-                  shapeB=new Button[]{findViewById(R.id.shape_cube),findViewById(R.id.shape_flat),findViewById(R.id.shape_tall)};
+                  shapeBtn=new Button[]{findViewById(R.id.shape_cube),findViewById(R.id.shape_flat),findViewById(R.id.shape_tall)};
                   float[][] shapes={{4,4,4},{8,1,8},{2,8,2}};
-                  for(int i=0;i<3;i++){int idx=i;shapeB[i].setOnClickListener(v->{ren.blockSX=shapes[idx][0];ren.blockSY=shapes[idx][1];ren.blockSZ=shapes[idx][2];updateBtnGrp(shapeB,idx);});}
+                  for(int i=0;i<3;i++){final int idx=i;shapeBtn[i].setOnClickListener(v->{ren.blockSX=shapes[idx][0];ren.blockSY=shapes[idx][1];ren.blockSZ=shapes[idx][2];updBtnGrp(shapeBtn,idx);});}
 
-                  sizeB=new Button[]{findViewById(R.id.size_s),findViewById(R.id.size_m),findViewById(R.id.size_l)};
-                  float[] sizes={0.5f,1f,2f};
-                  for(int i=0;i<3;i++){int idx=i;sizeB[i].setOnClickListener(v->{float m=sizes[idx];ren.blockSX=4*m;ren.blockSY=4*m;ren.blockSZ=4*m;updateBtnGrp(sizeB,idx);updateBtnGrp(shapeB,0);});}
+                  sizeBtn=new Button[]{findViewById(R.id.size_s),findViewById(R.id.size_m),findViewById(R.id.size_l)};
+                  float[] sizes={.5f,1f,2f};
+                  for(int i=0;i<3;i++){final int idx=i;sizeBtn[i].setOnClickListener(v->{float m=sizes[idx];ren.blockSX=4*m;ren.blockSY=4*m;ren.blockSZ=4*m;updBtnGrp(sizeBtn,idx);updBtnGrp(shapeBtn,0);});}
 
-                  distB=new Button[]{findViewById(R.id.dist_near),findViewById(R.id.dist_mid),findViewById(R.id.dist_far)};
+                  distBtn=new Button[]{findViewById(R.id.dist_near),findViewById(R.id.dist_mid),findViewById(R.id.dist_far)};
                   float[] dists={3f,6f,12f};
-                  for(int i=0;i<3;i++){int idx=i;distB[i].setOnClickListener(v->{ren.placeDist=dists[idx];updateBtnGrp(distB,idx);});}
+                  for(int i=0;i<3;i++){final int idx=i;distBtn[i].setOnClickListener(v->{ren.placeDist=dists[idx];updBtnGrp(distBtn,idx);});}
 
-                  colorB=new View[]{findViewById(R.id.color_red),findViewById(R.id.color_green),findViewById(R.id.color_blue),findViewById(R.id.color_yellow),findViewById(R.id.color_white)};
-                  float[][] colors={{1f,0.3f,0.3f},{0.3f,1f,0.3f},{0.3f,0.3f,1f},{1f,1f,0.3f},{1f,1f,1f}};
-                  for(int i=0;i<5;i++){int idx=i;colorB[i].setOnClickListener(v->{
-                      ren.blockR=colors[idx][0];ren.blockG=colors[idx][1];ren.blockB=colors[idx][2];
-                      if(ren.selectedIndex>=0&&ren.selectedIndex<ren.blocks.size()){Block bl=ren.blocks.get(ren.selectedIndex);bl.r=ren.blockR;bl.g=ren.blockG;bl.b=ren.blockB;}
-                      updateColor(idx);
-                  });}
+                  colorBtn=new View[]{findViewById(R.id.color_red),findViewById(R.id.color_green),findViewById(R.id.color_blue),findViewById(R.id.color_yellow),findViewById(R.id.color_white)};
+                  float[][] colors={{1f,.2f,.2f},{.2f,1f,.2f},{.2f,.5f,1f},{1f,1f,.2f},{1f,1f,1f}};
+                  for(int i=0;i<5;i++){final int idx=i;colorBtn[i].setOnClickListener(v->{ren.blockR=colors[idx][0];ren.blockG=colors[idx][1];ren.blockB=colors[idx][2];if(ren.selectedIndex>=0&&ren.selectedIndex<ren.blocks.size()){Block b=ren.blocks.get(ren.selectedIndex);b.r=ren.blockR;b.g=ren.blockG;b.b=ren.blockB;}updColSel(idx);});}
 
                   setupJoy(findViewById(R.id.joy_base),findViewById(R.id.joy_stick));
                   setupJoy(findViewById(R.id.engine_joy_base),findViewById(R.id.engine_joy_stick));
                   setupJoy(findViewById(R.id.playtest_joy_base),findViewById(R.id.playtest_joy_stick));
-                  setupLook(findViewById(R.id.look_zone));
-                  setupLook(findViewById(R.id.playtest_look_zone));
+                  setupLook(findViewById(R.id.look_zone));setupLook(findViewById(R.id.playtest_look_zone));
 
                   findViewById(R.id.engine_touch_zone).setOnTouchListener((v,e)->{
                       if(e.getAction()==MotionEvent.ACTION_DOWN){lx=e.getX();ly=e.getY();}
-                      else if(e.getAction()==MotionEvent.ACTION_UP){
-                          if(Math.abs(e.getX()-lx)<25&&Math.abs(e.getY()-ly)<25){ren.selectedIndex=ren.raycastBlock(e.getX(),e.getY());updateAxis();}
-                      }else if(e.getAction()==MotionEvent.ACTION_MOVE){
-                          ren.rY+=(e.getX()-lx)*0.2f;ren.rX=Math.max(-85,Math.min(85,ren.rX-(e.getY()-ly)*0.2f));lx=e.getX();ly=e.getY();
-                      }
-                      return true;
-                  });
+                      else if(e.getAction()==MotionEvent.ACTION_UP){if(Math.abs(e.getX()-lx)<25&&Math.abs(e.getY()-ly)<25){ren.selectedIndex=ren.raycastBlock(e.getX(),e.getY());updAxis();}}
+                      else if(e.getAction()==MotionEvent.ACTION_MOVE){ren.rY+=(e.getX()-lx)*.2f;ren.rX=Math.max(-85,Math.min(85,ren.rX-(e.getY()-ly)*.2f));lx=e.getX();ly=e.getY();}
+                      return true;});
               }
 
-              private void resetPlayer(){ren.pX=0;ren.pY=8;ren.pZ=15;ren.vY=0;}
-
-              private void showLoad(){
-                  levelsList.removeAllViews();
-                  List<String> levels=LevelManager.getLevelsList(this);
-                  if(levels.isEmpty()){Toast.makeText(this,"No saved levels",Toast.LENGTH_SHORT).show();return;}
-                  for(String n:levels){
-                      Button btn=new Button(this);btn.setText(n);
-                      btn.setBackgroundResource(R.drawable.btn_blue);btn.setTextColor(0xFF00BFFF);
-                      LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,120);
-                      p.setMargins(0,0,0,10);btn.setLayoutParams(p);
-                      btn.setOnClickListener(v->{
-                          CopyOnWriteArrayList<Block> loaded=LevelManager.loadLevel(this,n);
-                          ren.blocks.clear();ren.blocks.addAll(loaded);loadD.setVisibility(View.GONE);
-                          if(loadForPlay){ren.isEngineMode=false;ren.isPlayingLevel=false;resetPlayer();
-                          findViewById(R.id.menu_ui).setVisibility(View.GONE);findViewById(R.id.game_ui).setVisibility(View.VISIBLE);}
-                          Toast.makeText(this,"Loaded: "+n,Toast.LENGTH_SHORT).show();
-                      });
-                      levelsList.addView(btn);
-                  }
-                  loadD.setVisibility(View.VISIBLE);
-              }
-
-              private void setupAxis(int id,float dx,float dy,float dz){
-                  findViewById(id).setOnTouchListener((v,e)->{if(e.getAction()==MotionEvent.ACTION_DOWN||e.getAction()==MotionEvent.ACTION_MOVE)ren.moveSelected(dx*0.5f,dy*0.5f,dz*0.5f);return true;});
-              }
-
-              private void updateAxis(){runOnUiThread(()->axisP.setVisibility(ren.selectedIndex>=0?View.VISIBLE:View.GONE));}
-
-              private void setupJoy(View base,View stick){
-                  base.setOnTouchListener((v,e)->{
-                      float cx=v.getWidth()/2f,cy=v.getHeight()/2f;
-                      if(e.getAction()==MotionEvent.ACTION_MOVE||e.getAction()==MotionEvent.ACTION_DOWN){
-                          float dx=e.getX()-cx,dy=e.getY()-cy,d=(float)Math.sqrt(dx*dx+dy*dy),lim=cx-stick.getWidth()/2f;
-                          if(d>lim){dx*=lim/d;dy*=lim/d;}
-                          stick.setTranslationX(dx);stick.setTranslationY(dy);ren.jX=dx/lim;ren.jY=dy/lim;
-                      }else if(e.getAction()==MotionEvent.ACTION_UP){stick.setTranslationX(0);stick.setTranslationY(0);ren.jX=0;ren.jY=0;}
-                      return true;
-                  });
-              }
-
-              private void setupLook(View zone){
-                  zone.setOnTouchListener((v,e)->{
-                      if(e.getAction()==MotionEvent.ACTION_DOWN){lx=e.getX();ly=e.getY();}
-                      else if(e.getAction()==MotionEvent.ACTION_MOVE){ren.rY+=(e.getX()-lx)*0.25f;ren.rX=Math.max(-85,Math.min(85,ren.rX-(e.getY()-ly)*0.25f));lx=e.getX();ly=e.getY();}
-                      return true;
-                  });
-              }
-
-              private void updateBtnGrp(Button[] btns,int sel){
-                  for(int i=0;i<btns.length;i++){
-                      if(i==sel){btns[i].setBackgroundResource(R.drawable.btn_blue_filled);btns[i].setTextColor(0xFF000000);}
-                      else{btns[i].setBackgroundResource(R.drawable.btn_blue);btns[i].setTextColor(0xFF00BFFF);}
-                  }
-              }
-
-              private void updateColor(int sel){
-                  for(int i=0;i<colorB.length;i++){
-                      try{GradientDrawable bg=(GradientDrawable)colorB[i].getBackground();
-                      if(i==sel)bg.setStroke(6,0xFFFFFFFF);else bg.setStroke(2,0xFF00BFFF);}catch(Exception e){}
-                  }
-              }
+              private void setLand(){setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);}
+              private void setPort(){setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);}
+              private void resetP(){ren.pX=0;ren.pY=7;ren.pZ=15;ren.vY=0;}
+              private void axisBtn(int id,float dx,float dy,float dz){findViewById(id).setOnTouchListener((v,e)->{if(e.getAction()==MotionEvent.ACTION_DOWN||e.getAction()==MotionEvent.ACTION_MOVE)ren.moveSelected(dx*.5f,dy*.5f,dz*.5f);return true;});}
+              private void updAxis(){runOnUiThread(()->axisPanel.setVisibility(ren.selectedIndex>=0?View.VISIBLE:View.GONE));}
+              private void setupJoy(View base,View stick){base.setOnTouchListener((v,e)->{float cx=v.getWidth()/2f,cy=v.getHeight()/2f;if(e.getAction()==MotionEvent.ACTION_MOVE||e.getAction()==MotionEvent.ACTION_DOWN){float dx=e.getX()-cx,dy=e.getY()-cy,d=(float)Math.sqrt(dx*dx+dy*dy),lim=cx-stick.getWidth()/2f;if(d>lim){dx*=lim/d;dy*=lim/d;}stick.setTranslationX(dx);stick.setTranslationY(dy);ren.jX=dx/lim;ren.jY=dy/lim;}else if(e.getAction()==MotionEvent.ACTION_UP){stick.setTranslationX(0);stick.setTranslationY(0);ren.jX=0;ren.jY=0;}return true;});}
+              private void setupLook(View z){z.setOnTouchListener((v,e)->{if(e.getAction()==MotionEvent.ACTION_DOWN){lx=e.getX();ly=e.getY();}else if(e.getAction()==MotionEvent.ACTION_MOVE){ren.rY+=(e.getX()-lx)*.25f;ren.rX=Math.max(-85,Math.min(85,ren.rX-(e.getY()-ly)*.25f));lx=e.getX();ly=e.getY();}return true;});}
+              private void updBtnGrp(Button[] btns,int sel){for(int i=0;i<btns.length;i++){if(i==sel){btns[i].setBackgroundResource(R.drawable.btn_blue_filled);btns[i].setTextColor(0xFF000000);}else{btns[i].setBackgroundResource(R.drawable.btn_blue);btns[i].setTextColor(0xFF00BFFF);}}}
+              private void updColSel(int sel){for(int i=0;i<colorBtn.length;i++){try{GradientDrawable bg=(GradientDrawable)colorBtn[i].getBackground();if(i==sel)bg.setStroke(6,0xFFFFFFFF);else bg.setStroke(2,0xFF00BFFF);}catch(Exception ignored){}}}
           }
-          MAINEOF
+          MAINACT
 
-          # === AndroidManifest.xml ===
-          cat <<'MANIFESTEOF' > app/src/main/AndroidManifest.xml
+          cat <<EOF > app/src/main/AndroidManifest.xml
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="Enjoer Engine" android:theme="@style/AppTheme">
-                  <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="landscape">
+              <application android:label="Enjoer 6.0" android:theme="@style/AppTheme">
+                  <activity android:name="com.enjoer.game.MainActivity" android:exported="true">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/>
                           <category android:name="android.intent.category.LAUNCHER"/>
@@ -795,27 +523,31 @@ jobs:
                   </activity>
               </application>
           </manifest>
-          MANIFESTEOF
+          EOF
 
           echo "include ':app'" > settings.gradle
 
-          cat <<'BUILDEOF' > build.gradle
+          cat <<EOF > build.gradle
           buildscript {
               repositories { google(); mavenCentral() }
               dependencies { classpath 'com.android.tools.build:gradle:8.2.2' }
           }
           allprojects { repositories { google(); mavenCentral() } }
-          BUILDEOF
+          EOF
 
-          cat <<'APPBUILDEOF' > app/build.gradle
+          cat <<EOF > app/build.gradle
           plugins { id 'com.android.application' }
           android {
               namespace 'com.enjoer.game'
               compileSdk 34
-              defaultConfig { applicationId 'com.enjoer.game'; minSdk 24; targetSdk 34; versionCode 5; versionName '5.0' }
+              defaultConfig {
+                  applicationId 'com.enjoer.game'
+                  minSdk 24
+                  targetSdk 34
+              }
           }
           dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }
-          APPBUILDEOF
+          EOF
 
       - name: Build APK
         run: |
@@ -825,5 +557,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Enjoer_5.0_Save_System
+          name: Enjoer_6.0_RTX_Final
           path: app/build/outputs/apk/debug/app-debug.apk
