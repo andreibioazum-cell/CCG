@@ -1,4 +1,4 @@
-name: Enjoer_6.2_Updated
+name: Enjoer_6.2_Fixed_Build
 on: [push, workflow_dispatch]
 
 jobs:
@@ -14,16 +14,55 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Create Project
+      - name: Create Project Structure
         run: |
           mkdir -p app/src/main/java/com/enjoer/game
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
           mkdir -p app/src/main/res/drawable
 
+          # Настройки Gradle
           echo "android.useAndroidX=true" > gradle.properties
           echo "android.enableJetifier=true" >> gradle.properties
+          
+          cat <<EOF > settings.gradle
+          pluginManagement {
+              repositories { google(); mavenCentral(); gradlePluginPortal() }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories { google(); mavenCentral() }
+          }
+          include ':app'
+          EOF
 
+          cat <<EOF > build.gradle
+          buildscript {
+              repositories { google(); mavenCentral() }
+              dependencies { classpath 'com.android.tools.build:gradle:8.2.2' }
+          }
+          plugins {
+              id 'com.android.application' version '8.2.2' apply false
+          }
+          EOF
+
+          cat <<EOF > app/build.gradle
+          plugins { id 'com.android.application' }
+          android {
+              namespace 'com.enjoer.game'
+              compileSdk 34
+              defaultConfig {
+                  applicationId 'com.enjoer.game'
+                  minSdk 24
+                  targetSdk 34
+                  versionCode 1
+                  versionName "6.2"
+              }
+          }
+          dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }
+          EOF
+
+          # Стили и ресурсы
           cat <<EOF > app/src/main/res/values/themes.xml
           <resources>
             <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
@@ -32,23 +71,21 @@ jobs:
           </resources>
           EOF
 
-          # Сохраняю твои стили кнопок
           cat <<EOF > app/src/main/res/drawable/btn_blue.xml
           <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
             <corners android:radius="12dp"/><solid android:color="#101820"/><stroke android:width="2dp" android:color="#00BFFF"/>
           </shape>
           EOF
 
+          # Верстка UI
           cat <<'LAYOUT' > app/src/main/res/layout/activity_main.xml
           <?xml version="1.0" encoding="utf-8"?>
           <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
               android:layout_width="match_parent" android:layout_height="match_parent">
               <android.opengl.GLSurfaceView android:id="@+id/gl_view" android:layout_width="match_parent" android:layout_height="match_parent"/>
-              
-              <RelativeLayout android:id="@+id/ui_layer" android:layout_width="match_parent" android:layout_height="match_parent">
+              <RelativeLayout android:layout_width="match_parent" android:layout_height="match_parent">
                   <Button android:id="@+id/btn_place" android:layout_width="100dp" android:layout_height="50dp" 
-                      android:text="PLACE" android:layout_alignParentTop="true" android:layout_margin="10dp" android:background="@drawable/btn_blue"/>
-                  
+                      android:text="PLACE" android:layout_margin="10dp" android:background="@drawable/btn_blue"/>
                   <Button android:id="@+id/btn_deselect" android:layout_width="100dp" android:layout_height="50dp" 
                       android:text="DESELECT" android:layout_below="@id/btn_place" android:layout_margin="10dp" 
                       android:background="@drawable/btn_blue" android:visibility="gone"/>
@@ -56,28 +93,29 @@ jobs:
           </FrameLayout>
           LAYOUT
 
-          # Класс для связи JS и Java
-          cat <<EOF > app/src/main/java/com/enjoer/game/ScriptBridge.java
+          # Логика блоков
+          cat <<EOF > app/src/main/java/com/enjoer/game/Block.java
           package com.enjoer.game;
-          import android.webkit.JavascriptInterface;
-
-          public class ScriptBridge {
-              private GameRenderer renderer;
-              public ScriptBridge(GameRenderer renderer) { this.renderer = renderer; }
-
-              @JavascriptInterface
-              public void tp(float x, float y, float z) {
-                  renderer.pX = x; renderer.pY = y; renderer.pZ = z;
-              }
-              
-              @JavascriptInterface
-              public void spawnBlock(float x, float y, float z) {
-                  renderer.blocks.add(new Block(x, y, z, 4, 4, 4, 1, 1, 1));
-              }
+          public class Block {
+              public float x, y, z, sx, sy, sz, r, g, b;
+              public Block(float x, float y, float z, float sx, float sy, float sz, float r, float g, float b) 
+              { this.x=x; this.y=y; this.z=z; this.sx=sx; this.sy=sy; this.sz=sz; this.r=r; this.g=g; this.b=b; }
           }
           EOF
 
-          # Твой основной код с улучшениями (Сетка + Скриптинг)
+          # JS Мост
+          cat <<EOF > app/src/main/java/com/enjoer/game/ScriptBridge.java
+          package com.enjoer.game;
+          import android.webkit.JavascriptInterface;
+          public class ScriptBridge {
+              private GameRenderer ren;
+              public ScriptBridge(GameRenderer ren) { this.ren = ren; }
+              @JavascriptInterface
+              public void tp(float x, float y, float z) { ren.pX = x; ren.pY = y; ren.pZ = z; }
+          }
+          EOF
+
+          # Рендерер с сеткой
           cat <<'RENDERER' > app/src/main/java/com/enjoer/game/GameRenderer.java
           package com.enjoer.game;
           import android.opengl.GLES30;
@@ -87,28 +125,27 @@ jobs:
           import javax.microedition.khronos.opengles.GL10;
 
           public class GameRenderer implements GLSurfaceView.Renderer {
-              public float pX=0, pY=5, pZ=15, rY=0, rX=0;
+              public float pX=0, pY=5, pZ=20, rY=0, rX=0;
               public CopyOnWriteArrayList<Block> blocks = new CopyOnWriteArrayList<>();
               public int selectedIndex = -1;
-
-              @Override public void onSurfaceCreated(GL10 gl, EGLConfig cfg) { GLES30.glClearColor(0.05f, 0.05f, 0.1f, 1); }
-              @Override public void onSurfaceChanged(GL10 gl, int w, int h) { GLES30.glViewport(0,0,w,h); }
-              @Override public void onDrawFrame(GL10 gl) { GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT); }
 
               public void placeBlock() {
                   float vx = (float)Math.sin(Math.toRadians(rY));
                   float vz = (float)-Math.cos(Math.toRadians(rY));
-                  
-                  // ПИКСЕЛЬНАЯ СЕТКА: округляем до целых чисел
-                  float nx = Math.round(pX + vx * 10f);
+                  // СЕТКА (Grid Snap)
+                  float nx = Math.round(pX + vx * 8f);
                   float ny = Math.round(pY);
-                  float nz = Math.round(pZ + vz * 10f);
-                  
-                  blocks.add(new Block(nx, ny, nz, 4, 4, 4, 0.5f, 0.5f, 1.0f));
+                  float nz = Math.round(pZ + vz * 8f);
+                  blocks.add(new Block(nx, ny, nz, 4, 4, 4, 0.5f, 0.8f, 1f));
               }
+
+              @Override public void onSurfaceCreated(GL10 gl, EGLConfig cfg) { GLES30.glClearColor(0, 0, 0.1f, 1); }
+              @Override public void onSurfaceChanged(GL10 gl, int w, int h) { GLES30.glViewport(0,0,w,h); }
+              @Override public void onDrawFrame(GL10 gl) { GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT); }
           }
           RENDERER
 
+          # MainActivity с JS и умным UI
           cat <<'MAIN' > app/src/main/java/com/enjoer/game/MainActivity.java
           package com.enjoer.game;
           import android.os.Bundle;
@@ -123,11 +160,8 @@ jobs:
               @Override protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
                   setContentView(R.layout.activity_main);
-                  
                   ren = new GameRenderer();
-                  View deselectBtn = findViewById(R.id.btn_deselect);
-
-                  // Настройка JS Скриптинга
+                  
                   jsEngine = new WebView(this);
                   jsEngine.getSettings().setJavaScriptEnabled(true);
                   jsEngine.addJavascriptInterface(new ScriptBridge(ren), "Game");
@@ -137,7 +171,7 @@ jobs:
                       updateUI();
                   });
 
-                  deselectBtn.setOnClickListener(v -> {
+                  findViewById(R.id.btn_deselect).setOnClickListener(v -> {
                       ren.selectedIndex = -1;
                       updateUI();
                   });
@@ -145,21 +179,14 @@ jobs:
 
               private void updateUI() {
                   runOnUiThread(() -> {
-                      // Скрываем кнопку, если ничего не выбрано
                       findViewById(R.id.btn_deselect).setVisibility(
                           ren.selectedIndex >= 0 ? View.VISIBLE : View.GONE
                       );
                   });
               }
-              
-              // Метод для запуска любого JS кода
-              public void runJS(String code) {
-                  jsEngine.post(() -> jsEngine.evaluateJavascript(code, null));
-              }
           }
           MAIN
 
-          # Манифест и сборка (без изменений структуры)
           cat <<EOF > app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <application android:label="Enjoer Studio" android:theme="@style/AppTheme">
@@ -173,21 +200,14 @@ jobs:
           </manifest>
           EOF
 
-          echo "include ':app'" > settings.gradle
-          echo "allprojects { repositories { google(); mavenCentral() } }" > build.gradle
-          cat <<EOF > app/build.gradle
-          plugins { id 'com.android.application' }
-          android { namespace 'com.enjoer.game'; compileSdk 34; defaultConfig { applicationId 'com.enjoer.game'; minSdk 24; targetSdk 34 } }
-          dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }
-          EOF
-
       - name: Build APK
         run: |
           gradle wrapper --gradle-version 8.5
+          chmod +x gradlew
           ./gradlew assembleDebug
 
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Enjoer_Fixed
+          name: Enjoer_Fixed_Build
           path: app/build/outputs/apk/debug/app-debug.apk
