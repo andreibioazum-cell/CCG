@@ -1,58 +1,28 @@
-name: Generate_And_Build
+name: Generate_Fixed_Workflow
 on: [push, workflow_dispatch]
 
 jobs:
-  process_and_build:
+  repair_yml:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 1. Извлекаем билд-скрипт из твоего текстового файла
-      - name: Prepare Script
+      - name: Process build.txt
         run: |
-          cp build.txt generated_build.sh
-          # Убираем YAML-обертки, если они случайно попали, 
-          # и оставляем только часть внутри "run:" для выполнения
-          # Но так как твой build.txt — это готовый YAML, мы просто сделаем из него рабочий файл
-          cp build.txt .github/workflows/active_build.yml
+          # 1. Берем основу из твоего файла
+          cp build.txt ready_to_use.yml
 
-      # 2. Выполняем шаги сборки, которые прописаны в твоем коде
-      # (Повторяем логику из твоего текста, чтобы сразу получить APK)
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
+          # 2. Исправляем ошибку "No such file or directory" для gradlew
+          # Мы ищем строку с ./gradlew и добавляем перед ней генерацию wrapper
+          sed -i '/.\/gradlew assembleDebug/i \          gradle wrapper --gradle-version 8.5' ready_to_use.yml
+          sed -i '/.\/gradlew assembleDebug/i \          chmod +x gradlew' ready_to_use.yml
 
-      - name: Create Android Project Structure
-        run: |
-          # Выполняем те самые команды mkdir и cat из твоего build.txt
-          # Чтобы не копировать их вручную, мы просто запускаем процесс создания файлов
-          mkdir -p app/src/main/java/com/enjoer/game
-          mkdir -p app/src/main/res/layout
-          mkdir -p app/src/main/res/values
-          mkdir -p app/src/main/res/drawable
-          
-          # Здесь скрипт берет содержимое из твоего build.txt и создает проект
-          # (Этот шаг имитирует запуск команд из твоего текстового файла)
-          grep -A 1000 "run: |" build.txt | grep -v "run: |" | sed 's/^[ ]*//' > temporary_setup.sh
-          # Очистка от лишних YAML хвостов в конце
-          sed -i '/- name:/Q' temporary_setup.sh
-          bash temporary_setup.sh
+          # 3. Убираем лишние пробелы или артефакты, если они есть
+          sed -i 's/\r$//' ready_to_use.yml
 
-      - name: Build APK with Fix
-        run: |
-          # Генерируем wrapper, чтобы не было ошибки 127
-          gradle wrapper --gradle-version 8.5
-          chmod +x gradlew
-          ./gradlew assembleDebug
-
-      # 3. Сохраняем и сам исправленный YAML, и готовый APK
-      - name: Upload Results
+      - name: Upload Fixed YAML
         uses: actions/upload-artifact@v4
         with:
-          name: Enjoer_6.1_Package
-          path: |
-            app/build/outputs/apk/debug/app-debug.apk
-            .github/workflows/active_build.yml
+          name: Fixed_Workflow_for_Other_Repo
+          path: ready_to_use.yml
