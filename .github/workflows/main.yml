@@ -1,4 +1,4 @@
-name: Enjoer_Ultimate_Fixed_v6.2
+name: Enjoer_6.2_JS_Grid
 on: [push, workflow_dispatch]
 
 jobs:
@@ -21,11 +21,9 @@ jobs:
           mkdir -p app/src/main/res/values
           mkdir -p app/src/main/res/drawable
 
-          # Настройки Gradle
           echo "android.useAndroidX=true" > gradle.properties
           echo "android.enableJetifier=true" >> gradle.properties
 
-          # --- UI Ресурсы ---
           cat <<EOF > app/src/main/res/values/themes.xml
           <resources>
             <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
@@ -34,142 +32,182 @@ jobs:
           </resources>
           EOF
 
+          # Отрисовка ресурсов (кнопки, джойстики)
           cat <<EOF > app/src/main/res/drawable/btn_blue.xml
-          <shape xmlns:android="http://schemas.android.com/apk/res/android">
-            <corners android:radius="12dp"/><solid android:color="#CC101820"/><stroke android:width="2dp" android:color="#00BFFF"/>
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+            <corners android:radius="12dp"/><solid android:color="#101820"/><stroke android:width="2dp" android:color="#00BFFF"/>
+          </shape>
+          EOF
+          cat <<EOF > app/src/main/res/drawable/btn_blue_filled.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+            <corners android:radius="12dp"/><solid android:color="#00BFFF"/>
+          </shape>
+          EOF
+          cat <<EOF > app/src/main/res/drawable/btn_red.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+            <corners android:radius="12dp"/><solid android:color="#101820"/><stroke android:width="2dp" android:color="#FF4444"/>
+          </shape>
+          EOF
+          cat <<EOF > app/src/main/res/drawable/joy_base.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+            <solid android:color="#CC101820"/><stroke android:width="2dp" android:color="#00BFFF"/>
+          </shape>
+          EOF
+          cat <<EOF > app/src/main/res/drawable/joy_stick.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+            <solid android:color="#00BFFF"/>
+          </shape>
+          EOF
+          cat <<EOF > app/src/main/res/drawable/panel_bg.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+            <corners android:radius="8dp"/><solid android:color="#E6101820"/><stroke android:width="1dp" android:color="#00BFFF"/>
           </shape>
           EOF
 
-          # --- Layout ---
-          cat <<EOF > app/src/main/res/layout/activity_main.xml
+          cat <<'LAYOUT' > app/src/main/res/layout/activity_main.xml
+          <?xml version="1.0" encoding="utf-8"?>
           <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:layout_width="match_parent" android:layout_height="match_parent">
-              <android.opengl.GLSurfaceView android:id="@+id/gl_view"
-                  android:layout_width="match_parent" android:layout_height="match_parent" />
-              <LinearLayout android:layout_width="300dp" android:layout_height="match_parent"
-                  android:background="#DD000000" android:orientation="vertical" android:padding="10dp">
-                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" 
-                      android:text="ENJOER TERMINAL" android:textColor="#00BFFF" android:textStyle="bold"/>
-                  <EditText android:id="@+id/code_input"
-                      android:layout_width="match_parent" android:layout_height="0dp"
-                      android:layout_weight="1" android:gravity="top"
-                      android:hint="// engine.spawn(0, 5, 0, 1, 1, 0);"
-                      android:textColor="#00FF00" android:background="#111" android:textSize="12sp"/>
-                  <Button android:id="@+id/btn_run"
-                      android:layout_width="match_parent" android:layout_height="wrap_content"
-                      android:text="RUN SCRIPT" android:background="@drawable/btn_blue" android:textColor="#FFF"/>
+              android:layout_width="match_parent" android:layout_height="match_parent" android:background="#02050A">
+              <android.opengl.GLSurfaceView android:id="@+id/gl_view" android:layout_width="match_parent" android:layout_height="match_parent"/>
+              <RelativeLayout android:id="@+id/engine_ui" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+                  <View android:id="@+id/engine_touch_zone" android:layout_width="match_parent" android:layout_height="match_parent"/>
+                  <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_alignParentRight="true" android:orientation="vertical" android:padding="10dp">
+                      <Button android:id="@+id/btn_place" android:layout_width="100dp" android:layout_height="50dp" android:text="PLACE" android:background="@drawable/btn_blue_filled"/>
+                      <Button android:id="@+id/btn_deselect" android:layout_width="100dp" android:layout_height="50dp" android:text="DESELECT" android:layout_marginTop="5dp" android:background="@drawable/btn_blue" android:visibility="gone"/>
+                  </LinearLayout>
+                  <LinearLayout android:id="@+id/axis_panel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_alignParentBottom="true" android:layout_centerHorizontal="true" android:orientation="horizontal" android:background="@drawable/panel_bg" android:padding="5dp" android:visibility="gone">
+                      <Button android:id="@+id/axis_x_plus" android:layout_width="40dp" android:layout_height="40dp" android:text="X+"/>
+                      <Button android:id="@+id/axis_y_plus" android:layout_width="40dp" android:layout_height="40dp" android:text="Y+"/>
+                      <Button android:id="@+id/axis_z_plus" android:layout_width="40dp" android:layout_height="40dp" android:text="Z+"/>
+                  </LinearLayout>
+              </RelativeLayout>
+              <LinearLayout android:id="@+id/menu_ui" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:orientation="vertical">
+                  <Button android:id="@+id/btn_engine" android:layout_width="200dp" android:layout_height="60dp" android:text="EDITOR" android:background="@drawable/btn_blue_filled"/>
               </LinearLayout>
           </FrameLayout>
-          EOF
+          LAYOUT
 
-          # --- MainActivity (Скриптинг + API) ---
-          cat <<'EOF' > app/src/main/java/com/enjoer/game/MainActivity.java
+          cat <<EOF > app/src/main/java/com/enjoer/game/Block.java
           package com.enjoer.game;
-          import android.os.Bundle;
-          import android.widget.*;
-          import androidx.appcompat.app.AppCompatActivity;
-          import org.mozilla.javascript.*;
-
-          public class MainActivity extends AppCompatActivity {
-              public GameRenderer ren;
-
-              @Override
-              protected void onCreate(Bundle b) {
-                  super.onCreate(b);
-                  setContentView(R.layout.activity_main);
-                  ren = new GameRenderer();
-                  android.opengl.GLSurfaceView gv = findViewById(R.id.gl_view);
-                  gv.setEGLContextClientVersion(3);
-                  gv.setRenderer(ren);
-
-                  final EditText input = findViewById(R.id.code_input);
-                  findViewById(R.id.btn_run).setOnClickListener(v -> {
-                      executeScript(input.getText().toString());
-                  });
-              }
-
-              // --- JAVA API ДЛЯ СКРИПТОВ ---
-              public void spawn(double x, double y, double z, double r, double g, double b) {
-                  ren.addBlock((float)x, (float)y, (float)z, (float)r, (float)g, (float)b);
-              }
-
-              public void setCam(double x, double y, double z) {
-                  ren.camX = (float)x; ren.camY = (float)y; ren.camZ = (float)z;
-              }
-
-              private void executeScript(String code) {
-                  Context rhino = Context.enter();
-                  rhino.setOptimizationLevel(-1);
-                  try {
-                      Scriptable scope = rhino.initStandardObjects();
-                      ScriptableObject.putProperty(scope, "engine", Context.javaToJS(this, scope));
-                      rhino.evaluateString(scope, code, "EnjoerJS", 1, null);
-                  } catch (Exception e) {
-                      Toast.makeText(this, "Script Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                  } finally {
-                      Context.exit();
-                  }
-              }
+          public class Block {
+              public float x, y, z, sx, sy, sz, r, g, b;
+              public Block(float x, float y, float z, float sx, float sy, float sz, float r, float g, float b) 
+              { this.x=x; this.y=y; this.z=z; this.sx=sx; this.sy=sy; this.sz=sz; this.r=r; this.g=g; this.b=b; }
+              public float minX(){return x-sx/2;} public float maxX(){return x+sx/2;}
+              public float minY(){return y-sy/2;} public float maxY(){return y+sy/2;}
+              public float minZ(){return z-sz/2;} public float maxZ(){return z+sz/2;}
           }
           EOF
 
-          # --- GameRenderer ---
-          cat <<'EOF' > app/src/main/java/com/enjoer/game/GameRenderer.java
+          cat <<EOF > app/src/main/java/com/enjoer/game/ScriptBridge.java
+          package com.enjoer.game;
+          import android.webkit.JavascriptInterface;
+          public class ScriptBridge {
+              private GameRenderer ren;
+              public ScriptBridge(GameRenderer ren) { this.ren = ren; }
+              @JavascriptInterface
+              public void tp(float x, float y, float z) { ren.pX = x; ren.pY = y; ren.pZ = z; }
+          }
+          EOF
+
+          cat <<'RENDERER' > app/src/main/java/com/enjoer/game/GameRenderer.java
           package com.enjoer.game;
           import android.opengl.GLES30;
           import android.opengl.GLSurfaceView;
-          import java.util.*;
+          import android.opengl.Matrix;
+          import java.util.concurrent.CopyOnWriteArrayList;
           import javax.microedition.khronos.egl.EGLConfig;
           import javax.microedition.khronos.opengles.GL10;
 
           public class GameRenderer implements GLSurfaceView.Renderer {
-              public float camX=0, camY=2, camZ=10;
-              public List<float[]> blocks = new ArrayList<>();
-              
-              public void addBlock(float x, float y, float z, float r, float g, float b) {
-                  blocks.add(new float[]{x, y, z, r, g, b});
+              public float pX=0, pY=10, pZ=20, rY=0, rX=0;
+              public boolean isEngineMode=false;
+              public CopyOnWriteArrayList<Block> blocks = new CopyOnWriteArrayList<>();
+              public int selectedIndex = -1;
+              public float blockSX=4, blockSY=4, blockSZ=4, placeDist=10f;
+              public float blockR=0.5f, blockG=0.5f, blockB=1.0f;
+
+              public void placeBlock() {
+                  float vx=(float)(Math.sin(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
+                  float vy=(float)Math.sin(Math.toRadians(rX));
+                  float vz=(float)(-Math.cos(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
+                  // GRID SNAPPING (округление координат)
+                  float nx = Math.round(pX + vx * placeDist);
+                  float ny = Math.round(pY + vy * placeDist);
+                  float nz = Math.round(pZ + vz * placeDist);
+                  blocks.add(new Block(nx, ny, nz, blockSX, blockSY, blockSZ, blockR, blockG, blockB));
               }
 
-              @Override public void onSurfaceCreated(GL10 gl, EGLConfig c) {
-                  GLES30.glEnable(GLES30.GL_DEPTH_TEST);
+              public void moveSelected(float dx, float dy, float dz) {
+                  if(selectedIndex>=0 && selectedIndex < blocks.size()) {
+                      Block b = blocks.get(selectedIndex);
+                      b.x += dx; b.y += dy; b.z += dz;
+                  }
               }
-              @Override public void onSurfaceChanged(GL10 gl, int w, int h) {
-                  GLES30.glViewport(0, 0, w, h);
-              }
-              @Override public void onDrawFrame(GL10 gl) {
-                  GLES30.glClearColor(0.01f, 0.01f, 0.03f, 1.0f); 
-                  GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
-              }
-          }
-          EOF
 
-          # --- Конфигурация Gradle ---
-          cat <<EOF > settings.gradle
-          include ':app'
-          EOF
-          cat <<EOF > build.gradle
-          buildscript {
-              repositories { google(); mavenCentral() }
-              dependencies { classpath 'com.android.tools.build:gradle:8.2.2' }
+              @Override public void onSurfaceCreated(GL10 gl, EGLConfig cfg) { GLES30.glClearColor(0,0,0,1); }
+              @Override public void onSurfaceChanged(GL10 gl, int w, int h) { GLES30.glViewport(0,0,w,h); }
+              @Override public void onDrawFrame(GL10 gl) { GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT); }
           }
-          allprojects { repositories { google(); mavenCentral() } }
-          EOF
-          cat <<EOF > app/build.gradle
-          plugins { id 'com.android.application' }
-          android {
-              namespace 'com.enjoer.game'
-              compileSdk 34
-              defaultConfig { applicationId 'com.enjoer.game'; minSdk 24; targetSdk 34 }
+          RENDERER
+
+          cat <<'MAIN' > app/src/main/java/com/enjoer/game/MainActivity.java
+          package com.enjoer.game;
+          import android.os.Bundle;
+          import android.view.View;
+          import android.webkit.WebView;
+          import android.widget.Button;
+          import androidx.appcompat.app.AppCompatActivity;
+
+          public class MainActivity extends AppCompatActivity {
+              private GameRenderer ren;
+              private View axisPanel, deselectBtn, engineUI, menuUI;
+              private WebView jsEngine;
+
+              @Override protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  setContentView(R.layout.activity_main);
+                  
+                  ren = new GameRenderer();
+                  axisPanel = findViewById(R.id.axis_panel);
+                  deselectBtn = findViewById(R.id.btn_deselect);
+                  engineUI = findViewById(R.id.engine_ui);
+                  menuUI = findViewById(R.id.menu_ui);
+
+                  jsEngine = new WebView(this);
+                  jsEngine.getSettings().setJavaScriptEnabled(true);
+                  jsEngine.addJavascriptInterface(new ScriptBridge(ren), "Game");
+
+                  findViewById(R.id.btn_engine).setOnClickListener(v -> {
+                      ren.isEngineMode = true;
+                      menuUI.setVisibility(View.GONE);
+                      engineUI.setVisibility(View.VISIBLE);
+                  });
+
+                  findViewById(R.id.btn_place).setOnClickListener(v -> ren.placeBlock());
+                  
+                  deselectBtn.setOnClickListener(v -> {
+                      ren.selectedIndex = -1;
+                      updateUI();
+                  });
+
+                  // Пример вызова JS: jsEngine.evaluateJavascript("Game.tp(0, 50, 0)", null);
+              }
+
+              public void updateUI() {
+                  runOnUiThread(() -> {
+                      boolean hasSelection = ren.selectedIndex >= 0;
+                      axisPanel.setVisibility(hasSelection ? View.VISIBLE : View.GONE);
+                      deselectBtn.setVisibility(hasSelection ? View.VISIBLE : View.GONE);
+                  });
+              }
           }
-          dependencies { 
-              implementation 'androidx.appcompat:appcompat:1.6.1'
-              implementation 'org.mozilla:rhino:1.7.14' 
-          }
-          EOF
+          MAIN
+
           cat <<EOF > app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="Enjoer Pro" android:theme="@style/AppTheme">
-                  <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="landscape">
+              <application android:label="Enjoer 6.2" android:theme="@style/AppTheme">
+                  <activity android:name="com.enjoer.game.MainActivity" android:exported="true">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/>
                           <category android:name="android.intent.category.LAUNCHER"/>
@@ -177,6 +215,16 @@ jobs:
                   </activity>
               </application>
           </manifest>
+          EOF
+
+          echo "include ':app'" > settings.gradle
+          echo "buildscript { repositories { google(); mavenCentral() }; dependencies { classpath 'com.android.tools.build:gradle:8.2.2' } }" > build.gradle
+          echo "allprojects { repositories { google(); mavenCentral() } }" >> build.gradle
+          
+          cat <<EOF > app/build.gradle
+          plugins { id 'com.android.application' }
+          android { namespace 'com.enjoer.game'; compileSdk 34; defaultConfig { applicationId 'com.enjoer.game'; minSdk 24; targetSdk 34 } }
+          dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }
           EOF
 
       - name: Build APK
@@ -187,5 +235,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Enjoer_Pro_v6.2
+          name: Enjoer_6.2_Final
           path: app/build/outputs/apk/debug/app-debug.apk
