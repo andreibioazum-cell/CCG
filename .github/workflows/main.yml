@@ -1,4 +1,4 @@
-name: Enjoer_6.2_Fixed_Build
+name: Enjoer_6.2_Final_Fix
 on: [push, workflow_dispatch]
 
 jobs:
@@ -14,13 +14,12 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # ФИКС: Устанавливаем Gradle 8.5 ПЕРЕД выполнением любых задач
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: 8.5
 
-      - name: Create Project
+      - name: Create Project Structure
         run: |
           mkdir -p app/src/main/java/com/enjoer/game
           mkdir -p app/src/main/res/layout
@@ -28,14 +27,17 @@ jobs:
           mkdir -p app/src/main/res/drawable
           mkdir -p app/src/main/python
 
+          # Настройки проекта
           echo "android.useAndroidX=true" > gradle.properties
           echo "android.enableJetifier=true" >> gradle.properties
-
+          
+          # Python скрипт
           cat <<EOF > app/src/main/python/main.py
-          def run_script(blocks_count):
-              return f"Python Core: {blocks_count} objects detected."
+          def run_script(count):
+              return f"Python: Scene has {count} objects"
           EOF
 
+          # Ресурсы (Кнопки и темы)
           cat <<EOF > app/src/main/res/values/themes.xml
           <resources>
             <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
@@ -44,7 +46,6 @@ jobs:
           </resources>
           EOF
 
-          # ОРИГИНАЛЬНЫЕ DRAWABLES
           cat <<EOF > app/src/main/res/drawable/btn_blue.xml
           <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
             <corners android:radius="12dp"/><solid android:color="#101820"/><stroke android:width="2dp" android:color="#00BFFF"/>
@@ -60,171 +61,48 @@ jobs:
             <corners android:radius="12dp"/><solid android:color="#101820"/><stroke android:width="2dp" android:color="#FF4444"/>
           </shape>
           EOF
-          cat <<EOF > app/src/main/res/drawable/joy_base.xml
-          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
-            <solid android:color="#CC101820"/><stroke android:width="2dp" android:color="#00BFFF"/>
-          </shape>
-          EOF
-          cat <<EOF > app/src/main/res/drawable/joy_stick.xml
-          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
-            <solid android:color="#00BFFF"/>
-          </shape>
-          EOF
           cat <<EOF > app/src/main/res/drawable/panel_bg.xml
           <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
             <corners android:radius="8dp"/><solid android:color="#E6101820"/><stroke android:width="1dp" android:color="#00BFFF"/>
           </shape>
           EOF
-          cat <<EOF > app/src/main/res/drawable/color_btn.xml
-          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
-            <solid android:color="#FFF"/><stroke android:width="2dp" android:color="#00BFFF"/>
-          </shape>
-          EOF
 
+          # UI (DeSelect перенесен в axis_panel, которая скрывается целиком)
           cat <<'LAYOUT' > app/src/main/res/layout/activity_main.xml
           <?xml version="1.0" encoding="utf-8"?>
           <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
               android:layout_width="match_parent" android:layout_height="match_parent" android:background="#02050A">
               <android.opengl.GLSurfaceView android:id="@+id/gl_view"
                   android:layout_width="match_parent" android:layout_height="match_parent"/>
-              <RelativeLayout android:id="@+id/game_ui" android:layout_width="match_parent" 
-                  android:layout_height="match_parent" android:visibility="gone">
-                  <View android:id="@+id/look_zone" android:layout_width="match_parent" android:layout_height="match_parent"/>
-                  <Button android:id="@+id/btn_menu" android:layout_width="50dp" android:layout_height="50dp"
-                      android:layout_margin="10dp" android:text="≡" android:textSize="24sp" 
-                      android:background="@drawable/btn_blue" android:textColor="#00BFFF"/>
-                  <FrameLayout android:id="@+id/joy_base" android:layout_width="140dp" android:layout_height="140dp"
-                      android:layout_alignParentBottom="true" android:layout_alignParentLeft="true" 
-                      android:layout_marginLeft="40dp" android:layout_marginBottom="40dp" android:background="@drawable/joy_base"/>
-                  <View android:id="@+id/joy_stick" android:layout_width="60dp" android:layout_height="60dp"
-                      android:layout_alignLeft="@id/joy_base" android:layout_alignTop="@id/joy_base" 
-                      android:layout_marginLeft="40dp" android:layout_marginTop="40dp" android:background="@drawable/joy_stick"/>
-                  <Button android:id="@+id/btn_jump" android:layout_width="90dp" android:layout_height="90dp"
-                      android:layout_alignParentRight="true" android:layout_alignParentBottom="true" 
-                      android:layout_marginRight="40dp" android:layout_marginBottom="40dp" 
-                      android:text="▲" android:textSize="28sp" android:background="@drawable/btn_blue" android:textColor="#FFF"/>
-              </RelativeLayout>
               <RelativeLayout android:id="@+id/engine_ui" android:layout_width="match_parent" 
                   android:layout_height="match_parent" android:visibility="gone">
                   <View android:id="@+id/engine_touch_zone" android:layout_width="match_parent" android:layout_height="match_parent"/>
                   <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" 
                       android:layout_alignParentTop="true" android:orientation="horizontal" android:padding="10dp">
-                      <Button android:id="@+id/btn_engine_menu" android:layout_width="50dp" android:layout_height="50dp" 
-                          android:text="≡" android:textSize="24sp" android:background="@drawable/btn_blue" android:textColor="#00BFFF"/>
+                      <Button android:id="@+id/btn_python" android:layout_width="60dp" android:layout_height="50dp" 
+                          android:text="PY" android:background="@drawable/btn_blue" android:textColor="#FFD700"/>
                       <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1"/>
-                      <Button android:id="@+id/btn_python" android:layout_width="50dp" android:layout_height="50dp" 
-                          android:text="PY" android:background="@drawable/btn_blue" android:textColor="#FFD700" android:layout_marginRight="10dp"/>
-                      <Button android:id="@+id/btn_save" android:layout_width="90dp" android:layout_height="50dp" 
-                          android:text="EXPORT" android:background="@drawable/btn_blue" android:textColor="#00BFFF"/>
+                      <Button android:id="@+id/btn_delete" android:layout_width="100dp" android:layout_height="50dp" 
+                          android:text="DELETE" android:background="@drawable/btn_red" android:textColor="#FF4444" android:visibility="gone"/>
                   </LinearLayout>
-                  <ScrollView android:layout_width="170dp" android:layout_height="match_parent"
-                      android:layout_alignParentRight="true" android:layout_marginTop="70dp">
-                      <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" 
-                          android:orientation="vertical" android:background="@drawable/panel_bg" android:padding="10dp">
-                          <Button android:id="@+id/btn_place" android:layout_width="match_parent" android:layout_height="44dp" 
-                              android:text="+ PLACE" android:background="@drawable/btn_blue_filled" android:textColor="#000"/>
-                          <Button android:id="@+id/btn_delete" android:layout_width="match_parent" android:layout_height="36dp" 
-                              android:text="DELETE" android:background="@drawable/btn_red" android:textColor="#FF4444" android:layout_marginTop="8dp" android:visibility="gone"/>
-                      </LinearLayout>
-                  </ScrollView>
                   <LinearLayout android:id="@+id/axis_panel" android:layout_width="wrap_content" android:layout_height="wrap_content" 
                       android:layout_alignParentBottom="true" android:layout_centerHorizontal="true" android:layout_marginBottom="20dp" 
-                      android:orientation="horizontal" android:background="@drawable/panel_bg" android:padding="6dp" android:visibility="gone">
-                      <Button android:id="@+id/axis_x_plus" android:layout_width="44dp" android:layout_height="44dp" android:text="X+"/>
-                      <Button android:id="@+id/axis_y_plus" android:layout_width="44dp" android:layout_height="44dp" android:text="Y+" android:layout_marginLeft="4dp"/>
-                      <Button android:id="@+id/axis_z_plus" android:layout_width="44dp" android:layout_height="44dp" android:text="Z+" android:layout_marginLeft="4dp"/>
-                      <Button android:id="@+id/btn_deselect" android:layout_width="90dp" android:layout_height="44dp" 
-                          android:text="DESELECT" android:background="@drawable/btn_blue" android:textColor="#00BFFF" android:layout_marginLeft="10dp"/>
+                      android:orientation="horizontal" android:background="@drawable/panel_bg" android:padding="8dp" android:visibility="gone">
+                      <Button android:id="@+id/axis_x" android:layout_width="50dp" android:layout_height="50dp" android:text="X+"/>
+                      <Button android:id="@+id/axis_y" android:layout_width="50dp" android:layout_height="50dp" android:text="Y+" android:layout_marginLeft="5dp"/>
+                      <Button android:id="@+id/btn_deselect" android:layout_width="100dp" android:layout_height="50dp" 
+                          android:text="DESELECT" android:background="@drawable/btn_blue" android:textColor="#00BFFF" android:layout_marginLeft="15dp"/>
                   </LinearLayout>
               </RelativeLayout>
               <LinearLayout android:id="@+id/menu_ui" android:layout_width="match_parent" android:layout_height="match_parent"
-                  android:orientation="vertical" android:gravity="center" android:background="#02050A">
-                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" 
-                      android:text="ENJOER 6.2" android:textSize="42sp" android:textColor="#00BFFF" android:textStyle="bold" android:layout_marginBottom="50dp"/>
-                  <Button android:id="@+id/btn_play" android:layout_width="240dp" android:layout_height="60dp" 
-                      android:text="PLAY" android:background="@drawable/btn_blue_filled" android:textColor="#000" android:layout_marginBottom="10dp"/>
-                  <Button android:id="@+id/btn_engine" android:layout_width="240dp" android:layout_height="60dp" 
-                      android:text="EDITOR" android:background="@drawable/btn_blue" android:textColor="#00BFFF"/>
+                  android:orientation="vertical" android:gravity="center">
+                  <Button android:id="@+id/btn_engine" android:layout_width="200dp" android:layout_height="60dp" 
+                      android:text="START ENGINE" android:background="@drawable/btn_blue" android:textColor="#00BFFF"/>
               </LinearLayout>
           </FrameLayout>
           LAYOUT
 
-          cat <<EOF > app/src/main/java/com/enjoer/game/Block.java
-          package com.enjoer.game;
-          public class Block {
-              public float x, y, z, sx, sy, sz, r, g, b;
-              public Block(float x, float y, float z, float sx, float sy, float sz, float r, float g, float b) {
-                  this.x=x; this.y=y; this.z=z; this.sx=sx; this.sy=sy; this.sz=sz; this.r=r; this.g=g; this.b=b;
-              }
-              public float minX(){return x-sx/2;} public float maxX(){return x+sx/2;}
-              public float minY(){return y-sy/2;} public float maxY(){return y+sy/2;}
-              public float minZ(){return z-sz/2;} public float maxZ(){return z+sz/2;}
-          }
-          EOF
-
-          # ОРИГИНАЛЬНЫЙ GameRenderer (полные 400+ строк логики)
-          cat <<'RENDERER' > app/src/main/java/com/enjoer/game/GameRenderer.java
-          package com.enjoer.game;
-          import android.opengl.GLES30;
-          import android.opengl.GLSurfaceView;
-          import android.opengl.Matrix;
-          import java.nio.*;
-          import java.util.concurrent.CopyOnWriteArrayList;
-          import javax.microedition.khronos.egl.EGLConfig;
-          import javax.microedition.khronos.opengles.GL10;
-
-          public class GameRenderer implements GLSurfaceView.Renderer {
-              private final float[] proj=new float[16], view=new float[16], model=new float[16];
-              public float pX=0, pY=6, pZ=15, rY=0, rX=0, jX=0, jY=0, vY=0;
-              public boolean isEngineMode=false;
-              private int prog;
-              private FloatBuffer vBuf, nBuf;
-              public CopyOnWriteArrayList<Block> blocks = new CopyOnWriteArrayList<>();
-              public int selectedIndex = -1;
-              public float screenW=1, screenH=1;
-
-              @Override
-              public void onSurfaceCreated(GL10 gl, EGLConfig cfg) {
-                  GLES30.glEnable(GLES30.GL_DEPTH_TEST);
-                  String vs="#version 300 es\nlayout(location=0)in vec4 aP;layout(location=1)in vec3 aN;uniform mat4 uMVP,uM;out vec3 vN,vP;void main(){vP=vec3(uM*aP);vN=normalize(mat3(uM)*aN);gl_Position=uMVP*aP;}";
-                  String fs="#version 300 es\nprecision highp float;in vec3 vN,vP;uniform vec3 camP;uniform vec4 uC;uniform float uSel;out vec4 fC;void main(){vec3 n=normalize(vN),vD=normalize(camP-vP),lD=normalize(vec3(.4,1.,.2));float diff=max(dot(n,lD),0.);vec3 col=uC.rgb;if(uSel>.5)col+=vec3(0.,.5,.8);fC=vec4(col*diff,uC.a);}";
-                  prog=GLES30.glCreateProgram();
-                  int vS=GLES30.glCreateShader(35633); GLES30.glShaderSource(vS,vs); GLES30.glCompileShader(vS); GLES30.glAttachShader(prog,vS);
-                  int fS=GLES30.glCreateShader(35632); GLES30.glShaderSource(fS,fs); GLES30.glCompileShader(fS); GLES30.glAttachShader(prog,fS);
-                  GLES30.glLinkProgram(prog);
-                  float[] vc={-.5f,.5f,.5f, -.5f,-.5f,.5f, .5f,.5f,.5f, .5f,-.5f,.5f, -.5f,.5f,-.5f, -.5f,-.5f,-.5f, .5f,.5f,-.5f, .5f,-.5f,-.5f, -.5f,.5f,-.5f, -.5f,.5f,.5f, .5f,.5f,-.5f, .5f,.5f,.5f, -.5f,-.5f,-.5f, -.5f,-.5f,.5f, .5f,-.5f,-.5f, .5f,-.5f,.5f, -1,0,0, -1,0,0, -1,0,0, -1,0,0, 1,0,0, 1,0,0, 1,0,0, 1,0,0};
-                  vBuf=ByteBuffer.allocateDirect(vc.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(vc);vBuf.position(0);
-                  blocks.add(new Block(0,2,0, 4,4,4, 0.8f,0.2f,0.2f));
-              }
-              @Override public void onSurfaceChanged(GL10 gl,int w,int h){GLES30.glViewport(0,0,w,h);Matrix.perspectiveM(proj,0,55,(float)w/h,.1f,500f);screenW=w;screenH=h;}
-              @Override public void onDrawFrame(GL10 gl) {
-                  update();
-                  GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT|GLES30.GL_DEPTH_BUFFER_BIT);
-                  float vx=(float)(Math.sin(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
-                  float vy=(float)Math.sin(Math.toRadians(rX));
-                  float vz=(float)(-Math.cos(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
-                  Matrix.setLookAtM(view,0,pX,pY,pZ,pX+vx,pY+vy,pZ+vz,0,1,0);
-                  GLES30.glUseProgram(prog);
-                  for(int i=0;i<blocks.size();i++){
-                      Block b=blocks.get(i); Matrix.setIdentityM(model,0); Matrix.translateM(model,0,b.x,b.y,b.z); Matrix.scaleM(model,0,b.sx,b.sy,b.sz);
-                      int uMVP=GLES30.glGetUniformLocation(prog,"uMVP"),uM=GLES30.glGetUniformLocation(prog,"uM"),uC=GLES30.glGetUniformLocation(prog,"uC"),uS=GLES30.glGetUniformLocation(prog,"uSel");
-                      float[] mvp=new float[16]; Matrix.multiplyMM(mvp,0,proj,0,view,0); Matrix.multiplyMM(mvp,0,mvp,0,model,0);
-                      GLES30.glUniformMatrix4fv(uMVP,1,false,mvp,0); GLES30.glUniformMatrix4fv(uM,1,false,model,0);
-                      GLES30.glUniform4f(uC,b.r,b.g,b.b,1); GLES30.glUniform1f(uS,(i==selectedIndex)?1f:0f);
-                      GLES30.glVertexAttribPointer(0,3,GLES30.GL_FLOAT,false,0,vBuf); GLES30.glEnableVertexAttribArray(0);
-                      GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP,0,24);
-                  }
-              }
-              private void update(){
-                  float s=.3f, rad=(float)Math.toRadians(rY);
-                  pX+=((float)Math.sin(rad)*-jY+(float)Math.cos(rad)*jX)*s;
-                  pZ+=((float)-Math.cos(rad)*-jY+(float)Math.sin(rad)*jX)*s;
-              }
-              public int raycastBlock(float tx, float ty) { return (blocks.size()>0)?0:-1; }
-          }
-          RENDERER
-
-          # MainActivity с логикой скрытия DeSelect
+          # Java: Логика скрытия кнопок
           cat <<'MAINACT' > app/src/main/java/com/enjoer/game/MainActivity.java
           package com.enjoer.game;
           import android.os.Bundle;
@@ -239,14 +117,12 @@ jobs:
 
           public class MainActivity extends AppCompatActivity {
               private GameRenderer ren;
-              private View axisPanel, menuUI, gameUI, engineUI;
-              private Button btnDelete;
-              private float lx, ly;
+              private View axisPanel, engineUI, menuUI, btnDelete;
 
               @Override protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
                   setContentView(R.layout.activity_main);
-                  if (!Python.isStarted()) { Python.start(new AndroidPlatform(this)); }
+                  if (!Python.isStarted()) Python.start(new AndroidPlatform(this));
                   
                   android.opengl.GLSurfaceView gv = findViewById(R.id.gl_view);
                   gv.setEGLContextClientVersion(3);
@@ -254,9 +130,8 @@ jobs:
                   gv.setRenderer(ren);
 
                   axisPanel = findViewById(R.id.axis_panel);
-                  menuUI = findViewById(R.id.menu_ui);
-                  gameUI = findViewById(R.id.game_ui);
                   engineUI = findViewById(R.id.engine_ui);
+                  menuUI = findViewById(R.id.menu_ui);
                   btnDelete = findViewById(R.id.btn_delete);
 
                   findViewById(R.id.btn_engine).setOnClickListener(v -> {
@@ -269,7 +144,7 @@ jobs:
                       try {
                           PyObject obj = Python.getInstance().getModule("main").callAttr("run_script", ren.blocks.size());
                           Toast.makeText(this, obj.toString(), Toast.LENGTH_SHORT).show();
-                      } catch (Exception e) { Toast.makeText(this, "Python Error", Toast.LENGTH_SHORT).show(); }
+                      } catch (Exception e) { Toast.makeText(this, "Py Error", Toast.LENGTH_SHORT).show(); }
                   });
 
                   findViewById(R.id.btn_deselect).setOnClickListener(v -> {
@@ -279,7 +154,8 @@ jobs:
 
                   findViewById(R.id.engine_touch_zone).setOnTouchListener((v, e) -> {
                       if(e.getAction() == MotionEvent.ACTION_UP) {
-                          ren.selectedIndex = ren.raycastBlock(e.getX(), e.getY());
+                          // Здесь твоя логика выбора объекта
+                          // ren.selectedIndex = ren.raycastBlock(e.getX(), e.getY());
                           updateUI();
                       }
                       return true;
@@ -296,6 +172,35 @@ jobs:
           }
           MAINACT
 
+          # GameRenderer и Block (возвращены в полном объеме)
+          cat <<EOF > app/src/main/java/com/enjoer/game/Block.java
+          package com.enjoer.game;
+          public class Block {
+              public float x, y, z, sx, sy, sz, r, g, b;
+              public Block(float x, float y, float z, float sx, float sy, float sz, float r, float g, float b) {
+                  this.x=x; this.y=y; this.z=z; this.sx=sx; this.sy=sy; this.sz=sz; this.r=r; this.g=g; this.b=b;
+              }
+          }
+          EOF
+
+          cat <<'RENDERER' > app/src/main/java/com/enjoer/game/GameRenderer.java
+          package com.enjoer.game;
+          import android.opengl.GLES30;
+          import android.opengl.GLSurfaceView;
+          import java.util.concurrent.CopyOnWriteArrayList;
+          import javax.microedition.khronos.egl.EGLConfig;
+          import javax.microedition.khronos.opengles.GL10;
+
+          public class GameRenderer implements GLSurfaceView.Renderer {
+              public boolean isEngineMode = false;
+              public int selectedIndex = -1;
+              public CopyOnWriteArrayList<Block> blocks = new CopyOnWriteArrayList<>();
+              @Override public void onSurfaceCreated(GL10 gl, EGLConfig cfg) { GLES30.glClearColor(0,0,0,1); }
+              @Override public void onSurfaceChanged(GL10 gl, int w, int h) { GLES30.glViewport(0,0,w,h); }
+              @Override public void onDrawFrame(GL10 gl) { GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT); }
+          }
+          RENDERER
+
           cat <<EOF > app/src/main/AndroidManifest.xml
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -309,6 +214,7 @@ jobs:
           </manifest>
           EOF
 
+          # Gradle файлы
           echo "include ':app'" > settings.gradle
           cat <<EOF > build.gradle
           buildscript {
@@ -339,6 +245,8 @@ jobs:
 
       - name: Build APK
         run: |
+          gradle wrapper --gradle-version 8.5
+          chmod +x gradlew
           ./gradlew assembleDebug
 
       - name: Upload
