@@ -1,4 +1,4 @@
-name: Enjoer_Studio_Final_Pro
+name: Enjoer_Ultimate_Scriptable_v6
 on: [push, workflow_dispatch]
 
 jobs:
@@ -10,188 +10,191 @@ jobs:
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
-        with: { java-version: '17', distribution: 'temurin' }
+        with:
+          java-version: '17'
+          distribution: 'temurin'
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with: { gradle-version: '8.5' }
-
-      - name: Create Engine Structure
+      - name: Create Project
         run: |
           mkdir -p app/src/main/java/com/enjoer/game
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
+          mkdir -p app/src/main/res/drawable
 
-          # --- Java: ObjParser (Для 3D моделей) ---
-          cat <<EOF > app/src/main/java/com/enjoer/game/ObjParser.java
-          package com.enjoer.game;
-          import java.io.*;
-          import java.util.*;
-          import java.nio.*;
+          # Настройки проекта
+          echo "android.useAndroidX=true" > gradle.properties
+          echo "android.enableJetifier=true" >> gradle.properties
 
-          public class ObjParser {
-              public static FloatBuffer parse(String path) throws Exception {
-                  List<Float> v = new ArrayList<>();
-                  BufferedReader r = new BufferedReader(new FileReader(path));
-                  String l;
-                  while ((l = r.readLine()) != null) {
-                      if (l.startsWith("v ")) {
-                          String[] p = l.split("\\s+");
-                          v.add(Float.parseFloat(p[1])); v.add(Float.parseFloat(p[2])); v.add(Float.parseFloat(p[3]));
-                      }
-                  }
-                  r.close();
-                  FloatBuffer b = ByteBuffer.allocateDirect(v.size()*4).order(ByteOrder.nativeOrder()).asFloatBuffer();
-                  for(float f : v) b.put(f); b.position(0);
-                  return b;
-              }
-          }
+          # --- UI Ресурсы ---
+          cat <<EOF > app/src/main/res/values/themes.xml
+          <resources>
+            <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+              <item name="android:windowFullscreen">true</item>
+            </style>
+          </resources>
           EOF
 
-          # --- Java: GameRenderer (Сетка и 3D) ---
-          cat <<EOF > app/src/main/java/com/enjoer/game/GameRenderer.java
-          package com.enjoer.game;
-          import android.opengl.*;
-          import java.nio.FloatBuffer;
-          import java.util.*;
-          import javax.microedition.khronos.egl.EGLConfig;
-          import javax.microedition.khronos.opengles.GL10;
-
-          public class GameRenderer implements GLSurfaceView.Renderer {
-              public float pX=0, pY=2, pZ=5;
-              public List<float[]> worldBlocks = new ArrayList<>();
-              public List<FloatBuffer> models = new ArrayList<>();
-
-              public void spawnAtGrid(double x, double y, double z) {
-                  worldBlocks.add(new float[]{(float)Math.floor(x), (float)Math.floor(y), (float)Math.floor(z)});
-              }
-
-              @Override public void onSurfaceCreated(GL10 gl, EGLConfig c) { GLES30.glEnable(GLES30.GL_DEPTH_TEST); }
-              @Override public void onSurfaceChanged(GL10 gl, int w, int h) { GLES30.glViewport(0,0,w,h); }
-              @Override public void onDrawFrame(GL10 gl) {
-                  GLES30.glClearColor(0, 0, 0, 1);
-                  GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
-              }
-          }
+          cat <<EOF > app/src/main/res/drawable/btn_blue.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android">
+            <corners android:radius="12dp"/><solid android:color="#CC101820"/><stroke android:width="2dp" android:color="#00BFFF"/>
+          </shape>
           EOF
 
-          # --- Java: MainActivity (Full Java Bridge) ---
-          cat <<EOF > app/src/main/java/com/enjoer/game/MainActivity.java
+          # --- Layout с Консолью ---
+          cat <<EOF > app/src/main/res/layout/activity_main.xml
+          <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent" android:layout_height="match_parent">
+              
+              <android.opengl.GLSurfaceView android:id="@+id/gl_view"
+                  android:layout_width="match_parent" android:layout_height="match_parent" />
+
+              <LinearLayout android:id="@+id/editor_ui"
+                  android:layout_width="300dp" android:layout_height="match_parent"
+                  android:background="#DD000000" android:orientation="vertical" android:padding="10dp">
+                  
+                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" 
+                      android:text="ENJOER JAVA SCRIPTING" android:textColor="#00BFFF" android:textStyle="bold"/>
+                  
+                  <EditText android:id="@+id/code_input"
+                      android:layout_width="match_parent" android:layout_height="0dp"
+                      android:layout_weight="1" android:gravity="top"
+                      android:hint="// engine.spawn(0, 5, 0, 1, 0, 0);"
+                      android:textColor="#00FF00" android:background="#111" android:textSize="12sp"/>
+                  
+                  <Button android:id="@+id/btn_run"
+                      android:layout_width="match_parent" android:layout_height="wrap_content"
+                      android:text="ВЫПОЛНИТЬ" android:background="@drawable/btn_blue" android:textColor="#FFF"/>
+              </LinearLayout>
+          </FrameLayout>
+          EOF
+
+          # --- MainActivity (Ядро со скриптингом) ---
+          cat <<'EOF' > app/src/main/java/com/enjoer/game/MainActivity.java
           package com.enjoer.game;
-          import android.os.*;
+          import android.os.Bundle;
+          import android.view.View;
           import android.widget.*;
           import androidx.appcompat.app.AppCompatActivity;
           import org.mozilla.javascript.*;
-          import java.io.*;
 
           public class MainActivity extends AppCompatActivity {
               public GameRenderer ren;
+              private EditText input;
 
-              @Override protected void onCreate(Bundle b) {
+              @Override
+              protected void onCreate(Bundle b) {
                   super.onCreate(b);
                   setContentView(R.layout.activity_main);
                   ren = new GameRenderer();
                   android.opengl.GLSurfaceView gv = findViewById(R.id.gl_view);
-                  gv.setEGLContextClientVersion(3); gv.setRenderer(ren);
+                  gv.setEGLContextClientVersion(3);
+                  gv.setRenderer(ren);
 
+                  input = findViewById(code_input);
                   findViewById(R.id.btn_run).setOnClickListener(v -> {
-                      String code = ((EditText)findViewById(R.id.js_input)).getText().toString();
-                      runJava(code);
+                      executeScript(input.getText().toString());
                   });
               }
 
-              public void save(String n) {
-                  try {
-                      File f = new File(getExternalFilesDir(null), n + ".txt");
-                      BufferedWriter w = new BufferedWriter(new FileWriter(f));
-                      for(float[] b : ren.worldBlocks) w.write(b[0]+","+b[1]+","+b[2]+"\n");
-                      w.close();
-                      Toast.makeText(this, "Saved: " + f.getAbsolutePath(), Toast.LENGTH_LONG).show();
-                  } catch(Exception e) { Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show(); }
+              // Метод для вызова из скрипта
+              public void spawn(float x, float y, float z, float r, float g, float b) {
+                  ren.addBlock(x, y, z, r, g, b);
               }
 
-              public void load(String n) {
-                  try {
-                      File f = new File(getExternalFilesDir(null), n + ".txt");
-                      BufferedReader r = new BufferedReader(new FileReader(f));
-                      ren.worldBlocks.clear();
-                      String l;
-                      while((l = r.readLine())!=null) {
-                          String[] p = l.split(",");
-                          ren.worldBlocks.add(new float[]{Float.parseFloat(p[0]), Float.parseFloat(p[1]), Float.parseFloat(p[2])});
-                      }
-                      r.close();
-                      Toast.makeText(this, "Loaded!", Toast.LENGTH_SHORT).show();
-                  } catch(Exception e) { Toast.makeText(this, "Error", Toast.LENGTH_SHORT).show(); }
-              }
-
-              public void importObj(String path) {
-                  try {
-                      ren.models.add(ObjParser.parse(path));
-                      Toast.makeText(this, "Model Added!", Toast.LENGTH_SHORT).show();
-                  } catch(Exception e) { Toast.makeText(this, "Failed", Toast.LENGTH_SHORT).show(); }
-              }
-
-              private void runJava(String c) {
+              private void executeScript(String code) {
                   Context rhino = Context.enter();
                   rhino.setOptimizationLevel(-1);
                   try {
-                      Scriptable s = rhino.initStandardObjects();
-                      ScriptableObject.putProperty(s, "renderer", Context.javaToJS(ren, s));
-                      ScriptableObject.putProperty(s, "context", Context.javaToJS(this, s));
-                      rhino.evaluateString(s, c, "JavaSource", 1, null);
-                  } catch(Exception e) { Toast.makeText(this, "JS Error: " + e.getMessage(), Toast.LENGTH_LONG).show(); }
-                  finally { Context.exit(); }
+                      Scriptable scope = rhino.initStandardObjects();
+                      // Прокидываем 'engine' в скрипт
+                      ScriptableObject.putProperty(scope, "engine", Context.javaToJS(this, scope));
+                      rhino.evaluateString(scope, code, "EnjoerJS", 1, null);
+                  } catch (Exception e) {
+                      Toast.makeText(this, "Ошибка: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                  } finally {
+                      Context.exit();
+                  }
               }
           }
           EOF
 
-          # --- Layout ---
-          cat <<EOF > app/src/main/res/layout/activity_main.xml
-          <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:layout_width="match_parent" android:layout_height="match_parent">
-              <android.opengl.GLSurfaceView android:id="@+id/gl_view" android:layout_width="match_parent" android:layout_height="match_parent" />
-              <LinearLayout android:layout_width="300dp" android:layout_height="match_parent" android:background="#CC000000" android:orientation="vertical" android:padding="10dp">
-                  <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="JAVA CONSOLE" android:textColor="#0F0"/>
-                  <EditText android:id="@+id/js_input" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:textColor="#FFF" android:gravity="top" android:background="#111"/>
-                  <Button android:id="@+id/btn_run" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="RUN JAVA"/>
-              </LinearLayout>
-          </RelativeLayout>
+          # --- GameRenderer (Твои звезды и блоки) ---
+          cat <<'EOF' > app/src/main/java/com/enjoer/game/GameRenderer.java
+          package com.enjoer.game;
+          import android.opengl.GLES30;
+          import android.opengl.GLSurfaceView;
+          import java.util.ArrayList;
+          import java.util.List;
+          import javax.microedition.khronos.egl.EGLConfig;
+          import javax.microedition.khronos.opengles.GL10;
+
+          public class GameRenderer implements GLSurfaceView.Renderer {
+              public List<float[]> blocks = new ArrayList<>();
+              
+              public void addBlock(float x, float y, float z, float r, float g, float b) {
+                  blocks.add(new float[]{x, y, z, r, g, b});
+              }
+
+              @Override public void onSurfaceCreated(GL10 gl, EGLConfig c) {
+                  GLES30.glEnable(GLES30.GL_DEPTH_TEST);
+              }
+              @Override public void onSurfaceChanged(GL10 gl, int w, int h) {
+                  GLES30.glViewport(0, 0, w, h);
+              }
+              @Override public void onDrawFrame(GL10 gl) {
+                  GLES30.glClearColor(0.01f, 0.01f, 0.05f, 1.0f); // Твое темное небо
+                  GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
+                  // Тут отрисовка твоих звезд и блоков из списка...
+              }
+          }
           EOF
 
-          # --- Gradle ---
+          # --- Конфигурация Gradle ---
+          cat <<EOF > settings.gradle
+          include ':app'
+          EOF
+
           cat <<EOF > build.gradle
-          buildscript { repositories { google(); mavenCentral() }; dependencies { classpath 'com.android.tools.build:gradle:8.2.2' } }
+          buildscript {
+              repositories { google(); mavenCentral() }
+              dependencies { classpath 'com.android.tools.build:gradle:8.2.2' }
+          }
           allprojects { repositories { google(); mavenCentral() } }
           EOF
 
           cat <<EOF > app/build.gradle
-          apply plugin: 'com.android.application'
-          android { namespace 'com.enjoer.game'; compileSdk 34; defaultConfig { applicationId 'com.enjoer.game'; minSdk 24; targetSdk 34 } }
+          plugins { id 'com.android.application' }
+          android {
+              namespace 'com.enjoer.game'
+              compileSdk 34
+              defaultConfig { applicationId 'com.enjoer.game'; minSdk 24; targetSdk 34 }
+          }
           dependencies { 
               implementation 'androidx.appcompat:appcompat:1.6.1'
               implementation 'org.mozilla:rhino:1.7.14' 
           }
           EOF
-          
-          echo "include ':app'" > settings.gradle
-          
+
           cat <<EOF > app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-              <application android:label="Enjoer Pro 3D" android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+              <application android:label="Enjoer Pro" android:theme="@style/AppTheme">
                   <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="landscape">
-                      <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
                   </activity>
               </application>
           </manifest>
           EOF
 
       - name: Build APK
-        run: gradle assembleDebug
+        run: |
+          gradle wrapper --gradle-version 8.5
+          ./gradlew assembleDebug
 
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Enjoer_Pro_Final
+          name: Enjoer_Pro_Scriptable
           path: app/build/outputs/apk/debug/app-debug.apk
