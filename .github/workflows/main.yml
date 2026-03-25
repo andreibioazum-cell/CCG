@@ -1,28 +1,35 @@
-name: Generate_Fixed_Workflow
+name: Fixed_Generator_Enjoer
 on: [push, workflow_dispatch]
 
 jobs:
-  repair_yml:
+  repair:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Process build.txt
+      - name: Patch Logic and Fix Gradlew
         run: |
-          # 1. Берем основу из твоего файла
-          cp build.txt ready_to_use.yml
+          # 1. Создаем рабочую копию
+          cp build.txt build.yml
 
-          # 2. Исправляем ошибку "No such file or directory" для gradlew
-          # Мы ищем строку с ./gradlew и добавляем перед ней генерацию wrapper
-          sed -i '/.\/gradlew assembleDebug/i \          gradle wrapper --gradle-version 8.5' ready_to_use.yml
-          sed -i '/.\/gradlew assembleDebug/i \          chmod +x gradlew' ready_to_use.yml
+          # 2. ФИКС GRADLEW (чтобы билд не падал)
+          sed -i '/.\/gradlew assembleDebug/i \          gradle wrapper --gradle-version 8.5' build.yml
+          sed -i '/.\/gradlew assembleDebug/i \          chmod +x gradlew' build.yml
 
-          # 3. Убираем лишние пробелы или артефакты, если они есть
-          sed -i 's/\r$//' ready_to_use.yml
+          # 3. ФИКС КНОПОК (Скрытие Delete и DeSelect)
+          # Мы добавляем метод updateUI() в MainActivity и вызываем его при клике
+          # Ищем закрывающую скобку onCreate и вставляем логику
+          sed -i '/ren = new GameRenderer();/a \                  axisPanel = findViewById(R.id.axis_panel); \n                  btnDelete = findViewById(R.id.btn_delete); \n                  updateUI();' build.yml
+          
+          # Добавляем сам метод обновления UI перед концом класса
+          sed -i '/public void onDrawFrame/i \              private void updateUI() { runOnUiThread(() -> { int vis = (ren.selectedIndex >= 0) ? View.VISIBLE : View.GONE; axisPanel.setVisibility(vis); btnDelete.setVisibility(vis); }); }' build.yml
 
-      - name: Upload Fixed YAML
+          # 4. Убираем лишние символы
+          sed -i 's/\r$//' build.yml
+
+      - name: Upload Result
         uses: actions/upload-artifact@v4
         with:
-          name: Fixed_Workflow_for_Other_Repo
-          path: ready_to_use.yml
+          name: Fixed_Enjoer_Workflow
+          path: build.yml
