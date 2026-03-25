@@ -1,4 +1,4 @@
-name: Build GGUF ChatBot APK
+name: Enjoer_AI_GGUF_Importer
 on: [push, workflow_dispatch]
 
 jobs:
@@ -10,510 +10,137 @@ jobs:
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
+        with: { java-version: '17', distribution: 'temurin' }
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with: { gradle-version: '8.5' }
 
-      - name: Create Project Structure
+      - name: Create AI Project
         run: |
-          mkdir -p app/src/main/java/com/gguf/chatbot
+          mkdir -p app/src/main/java/com/enjoer/ai
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
           mkdir -p app/src/main/res/drawable
-          mkdir -p app/src/main/assets
-          mkdir -p app/src/main/cpp
 
-      - name: Create AndroidManifest
-        run: |
-          cat <<'EOF' > app/src/main/AndroidManifest.xml
-          <?xml version="1.0" encoding="utf-8"?>
+          # --- Настройки проекта ---
+          echo "android.useAndroidX=true" > gradle.properties
+          echo "include ':app'" > settings.gradle
+
+          # --- Интерфейс Чата и Импорта ---
+          cat <<EOF > app/src/main/res/layout/activity_main.xml
+          <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent" android:layout_height="match_parent"
+              android:orientation="vertical" android:background="#0A0A0A" android:padding="16dp">
+              
+              <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                  android:text="ENJOER AI: GGUF" android:textColor="#0F0" android:textSize="24sp" android:textStyle="bold" android:layout_gravity="center"/>
+
+              <Button android:id="@+id/btn_import" android:layout_width="match_parent" android:layout_height="60dp"
+                  android:text="ВЫБРАТЬ .GGUF МОДЕЛЬ" android:layout_marginTop="10dp" android:backgroundTint="#222"/>
+
+              <TextView android:id="@+id/status_text" android:layout_width="match_parent" android:layout_height="wrap_content"
+                  android:text="Модель не выбрана" android:textColor="#888" android:textSize="12sp" android:gravity="center" android:layout_margin="5dp"/>
+
+              <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="10dp">
+                  <TextView android:id="@+id/chat_log" android:layout_width="match_parent" android:layout_height="wrap_content"
+                      android:text="Добро пожаловать в AI Чат..." android:textColor="#FFF" android:textSize="16sp"/>
+              </ScrollView>
+
+              <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                  <EditText android:id="@+id/input_text" android:layout_width="0dp" android:layout_height="wrap_content"
+                      android:layout_weight="1" android:hint="Спроси что-нибудь..." android:textColor="#FFF" android:textColorHint="#555"/>
+                  <Button android:id="@+id/btn_send" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                      android:text="ОТПРАВИТЬ" android:backgroundTint="#0F0" android:textColor="#000"/>
+              </LinearLayout>
+          </LinearLayout>
+          EOF
+
+          # --- MainActivity (Логика выбора файла и имитация чата) ---
+          # Настоящий запуск GGUF требует бинарника llama.cpp, 
+          # сейчас мы сделаем каркас, который правильно принимает файл.
+          cat <<EOF > app/src/main/java/com/enjoer/ai/MainActivity.java
+          package com.enjoer.ai;
+          import android.content.Intent;
+          import android.net.Uri;
+          import android.os.Bundle;
+          import android.widget.*;
+          import androidx.appcompat.app.AppCompatActivity;
+
+          public class MainActivity extends AppCompatActivity {
+              private TextView chatLog, statusText;
+              private EditText input;
+              private Uri modelUri;
+
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  setContentView(R.layout.activity_main);
+
+                  chatLog = findViewById(R.id.chat_log);
+                  statusText = findViewById(R.id.status_text);
+                  input = findViewById(R.id.input_text);
+
+                  findViewById(R.id.btn_import).setOnClickListener(v -> {
+                      Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                      intent.setType("*/*");
+                      startActivityForResult(intent, 100);
+                  });
+
+                  findViewById(R.id.btn_send).setOnClickListener(v -> {
+                      String q = input.getText().toString();
+                      if(modelUri == null) {
+                          Toast.makeText(this, "Сначала импортируй модель!", Toast.LENGTH_SHORT).show();
+                          return;
+                      }
+                      chatLog.append("\n\nВы: " + q);
+                      chatLog.append("\nAI: [Идет обработка через GGUF...]");
+                      input.setText("");
+                  });
+              }
+
+              @Override
+              protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+                  super.onActivityResult(requestCode, resultCode, data);
+                  if(requestCode == 100 && resultCode == RESULT_OK && data != null) {
+                      modelUri = data.getData();
+                      statusText.setText("Файл выбран: " + modelUri.getPath());
+                      chatLog.append("\n\n[СИСТЕМА]: Модель готова к загрузке.");
+                  }
+              }
+          }
+          EOF
+
+          # --- Build Config ---
+          cat <<EOF > build.gradle
+          buildscript { repositories { google(); mavenCentral() }; dependencies { classpath 'com.android.tools.build:gradle:8.2.2' } }
+          allprojects { repositories { google(); mavenCentral() } }
+          EOF
+          cat <<EOF > app/build.gradle
+          apply plugin: 'com.android.application'
+          android { 
+              namespace 'com.enjoer.ai'
+              compileSdk 34
+              defaultConfig { applicationId 'com.enjoer.ai'; minSdk 26; targetSdk 34 }
+          }
+          dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }
+          EOF
+          cat <<EOF > app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-              <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-              <uses-permission android:name="android.permission.INTERNET"/>
-              
-              <application android:label="GGUF ChatBot" android:theme="@style/AppTheme" android:requestLegacyExternalStorage="true">
-                  <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="portrait">
-                      <intent-filter>
-                          <action android:name="android.intent.action.MAIN"/>
-                          <category android:name="android.intent.category.LAUNCHER"/>
-                      </intent-filter>
+              <application android:label="Enjoer AI" android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+                  <activity android:name="com.enjoer.ai.MainActivity" android:exported="true">
+                      <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
                   </activity>
               </application>
           </manifest>
           EOF
 
-      - name: Create Themes
-        run: |
-          cat <<'EOF' > app/src/main/res/values/themes.xml
-          <resources>
-              <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
-                  <item name="colorPrimary">#2196F3</item>
-                  <item name="colorPrimaryDark">#1976D2</item>
-                  <item name="colorAccent">#4CAF50</item>
-              </style>
-          </resources>
-          EOF
+      - name: Build AI App
+        run: gradle assembleDebug
 
-      - name: Create Layout
-        run: |
-          cat <<'LAYOUT' > app/src/main/res/layout/activity_main.xml
-          <?xml version="1.0" encoding="utf-8"?>
-          <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:layout_width="match_parent"
-              android:layout_height="match_parent"
-              android:orientation="vertical"
-              android:padding="16dp"
-              android:background="#1E1E1E">
-              
-              <TextView
-                  android:layout_width="match_parent"
-                  android:layout_height="wrap_content"
-                  android:text="GGUF ChatBot"
-                  android:textSize="24sp"
-                  android:textColor="#2196F3"
-                  android:gravity="center"
-                  android:padding="16dp"/>
-              
-              <Button
-                  android:id="@+id/btn_select_model"
-                  android:layout_width="match_parent"
-                  android:layout_height="wrap_content"
-                  android:text="Выбрать GGUF модель"
-                  android:textSize="16sp"
-                  android:padding="12dp"
-                  android:layout_marginBottom="16dp"/>
-              
-              <TextView
-                  android:id="@+id/tv_model_info"
-                  android:layout_width="match_parent"
-                  android:layout_height="wrap_content"
-                  android:text="Модель не выбрана"
-                  android:textSize="12sp"
-                  android:textColor="#888888"
-                  android:gravity="center"
-                  android:layout_marginBottom="16dp"/>
-              
-              <ScrollView
-                  android:layout_width="match_parent"
-                  android:layout_height="0dp"
-                  android:layout_weight="1"
-                  android:background="#2D2D2D"
-                  android:padding="8dp">
-                  
-                  <TextView
-                      android:id="@+id/tv_chat"
-                      android:layout_width="match_parent"
-                      android:layout_height="wrap_content"
-                      android:textSize="14sp"
-                      android:textColor="#FFFFFF"
-                      android:lineSpacingExtra="4dp"/>
-              </ScrollView>
-              
-              <LinearLayout
-                  android:layout_width="match_parent"
-                  android:layout_height="wrap_content"
-                  android:orientation="horizontal"
-                  android:layout_marginTop="8dp">
-                  
-                  <EditText
-                      android:id="@+id/et_input"
-                      android:layout_width="0dp"
-                      android:layout_height="wrap_content"
-                      android:layout_weight="1"
-                      android:hint="Введите сообщение..."
-                      android:textColor="#FFFFFF"
-                      android:textColorHint="#888888"
-                      android:background="#2D2D2D"
-                      android:padding="12dp"
-                      android:singleLine="true"/>
-                  
-                  <Button
-                      android:id="@+id/btn_send"
-                      android:layout_width="wrap_content"
-                      android:layout_height="wrap_content"
-                      android:text="Отправить"
-                      android:padding="12dp"/>
-              </LinearLayout>
-          </LinearLayout>
-          LAYOUT
-
-      - name: Create Drawables
-        run: |
-          cat <<'EOF' > app/src/main/res/drawable/btn_blue.xml
-          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-              <corners android:radius="8dp"/>
-              <solid android:color="#2196F3"/>
-          </shape>
-          EOF
-
-      - name: Create Java MainActivity
-        run: |
-          cat <<'JAVA' > app/src/main/java/com/gguf/chatbot/MainActivity.java
-          package com.gguf.chatbot;
-          
-          import android.content.Intent;
-          import android.database.Cursor;
-          import android.net.Uri;
-          import android.os.Bundle;
-          import android.provider.OpenableColumns;
-          import android.view.View;
-          import android.widget.Button;
-          import android.widget.EditText;
-          import android.widget.ScrollView;
-          import android.widget.TextView;
-          import android.widget.Toast;
-          
-          import androidx.activity.result.ActivityResultLauncher;
-          import androidx.activity.result.contract.ActivityResultContracts;
-          import androidx.appcompat.app.AppCompatActivity;
-          
-          import java.io.File;
-          import java.io.FileOutputStream;
-          import java.io.InputStream;
-          
-          public class MainActivity extends AppCompatActivity {
-              private TextView tvChat;
-              private EditText etInput;
-              private TextView tvModelInfo;
-              private String currentModelPath = null;
-              private boolean modelLoaded = false;
-              private StringBuilder chatHistory = new StringBuilder();
-              
-              // Нативная библиотека
-              static {
-                  System.loadLibrary("ggml");
-              }
-              
-              // Нативные методы
-              private native boolean loadModel(String path);
-              private native String generateResponse(String prompt);
-              private native void unloadModel();
-              
-              private final ActivityResultLauncher<Intent> filePickerLauncher = registerForActivityResult(
-                  new ActivityResultContracts.StartActivityForResult(),
-                  result -> {
-                      if (result.getResultCode() == RESULT_OK && result.getData() != null) {
-                          Uri uri = result.getData().getData();
-                          if (uri != null) {
-                              String fileName = getFileName(uri);
-                              String filePath = copyFileToInternalStorage(uri, fileName);
-                              if (filePath != null) {
-                                  currentModelPath = filePath;
-                                  tvModelInfo.setText("Загрузка модели: " + fileName);
-                                  new Thread(() -> {
-                                      boolean success = loadModel(currentModelPath);
-                                      runOnUiThread(() -> {
-                                          if (success) {
-                                              modelLoaded = true;
-                                              tvModelInfo.setText("Модель загружена: " + fileName);
-                                              addMessage("system", "Модель загружена! Задайте вопрос.");
-                                          } else {
-                                              tvModelInfo.setText("Ошибка загрузки модели");
-                                              Toast.makeText(this, "Ошибка загрузки модели", Toast.LENGTH_LONG).show();
-                                          }
-                                      });
-                                  }).start();
-                              }
-                          }
-                      }
-                  }
-              );
-              
-              @Override
-              protected void onCreate(Bundle savedInstanceState) {
-                  super.onCreate(savedInstanceState);
-                  setContentView(R.layout.activity_main);
-                  
-                  tvChat = findViewById(R.id.tv_chat);
-                  etInput = findViewById(R.id.et_input);
-                  tvModelInfo = findViewById(R.id.tv_model_info);
-                  Button btnSelect = findViewById(R.id.btn_select_model);
-                  Button btnSend = findViewById(R.id.btn_send);
-                  
-                  btnSelect.setOnClickListener(v -> {
-                      Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-                      intent.addCategory(Intent.CATEGORY_OPENABLE);
-                      intent.setType("*/*");
-                      intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"application/octet-stream", "*/*"});
-                      filePickerLauncher.launch(intent);
-                  });
-                  
-                  btnSend.setOnClickListener(v -> {
-                      if (!modelLoaded) {
-                          Toast.makeText(this, "Сначала выберите модель", Toast.LENGTH_SHORT).show();
-                          return;
-                      }
-                      
-                      String input = etInput.getText().toString().trim();
-                      if (input.isEmpty()) return;
-                      
-                      addMessage("user", input);
-                      etInput.setText("");
-                      
-                      new Thread(() -> {
-                          String response = generateResponse(input);
-                          runOnUiThread(() -> addMessage("bot", response));
-                      }).start();
-                  });
-              }
-              
-              private String getFileName(Uri uri) {
-                  String result = null;
-                  if (uri.getScheme().equals("content")) {
-                      try (Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
-                          if (cursor != null && cursor.moveToFirst()) {
-                              int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
-                              result = cursor.getString(nameIndex);
-                          }
-                      }
-                  }
-                  if (result == null) {
-                      result = uri.getPath();
-                      int cut = result.lastIndexOf('/');
-                      if (cut != -1) {
-                          result = result.substring(cut + 1);
-                      }
-                  }
-                  return result;
-              }
-              
-              private String copyFileToInternalStorage(Uri uri, String fileName) {
-                  try {
-                      File destFile = new File(getFilesDir(), fileName);
-                      try (InputStream inputStream = getContentResolver().openInputStream(uri);
-                           FileOutputStream outputStream = new FileOutputStream(destFile)) {
-                          byte[] buffer = new byte[8192];
-                          int length;
-                          while ((length = inputStream.read(buffer)) > 0) {
-                              outputStream.write(buffer, 0, length);
-                          }
-                      }
-                      return destFile.getAbsolutePath();
-                  } catch (Exception e) {
-                      e.printStackTrace();
-                      return null;
-                  }
-              }
-              
-              private void addMessage(String sender, String text) {
-                  String prefix = sender.equals("user") ? "👤 Вы: " : (sender.equals("bot") ? "🤖 Бот: " : "ℹ️ ");
-                  chatHistory.append(prefix).append(text).append("\n\n");
-                  tvChat.setText(chatHistory);
-                  ScrollView scrollView = findViewById(R.id.scrollView);
-                  scrollView.fullScroll(View.FOCUS_DOWN);
-              }
-              
-              @Override
-              protected void onDestroy() {
-                  if (modelLoaded) {
-                      unloadModel();
-                  }
-                  super.onDestroy();
-              }
-          }
-          JAVA
-
-      - name: Create CMakeLists
-        run: |
-          cat <<'EOF' > app/src/main/cpp/CMakeLists.txt
-          cmake_minimum_required(VERSION 3.18)
-          project("ggml")
-          
-          set(CMAKE_CXX_STANDARD 17)
-          
-          # Скачиваем llama.cpp
-          include(FetchContent)
-          FetchContent_Declare(
-              llama
-              GIT_REPOSITORY https://github.com/ggerganov/llama.cpp
-              GIT_TAG master
-          )
-          FetchContent_MakeAvailable(llama)
-          
-          add_library(ggml SHARED native.cpp)
-          target_link_libraries(ggml llama)
-          target_include_directories(ggml PRIVATE ${llama_SOURCE_DIR})
-          EOF
-
-      - name: Create Native Code
-        run: |
-          cat <<'NATIVE' > app/src/main/cpp/native.cpp
-          #include <jni.h>
-          #include <string>
-          #include <llama.h>
-          #include <vector>
-          
-          static struct llama_model* model = nullptr;
-          static struct llama_context* ctx = nullptr;
-          
-          extern "C" JNIEXPORT jboolean JNICALL
-          Java_com_gguf_chatbot_MainActivity_loadModel(JNIEnv* env, jobject thiz, jstring path) {
-              const char* model_path = env->GetStringUTFChars(path, nullptr);
-              
-              llama_backend_init();
-              
-              llama_model_params model_params = llama_model_default_params();
-              model = llama_load_model_from_file(model_path, model_params);
-              
-              if (!model) {
-                  env->ReleaseStringUTFChars(path, model_path);
-                  return JNI_FALSE;
-              }
-              
-              llama_context_params ctx_params = llama_context_default_params();
-              ctx_params.n_ctx = 512;
-              ctx_params.n_threads = 2;
-              
-              ctx = llama_new_context_with_model(model, ctx_params);
-              
-              env->ReleaseStringUTFChars(path, model_path);
-              return ctx ? JNI_TRUE : JNI_FALSE;
-          }
-          
-          extern "C" JNIEXPORT jstring JNICALL
-          Java_com_gguf_chatbot_MainActivity_generateResponse(JNIEnv* env, jobject thiz, jstring prompt) {
-              if (!ctx) return env->NewStringUTF("Модель не загружена");
-              
-              const char* prompt_str = env->GetStringUTFChars(prompt, nullptr);
-              
-              std::vector<llama_token> tokens;
-              int n_tokens = llama_tokenize(model, prompt_str, strlen(prompt_str), nullptr, 0, true, false);
-              tokens.resize(n_tokens);
-              llama_tokenize(model, prompt_str, strlen(prompt_str), tokens.data(), n_tokens, true, false);
-              
-              llama_batch batch = llama_batch_init(tokens.size(), 0, 1);
-              for (size_t i = 0; i < tokens.size(); i++) {
-                  batch.token[i] = tokens[i];
-                  batch.pos[i] = i;
-                  batch.seq_id[i] = 0;
-                  batch.logits[i] = (i == tokens.size() - 1);
-              }
-              batch.n_tokens = tokens.size();
-              
-              llama_decode(ctx, batch);
-              
-              std::string response;
-              for (int i = 0; i < 100; i++) {
-                  llama_token token = llama_sample_token_greedy(ctx, nullptr);
-                  if (token == llama_token_eos(model)) break;
-                  
-                  std::string piece = llama_token_to_piece(ctx, token);
-                  response += piece;
-                  
-                  llama_token new_token = token;
-                  llama_batch new_batch = llama_batch_init(1, 0, 1);
-                  new_batch.token[0] = new_token;
-                  new_batch.pos[0] = tokens.size() + i;
-                  new_batch.seq_id[0] = 0;
-                  new_batch.logits[0] = true;
-                  new_batch.n_tokens = 1;
-                  llama_decode(ctx, new_batch);
-              }
-              
-              env->ReleaseStringUTFChars(prompt, prompt_str);
-              return env->NewStringUTF(response.c_str());
-          }
-          
-          extern "C" JNIEXPORT void JNICALL
-          Java_com_gguf_chatbot_MainActivity_unloadModel(JNIEnv* env, jobject thiz) {
-              if (ctx) {
-                  llama_free(ctx);
-                  ctx = nullptr;
-              }
-              if (model) {
-                  llama_free_model(model);
-                  model = nullptr;
-              }
-              llama_backend_free();
-          }
-          NATIVE
-
-      - name: Create build.gradle
-        run: |
-          cat <<'EOF' > app/build.gradle
-          plugins {
-              id 'com.android.application'
-          }
-          
-          android {
-              namespace 'com.gguf.chatbot'
-              compileSdk 34
-              
-              defaultConfig {
-                  applicationId 'com.gguf.chatbot'
-                  minSdk 24
-                  targetSdk 34
-                  versionCode 1
-                  versionName "1.0"
-                  
-                  externalNativeBuild {
-                      cmake {
-                          cppFlags "-std=c++17"
-                      }
-                  }
-              }
-              
-              externalNativeBuild {
-                  cmake {
-                      path "src/main/cpp/CMakeLists.txt"
-                  }
-              }
-              
-              buildTypes {
-                  release {
-                      minifyEnabled false
-                  }
-              }
-          }
-          
-          dependencies {
-              implementation 'androidx.appcompat:appcompat:1.6.1'
-          }
-          EOF
-
-      - name: Create settings.gradle
-        run: |
-          cat <<'EOF' > settings.gradle
-          pluginManagement {
-              repositories {
-                  google()
-                  mavenCentral()
-                  gradlePluginPortal()
-              }
-          }
-          dependencyResolutionManagement {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-          }
-          include ':app'
-          EOF
-
-      - name: Create gradle wrapper
-        run: |
-          mkdir -p gradle/wrapper
-          echo "distributionBase=GRADLE_USER_HOME" > gradle/wrapper/gradle-wrapper.properties
-          echo "distributionPath=wrapper/dists" >> gradle/wrapper/gradle-wrapper.properties
-          echo "distributionUrl=https\\://services.gradle.org/distributions/gradle-8.5-bin.zip" >> gradle/wrapper/gradle-wrapper.properties
-          echo "zipStoreBase=GRADLE_USER_HOME" >> gradle/wrapper/gradle-wrapper.properties
-          echo "zipStorePath=wrapper/dists" >> gradle/wrapper/gradle-wrapper.properties
-          
-          curl -L https://services.gradle.org/distributions/gradle-8.5-bin.zip -o gradle.zip
-          unzip -q gradle.zip
-          cp gradle-8.5/bin/gradle gradle-wrapper.jar 2>/dev/null || true
-
-      - name: Build APK
-        run: |
-          chmod +x gradle-8.5/bin/gradle 2>/dev/null || true
-          gradle-8.5/bin/gradle assembleDebug || ./gradlew assembleDebug
-
-      - name: Upload APK
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: GGUF-ChatBot
-          path: app/build/outputs/apk/debug/*.apk
+          name: Enjoer_AI_GGUF_App
+          path: app/build/outputs/apk/debug/app-debug.apk
