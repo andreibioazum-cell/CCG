@@ -1,35 +1,112 @@
-name: Fixed_Generator_Enjoer
+name: Fabric_Clone_Mod_1.21.11
 on: [push, workflow_dispatch]
 
 jobs:
-  repair:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Patch Logic and Fix Gradlew
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'microsoft'
+
+      - name: Initialize Project
         run: |
-          # 1. Создаем рабочую копию
-          cp build.txt build.yml
+          mkdir -p src/main/java/com/enjoer/mod
+          mkdir -p src/main/resources
 
-          # 2. ФИКС GRADLEW (чтобы билд не падал)
-          sed -i '/.\/gradlew assembleDebug/i \          gradle wrapper --gradle-version 8.5' build.yml
-          sed -i '/.\/gradlew assembleDebug/i \          chmod +x gradlew' build.yml
+          # --- Конфиг Fabric ---
+          cat <<EOF > src/main/resources/fabric.mod.json
+          {
+            "schemaVersion": 1,
+            "id": "enjoer_clones",
+            "version": "1.1.0",
+            "name": "Enjoer Clones Pro",
+            "description": "Спавн клонов и переключение камер",
+            "entrypoints": { "client": [ "com.enjoer.mod.CloneMod" ] },
+            "depends": { "fabricloader": ">=0.15.0", "minecraft": "1.21.11" }
+          }
+          EOF
 
-          # 3. ФИКС КНОПОК (Скрытие Delete и DeSelect)
-          # Мы добавляем метод updateUI() в MainActivity и вызываем его при клике
-          # Ищем закрывающую скобку onCreate и вставляем логику
-          sed -i '/ren = new GameRenderer();/a \                  axisPanel = findViewById(R.id.axis_panel); \n                  btnDelete = findViewById(R.id.btn_delete); \n                  updateUI();' build.yml
+          # --- Java: Основной код мода ---
+          cat <<'EOF' > src/main/java/com/enjoer/mod/CloneMod.java
+          package com.enjoer.mod;
+
+          import net.fabricmc.api.ClientModInitializer;
+          import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+          import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+          import net.minecraft.client.option.KeyBinding;
+          import net.minecraft.client.util.InputUtil;
+          import net.minecraft.text.Text;
+          import org.lwjgl.glfw.GLFW;
+          import java.util.UUID;
+
+          public class CloneMod implements ClientModInitializer {
+              private static KeyBinding keySpawn;
+              private static KeyBinding keyRemove;
+              private static KeyBinding keySwitch;
+              private UUID lastCloneId;
+
+              @Override
+              public void onInitializeClient() {
+                  keySpawn = KeyBindingHelper.registerKeyBinding(new KeyBinding("Спавн клона", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_J, "Enjoer Mod"));
+                  keyRemove = KeyBindingHelper.registerKeyBinding(new KeyBinding("Удалить клона", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_K, "Enjoer Mod"));
+                  keySwitch = KeyBindingHelper.registerKeyBinding(new KeyBinding("Переключить игрока", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_L, "Enjoer Mod"));
+
+                  ClientTickEvents.END_CLIENT_TICK.register(client -> {
+                      if (client.player == null) return;
+
+                      // СПАВН (через отправку команды серверу, так как это надежнее для видимости всем)
+                      if (keySpawn.wasPressed()) {
+                          String cloneName = "Clone_" + client.player.getName().getString();
+                          client.player.networkHandler.sendChatCommand("summon player " + cloneName);
+                          client.player.sendMessage(Text.of("§a[Enjoer] Клон " + cloneName + " заспавнен!"), false);
+                      }
+
+                      // УДАЛЕНИЕ
+                      if (keyRemove.wasPressed()) {
+                          client.player.networkHandler.sendChatCommand("kick Clone_" + client.player.getName().getString());
+                          client.player.sendMessage(Text.of("§c[Enjoer] Клон удален."), false);
+                      }
+
+                      // ПЕРЕКЛЮЧЕНИЕ (Спектатор мод за клона)
+                      if (keySwitch.wasPressed()) {
+                          client.player.networkHandler.sendChatCommand("spectate Clone_" + client.player.getName().getString());
+                      }
+                  });
+              }
+          }
+          EOF
+
+          # --- build.gradle (Настройка под 1.21.11) ---
+          cat <<EOF > build.gradle
+          plugins { id 'fabric-loom' version '1.7-SNAPSHOT' }
           
-          # Добавляем сам метод обновления UI перед концом класса
-          sed -i '/public void onDrawFrame/i \              private void updateUI() { runOnUiThread(() -> { int vis = (ren.selectedIndex >= 0) ? View.VISIBLE : View.GONE; axisPanel.setVisibility(vis); btnDelete.setVisibility(vis); }); }' build.yml
+          repositories { mavenCentral(); maven { url "https://maven.fabricmc.net/" } }
 
-          # 4. Убираем лишние символы
-          sed -i 's/\r$//' build.yml
+          dependencies {
+              minecraft "com.mojang:minecraft:1.21.11"
+              mappings "net.fabricmc:yarn:1.21.11+build.1:v2"
+              modImplementation "net.fabricmc:fabric-loader:0.15.11"
+              modImplementation "net.fabricmc.fabric-api:fabric-api:0.100.0+1.21.11"
+          }
+          EOF
 
-      - name: Upload Result
+          echo "rootProject.name = 'EnjoerClones'" > settings.gradle
+          # Генерируем wrapper
+          gradle wrapper --gradle-version 8.8
+
+      - name: Build with Gradle
+        run: |
+          chmod +x gradlew
+          ./gradlew build
+
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Fixed_Enjoer_Workflow
-          path: build.yml
+          name: Enjoer_Clone_Mod_1.21.11
+          path: build/libs/*.jar
