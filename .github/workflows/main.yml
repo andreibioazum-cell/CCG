@@ -1,4 +1,4 @@
-name: Fabric_Clone_Final_Fix
+name: Fabric_Clone_Final_Fix_v2
 on: [push, workflow_dispatch]
 
 jobs:
@@ -35,19 +35,19 @@ jobs:
           rootProject.name = 'EnjoerControl'
           EOF
 
-          # fabric.mod.json (Версия 1.21.1)
+          # fabric.mod.json
           cat <<EOF > src/main/resources/fabric.mod.json
           {
             "schemaVersion": 1,
             "id": "enjoer_clones",
-            "version": "1.4.0",
+            "version": "1.4.1",
             "name": "Enjoer Control",
             "entrypoints": { "client": [ "com.enjoer.mod.CloneMod" ] },
-            "depends": { "fabricloader": ">=0.16.0", "minecraft": "~1.21.1" }
+            "depends": { "fabricloader": ">=0.16.0", "minecraft": "1.21.1" }
           }
           EOF
 
-          # Java код (Управление клоном)
+          # Java код (Управление: J - спавн, K - килл, L - перехват управления)
           cat <<'EOF' > src/main/java/com/enjoer/mod/CloneMod.java
           package com.enjoer.mod;
 
@@ -90,7 +90,7 @@ jobs:
           }
           EOF
 
-          # build.gradle (Используем стабильные маппинги 1.21.1)
+          # build.gradle (Исправлена версия Fabric API)
           cat <<EOF > build.gradle
           plugins {
               id 'fabric-loom' version '1.7-SNAPSHOT'
@@ -103,7 +103,7 @@ jobs:
               minecraft "com.mojang:minecraft:1.21.1"
               mappings "net.fabricmc:yarn:1.21.1+build.3:v2"
               modImplementation "net.fabricmc:fabric-loader:0.16.0"
-              modImplementation "net.fabricmc.fabric-api:fabric-api:0.100.0+1.21.1"
+              modImplementation "net.fabricmc.fabric-api:fabric-api:0.102.0+1.21.1"
           }
           EOF
 
