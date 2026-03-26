@@ -1,4 +1,4 @@
-name: Fabric_Clone_Fix_1.21.1
+name: Fabric_Clone_Final_1.21.11
 on: [push, workflow_dispatch]
 
 jobs:
@@ -14,12 +14,12 @@ jobs:
           java-version: '21'
           distribution: 'microsoft'
 
-      - name: Setup Project Structure
+      - name: Setup Project
         run: |
           mkdir -p src/main/java/com/enjoer/mod
           mkdir -p src/main/resources
 
-          # --- ПРАВИЛЬНЫЙ settings.gradle (Решает ошибку с плагином) ---
+          # --- settings.gradle ---
           cat <<EOF > settings.gradle
           pluginManagement {
               repositories {
@@ -27,7 +27,7 @@ jobs:
                   gradlePluginPortal()
               }
           }
-          rootProject.name = 'EnjoerClones'
+          rootProject.name = 'EnjoerControl'
           EOF
 
           # --- fabric.mod.json ---
@@ -35,14 +35,14 @@ jobs:
           {
             "schemaVersion": 1,
             "id": "enjoer_clones",
-            "version": "1.2.1",
+            "version": "1.3.1",
             "name": "Enjoer Control",
             "entrypoints": { "client": [ "com.enjoer.mod.CloneMod" ] },
-            "depends": { "fabricloader": ">=0.15.0", "minecraft": "~1.21" }
+            "depends": { "fabricloader": ">=0.16.0", "minecraft": "1.21.11" }
           }
           EOF
 
-          # --- Java: Код управления клоном ---
+          # --- Java: Управление (J - спавн, K - килл, L - перехват управления) ---
           cat <<'EOF' > src/main/java/com/enjoer/mod/CloneMod.java
           package com.enjoer.mod;
 
@@ -55,9 +55,7 @@ jobs:
           import org.lwjgl.glfw.GLFW;
 
           public class CloneMod implements ClientModInitializer {
-              private static KeyBinding keySpawn;
-              private static KeyBinding keyRemove;
-              private static KeyBinding keySwitch;
+              private static KeyBinding keySpawn, keyRemove, keySwitch;
               private boolean isControlling = false;
 
               @Override
@@ -68,28 +66,29 @@ jobs:
 
                   ClientTickEvents.END_CLIENT_TICK.register(client -> {
                       if (client.player == null) return;
+                      String botName = client.player.getName().getString() + "_Bot";
 
                       if (keySpawn.wasPressed()) {
-                          client.player.networkHandler.sendChatCommand("player " + client.player.getName().getString() + "_Bot spawn");
+                          client.player.networkHandler.sendChatCommand("player " + botName + " spawn");
                       }
                       if (keyRemove.wasPressed()) {
-                          client.player.networkHandler.sendChatCommand("player " + client.player.getName().getString() + "_Bot kill");
+                          client.player.networkHandler.sendChatCommand("player " + botName + " kill");
                       }
                       if (keySwitch.wasPressed()) {
-                          String cmd = isControlling ? "stop" : "control";
-                          client.player.networkHandler.sendChatCommand("player " + client.player.getName().getString() + "_Bot " + cmd);
                           isControlling = !isControlling;
-                          client.player.sendMessage(Text.of("§b[Enjoer] Control: " + isControlling), true);
+                          String mode = isControlling ? "control" : "stop";
+                          client.player.networkHandler.sendChatCommand("player " + botName + " " + mode);
+                          client.player.sendMessage(Text.of("§b[Enjoer] Управление: " + (isControlling ? "КЛОН" : "Я")), true);
                       }
                   });
               }
           }
           EOF
 
-          # --- Исправленный build.gradle ---
+          # --- build.gradle (Исправлены версии для стабильности) ---
           cat <<EOF > build.gradle
           plugins {
-              id 'fabric-loom' version '1.7-SNAPSHOT'
+              id 'fabric-loom' version '1.7.4'
           }
 
           repositories {
@@ -98,21 +97,21 @@ jobs:
           }
 
           dependencies {
-              minecraft "com.mojang:minecraft:1.21.1"
-              mappings "net.fabricmc:yarn:1.21.1+build.3:v2"
+              minecraft "com.mojang:minecraft:1.21.11"
+              mappings "net.fabricmc:yarn:1.21.11+build.1:v2"
               modImplementation "net.fabricmc:fabric-loader:0.16.0"
-              modImplementation "net.fabricmc.fabric-api:fabric-api:0.100.0+1.21"
+              modImplementation "net.fabricmc.fabric-api:fabric-api:0.100.0+1.21.11"
           }
           EOF
 
-      - name: Build Mod
+      - name: Build with Gradle 8.10
         run: |
-          gradle wrapper --gradle-version 8.8
+          gradle wrapper --gradle-version 8.10
           chmod +x gradlew
           ./gradlew build
 
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Enjoer_Fabric_1.21.1
+          name: Enjoer_Clone_Mod_1.21.11
           path: build/libs/*.jar
