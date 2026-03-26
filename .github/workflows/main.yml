@@ -1,4 +1,4 @@
-name: Fabric_Clone_Final_1.21.11
+name: Fabric_Clone_Mod_1.21.11
 on: [push, workflow_dispatch]
 
 jobs:
@@ -14,12 +14,18 @@ jobs:
           java-version: '21'
           distribution: 'microsoft'
 
+      # Устанавливаем корректную версию Gradle до запуска сборки
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.10.2
+
       - name: Setup Project
         run: |
           mkdir -p src/main/java/com/enjoer/mod
           mkdir -p src/main/resources
 
-          # --- settings.gradle ---
+          # settings.gradle с репозиторием для плагинов
           cat <<EOF > settings.gradle
           pluginManagement {
               repositories {
@@ -30,19 +36,19 @@ jobs:
           rootProject.name = 'EnjoerControl'
           EOF
 
-          # --- fabric.mod.json ---
+          # Конфиг мода под 1.21.11
           cat <<EOF > src/main/resources/fabric.mod.json
           {
             "schemaVersion": 1,
             "id": "enjoer_clones",
-            "version": "1.3.1",
+            "version": "1.3.5",
             "name": "Enjoer Control",
             "entrypoints": { "client": [ "com.enjoer.mod.CloneMod" ] },
             "depends": { "fabricloader": ">=0.16.0", "minecraft": "1.21.11" }
           }
           EOF
 
-          # --- Java: Управление (J - спавн, K - килл, L - перехват управления) ---
+          # Логика: J - спавн, K - удаление, L - управление клоном (ты стоишь, он идет)
           cat <<'EOF' > src/main/java/com/enjoer/mod/CloneMod.java
           package com.enjoer.mod;
 
@@ -60,24 +66,24 @@ jobs:
 
               @Override
               public void onInitializeClient() {
-                  keySpawn = KeyBindingHelper.registerKeyBinding(new KeyBinding("Spawn Clone", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_J, "Enjoer"));
-                  keyRemove = KeyBindingHelper.registerKeyBinding(new KeyBinding("Remove Clone", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_K, "Enjoer"));
-                  keySwitch = KeyBindingHelper.registerKeyBinding(new KeyBinding("Control Clone", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_L, "Enjoer"));
+                  keySpawn = KeyBindingHelper.registerKeyBinding(new KeyBinding("Spawn", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_J, "Enjoer"));
+                  keyRemove = KeyBindingHelper.registerKeyBinding(new KeyBinding("Remove", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_K, "Enjoer"));
+                  keySwitch = KeyBindingHelper.registerKeyBinding(new KeyBinding("Control", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_L, "Enjoer"));
 
                   ClientTickEvents.END_CLIENT_TICK.register(client -> {
                       if (client.player == null) return;
-                      String botName = client.player.getName().getString() + "_Bot";
+                      String bot = client.player.getName().getString() + "_Bot";
 
                       if (keySpawn.wasPressed()) {
-                          client.player.networkHandler.sendChatCommand("player " + botName + " spawn");
+                          client.player.networkHandler.sendChatCommand("player " + bot + " spawn");
                       }
                       if (keyRemove.wasPressed()) {
-                          client.player.networkHandler.sendChatCommand("player " + botName + " kill");
+                          client.player.networkHandler.sendChatCommand("player " + bot + " kill");
                       }
                       if (keySwitch.wasPressed()) {
                           isControlling = !isControlling;
-                          String mode = isControlling ? "control" : "stop";
-                          client.player.networkHandler.sendChatCommand("player " + botName + " " + mode);
+                          String cmd = isControlling ? "control" : "stop";
+                          client.player.networkHandler.sendChatCommand("player " + bot + " " + cmd);
                           client.player.sendMessage(Text.of("§b[Enjoer] Управление: " + (isControlling ? "КЛОН" : "Я")), true);
                       }
                   });
@@ -85,17 +91,15 @@ jobs:
           }
           EOF
 
-          # --- build.gradle (Исправлены версии для стабильности) ---
+          # build.gradle с фиксацией версий под 1.21.11
           cat <<EOF > build.gradle
           plugins {
               id 'fabric-loom' version '1.7.4'
           }
-
           repositories {
               mavenCentral()
               maven { url "https://maven.fabricmc.net/" }
           }
-
           dependencies {
               minecraft "com.mojang:minecraft:1.21.11"
               mappings "net.fabricmc:yarn:1.21.11+build.1:v2"
@@ -104,14 +108,11 @@ jobs:
           }
           EOF
 
-      - name: Build with Gradle 8.10
-        run: |
-          gradle wrapper --gradle-version 8.10
-          chmod +x gradlew
-          ./gradlew build
+      - name: Build Mod
+        run: gradle build
 
-      - name: Upload
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Enjoer_Clone_Mod_1.21.11
+          name: Enjoer_Clone_1.21.11
           path: build/libs/*.jar
