@@ -1,4 +1,4 @@
-name: Fabric_Clone_Mod_1.21.11
+name: Fabric_Clone_Fix_1.21.1
 on: [push, workflow_dispatch]
 
 jobs:
@@ -14,25 +14,35 @@ jobs:
           java-version: '21'
           distribution: 'microsoft'
 
-      - name: Initialize Project
+      - name: Setup Project Structure
         run: |
           mkdir -p src/main/java/com/enjoer/mod
           mkdir -p src/main/resources
 
-          # --- Конфиг Fabric ---
+          # --- ПРАВИЛЬНЫЙ settings.gradle (Решает ошибку с плагином) ---
+          cat <<EOF > settings.gradle
+          pluginManagement {
+              repositories {
+                  maven { url "https://maven.fabricmc.net/" }
+                  gradlePluginPortal()
+              }
+          }
+          rootProject.name = 'EnjoerClones'
+          EOF
+
+          # --- fabric.mod.json ---
           cat <<EOF > src/main/resources/fabric.mod.json
           {
             "schemaVersion": 1,
             "id": "enjoer_clones",
-            "version": "1.1.0",
-            "name": "Enjoer Clones Pro",
-            "description": "Спавн клонов и переключение камер",
+            "version": "1.2.1",
+            "name": "Enjoer Control",
             "entrypoints": { "client": [ "com.enjoer.mod.CloneMod" ] },
-            "depends": { "fabricloader": ">=0.15.0", "minecraft": "1.21.11" }
+            "depends": { "fabricloader": ">=0.15.0", "minecraft": "~1.21" }
           }
           EOF
 
-          # --- Java: Основной код мода ---
+          # --- Java: Код управления клоном ---
           cat <<'EOF' > src/main/java/com/enjoer/mod/CloneMod.java
           package com.enjoer.mod;
 
@@ -43,70 +53,66 @@ jobs:
           import net.minecraft.client.util.InputUtil;
           import net.minecraft.text.Text;
           import org.lwjgl.glfw.GLFW;
-          import java.util.UUID;
 
           public class CloneMod implements ClientModInitializer {
               private static KeyBinding keySpawn;
               private static KeyBinding keyRemove;
               private static KeyBinding keySwitch;
-              private UUID lastCloneId;
+              private boolean isControlling = false;
 
               @Override
               public void onInitializeClient() {
-                  keySpawn = KeyBindingHelper.registerKeyBinding(new KeyBinding("Спавн клона", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_J, "Enjoer Mod"));
-                  keyRemove = KeyBindingHelper.registerKeyBinding(new KeyBinding("Удалить клона", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_K, "Enjoer Mod"));
-                  keySwitch = KeyBindingHelper.registerKeyBinding(new KeyBinding("Переключить игрока", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_L, "Enjoer Mod"));
+                  keySpawn = KeyBindingHelper.registerKeyBinding(new KeyBinding("Spawn Clone", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_J, "Enjoer"));
+                  keyRemove = KeyBindingHelper.registerKeyBinding(new KeyBinding("Remove Clone", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_K, "Enjoer"));
+                  keySwitch = KeyBindingHelper.registerKeyBinding(new KeyBinding("Control Clone", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_L, "Enjoer"));
 
                   ClientTickEvents.END_CLIENT_TICK.register(client -> {
                       if (client.player == null) return;
 
-                      // СПАВН (через отправку команды серверу, так как это надежнее для видимости всем)
                       if (keySpawn.wasPressed()) {
-                          String cloneName = "Clone_" + client.player.getName().getString();
-                          client.player.networkHandler.sendChatCommand("summon player " + cloneName);
-                          client.player.sendMessage(Text.of("§a[Enjoer] Клон " + cloneName + " заспавнен!"), false);
+                          client.player.networkHandler.sendChatCommand("player " + client.player.getName().getString() + "_Bot spawn");
                       }
-
-                      // УДАЛЕНИЕ
                       if (keyRemove.wasPressed()) {
-                          client.player.networkHandler.sendChatCommand("kick Clone_" + client.player.getName().getString());
-                          client.player.sendMessage(Text.of("§c[Enjoer] Клон удален."), false);
+                          client.player.networkHandler.sendChatCommand("player " + client.player.getName().getString() + "_Bot kill");
                       }
-
-                      // ПЕРЕКЛЮЧЕНИЕ (Спектатор мод за клона)
                       if (keySwitch.wasPressed()) {
-                          client.player.networkHandler.sendChatCommand("spectate Clone_" + client.player.getName().getString());
+                          String cmd = isControlling ? "stop" : "control";
+                          client.player.networkHandler.sendChatCommand("player " + client.player.getName().getString() + "_Bot " + cmd);
+                          isControlling = !isControlling;
+                          client.player.sendMessage(Text.of("§b[Enjoer] Control: " + isControlling), true);
                       }
                   });
               }
           }
           EOF
 
-          # --- build.gradle (Настройка под 1.21.11) ---
+          # --- Исправленный build.gradle ---
           cat <<EOF > build.gradle
-          plugins { id 'fabric-loom' version '1.7-SNAPSHOT' }
-          
-          repositories { mavenCentral(); maven { url "https://maven.fabricmc.net/" } }
+          plugins {
+              id 'fabric-loom' version '1.7-SNAPSHOT'
+          }
+
+          repositories {
+              mavenCentral()
+              maven { url "https://maven.fabricmc.net/" }
+          }
 
           dependencies {
-              minecraft "com.mojang:minecraft:1.21.11"
-              mappings "net.fabricmc:yarn:1.21.11+build.1:v2"
-              modImplementation "net.fabricmc:fabric-loader:0.15.11"
-              modImplementation "net.fabricmc.fabric-api:fabric-api:0.100.0+1.21.11"
+              minecraft "com.mojang:minecraft:1.21.1"
+              mappings "net.fabricmc:yarn:1.21.1+build.3:v2"
+              modImplementation "net.fabricmc:fabric-loader:0.16.0"
+              modImplementation "net.fabricmc.fabric-api:fabric-api:0.100.0+1.21"
           }
           EOF
 
-          echo "rootProject.name = 'EnjoerClones'" > settings.gradle
-          # Генерируем wrapper
-          gradle wrapper --gradle-version 8.8
-
-      - name: Build with Gradle
+      - name: Build Mod
         run: |
+          gradle wrapper --gradle-version 8.8
           chmod +x gradlew
           ./gradlew build
 
-      - name: Upload Artifact
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Enjoer_Clone_Mod_1.21.11
+          name: Enjoer_Fabric_1.21.1
           path: build/libs/*.jar
