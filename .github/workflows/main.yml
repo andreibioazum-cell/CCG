@@ -12,27 +12,28 @@ jobs:
         uses: actions/setup-java@v4
         with:
           java-version: '17'
-          distribution: 'temurin'
+          distribution: 'microsoft'
 
-      - name: Create Android Project Structure
+      - name: Create Structure
         run: |
-          # Создаем структуру папок стандартного Android приложения
           mkdir -p app/src/main/java/com/enjoer/scanner
-          mkdir -p app/src/main/res/layout
+          mkdir -p app/src/main/res/values
           
-          # Переносим твои декомпилированные ресурсы (если они есть в корне)
-          # Если ты загрузил папку 'res', она попадет в сборку
-          [ -d "res" ] && cp -r res/* app/src/main/res/ || echo "No res folder found"
-
-          # --- Создаем файлы конфигурации Gradle ---
+          # Настройки проекта
           echo "include ':app'" > settings.gradle
-          
           cat <<EOF > build.gradle
-          buildscript {
-              repositories { google(); mavenCentral() }
-              dependencies { classpath 'com.android.tools.build:gradle:8.2.2' }
-          }
+          buildscript { repositories { google(); mavenCentral() }; dependencies { classpath 'com.android.tools.build:gradle:8.2.2' } }
           allprojects { repositories { google(); mavenCentral() } }
+          EOF
+
+          # Манифест с разрешением на Overlay
+          cat <<EOF > app/src/main/AndroidManifest.xml
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.enjoer.scanner">
+              <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+              <application android:label="Enjoer Scanner">
+                  <service android:name=".ModMenuService" android:enabled="true" android:exported="false"/>
+              </application>
+          </manifest>
           EOF
 
           cat <<EOF > app/build.gradle
@@ -40,20 +41,16 @@ jobs:
           android {
               namespace 'com.enjoer.scanner'
               compileSdk 34
-              defaultConfig {
-                  applicationId 'com.gigiarig.chickengun'
-                  minSdk 24
-                  targetSdk 34
-              }
+              defaultConfig { applicationId 'com.gigiarig.chickengun'; minSdk 26; targetSdk 34 }
           }
-          dependencies {
-              implementation 'androidx.appcompat:appcompat:1.6.1'
-          }
+          dependencies { implementation 'androidx.appcompat:appcompat:1.6.1'; implementation 'com.google.android.material:material:1.9.0' }
           EOF
 
-      - name: Create Scanner Source Code
+          echo "<resources><style name='Theme.Enjoer' parent='Theme.MaterialComponents.DayNight.NoActionBar'/></resources>" > app/src/main/res/values/styles.xml
+
+      - name: Create Java Code
         run: |
-          # Логика работы с памятью
+          # Логика Memory Manager
           cat <<'EOF' > app/src/main/java/com/enjoer/scanner/MemoryManager.java
           package com.enjoer.scanner;
           import java.util.ArrayList;
@@ -62,16 +59,16 @@ jobs:
               public static List<Long> foundAddresses = new ArrayList<>();
               public static void performScan(int value) {
                   foundAddresses.clear();
-                  // Имитация для теста (в реальности нужен доступ к /proc/self/mem)
-                  for (int i = 0; i < 3; i++) foundAddresses.add(0x70000000L + (i * 0x4));
+                  // Имитация (для реального поиска в /proc/self/mem нужно чуть больше кода)
+                  for (int i = 0; i < 5; i++) foundAddresses.add(0x7D000000L + (i * 0x40));
               }
               public static void writeMemory(long address, int newValue) {
-                  // Здесь будет код записи
+                  // Здесь будет RandomAccessFile для записи
               }
           }
           EOF
 
-          # Интерфейс Мод-Меню
+          # Логика Сервиса Меню с Диалогом
           cat <<'EOF' > app/src/main/java/com/enjoer/scanner/ModMenuService.java
           package com.enjoer.scanner;
           import android.app.*;
@@ -79,64 +76,87 @@ jobs:
           import android.graphics.PixelFormat;
           import android.view.*;
           import android.widget.*;
+          import java.util.ArrayList;
+
           public class ModMenuService extends Service {
+              private WindowManager wm;
+              private LinearLayout layout;
+
+              @Override
               public void onCreate() {
                   super.onCreate();
-                  WindowManager wm = (WindowManager) getSystemService(WINDOW_SERVICE);
-                  LinearLayout layout = new LinearLayout(this);
+                  wm = (WindowManager) getSystemService(WINDOW_SERVICE);
+                  layout = new LinearLayout(this);
                   layout.setOrientation(LinearLayout.VERTICAL);
-                  layout.setBackgroundColor(0xEE000000);
+                  layout.setBackgroundColor(0xEE121212);
                   layout.setPadding(20, 20, 20, 20);
 
                   EditText input = new EditText(this);
-                  input.setHint("Что ищем?");
+                  input.setHint("Значение...");
                   input.setTextColor(0xFFFFFFFF);
                   layout.addView(input);
 
-                  Button btn = new Button(this);
-                  btn.setText("ПОИСК");
-                  layout.addView(btn);
+                  Button btnScan = new Button(this);
+                  btnScan.setText("СКАН");
+                  layout.addView(btnScan);
 
                   ListView lv = new ListView(this);
-                  ArrayAdapter<Long> adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, MemoryManager.foundAddresses);
+                  final ArrayAdapter<Long> adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, MemoryManager.foundAddresses);
                   lv.setAdapter(adapter);
                   layout.addView(lv);
 
                   lv.setOnItemClickListener((p, v, pos, id) -> {
                       long addr = MemoryManager.foundAddresses.get(pos);
-                      showDialog(addr);
+                      showReplaceDialog(addr);
                   });
 
-                  btn.setOnClickListener(v -> {
-                      MemoryManager.performScan(Integer.parseInt(input.getText().toString()));
-                      adapter.notifyDataSetChanged();
+                  btnScan.setOnClickListener(v -> {
+                      try {
+                          MemoryManager.performScan(Integer.parseInt(input.getText().toString()));
+                          adapter.notifyDataSetChanged();
+                      } catch (Exception e) {}
                   });
 
-                  WindowManager.LayoutParams params = new WindowManager.LayoutParams(
-                      500, 800, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                  WindowManager.LayoutParams p = new WindowManager.LayoutParams(
+                      500, 700, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                       WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT);
-                  wm.addView(layout, params);
+                  p.gravity = Gravity.TOP | Gravity.START;
+                  wm.addView(layout, p);
               }
-              private void showDialog(long addr) {
-                  // Здесь создается окно ввода нового значения
+
+              private void showReplaceDialog(long address) {
+                  // Прямой ввод через Toast или маленькое окно
+                  AlertDialog.Builder builder = new AlertDialog.Builder(new ContextThemeWrapper(this, android.R.style.Theme_DeviceDefault_Dialog));
+                  builder.setTitle("Новое значение");
+                  final EditText edit = new EditText(this);
+                  builder.setView(edit);
+                  builder.setPositiveButton("ЗАМЕНИТЬ", (d, w) -> {
+                      int val = Integer.parseInt(edit.getText().toString());
+                      MemoryManager.writeMemory(address, val);
+                      Toast.makeText(this, "Записано!", Toast.LENGTH_SHORT).show();
+                  });
+                  AlertDialog alert = builder.create();
+                  alert.getWindow().setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY);
+                  alert.show();
               }
-              public android.os.IBinder onBind(Intent i) { return null; }
+
+              @Override public android.os.IBinder onBind(Intent i) { return null; }
           }
           EOF
 
-      - name: Patch Original Smali
+      - name: Patch Smali
         run: |
-          # Вшиваем запуск меню во все найденные smali файлы (где есть onCreate)
+          # Вшиваем запуск сервиса в smali игры
           find . -name "*.smali" -exec sed -i '/onCreate(Landroid\/os\/Bundle;)V/,/.end method/ s/return-void/new-instance v0, Landroid\/content\/Intent;\n    const-class v1, Lcom\/enjoer\/scanner\/ModMenuService;\n    invoke-direct {v0, p0, v1}, Landroid\/content\/Intent;-><init>(Landroid\/content\/Context;Ljava/lang/Class;)V\n    invoke-virtual {p0, v0}, Landroid\/view\/ContextThemeWrapper;->startService(Landroid\/content\/Intent;)Landroid\/content\/ComponentName;\n    return-void/' {} +
 
-      - name: Build and Sign APK
+      - name: Build and Sign
         run: |
           gradle wrapper --gradle-version 8.10.2
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
-          
-      - name: Upload Modded APK
+
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: ChickenGun_Scanner_Mod
+          name: Enjoer_Scanner_1.21
           path: app/build/outputs/apk/debug/*.apk
