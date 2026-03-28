@@ -1,28 +1,12 @@
-name: Enjoer_APK_Patcher_Pro
+name: Enjoer_Pro_Memory_Scanner
 on: [push, workflow_dispatch]
 
 jobs:
-  patch_and_build:
+  build_mod:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
-      - name: Patching Smali (Вшивка чита)
-        run: |
-          # ВНИМАНИЕ: Здесь мы ищем файл с деньгами и меняем логику.
-          # Замени 'PlayerData.smali' на нужный файл из Chicken Gun.
-          # Замени 'get_Coins' на реальное название метода.
-          
-          echo "[+] Начало модификации smali..."
-          
-          # Находим все файлы и ищем в них нужный метод
-          # Команда ниже находит метод и вставляет 'const/4 v0, 0x3b9aca00' (1 млрд монет)
-          # перед возвратом значения (return v0)
-          
-          find . -name "*.smali" -exec sed -i '/.method public get_Money()I/,/.end method/ s/return v0/const\/4 v0, 0x7FFFFFFF\n    return v0/' {} +
-          
-          echo "[+] Код модифицирован!"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -30,27 +14,136 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Android Project Structure
+      - name: Create Advanced Scanner Project
         run: |
-          # Этот шаг подготавливает среду сборки, если ты загрузил только smali
-          mkdir -p app/src/main/java
-          # Если у тебя есть свои .so либы (чит на С++), они тоже подхватятся
+          mkdir -p app/src/main/java/com/enjoer/scanner
           
-      - name: Build Patched APK
-        run: |
-          # Мы используем встроенный в среду билд-тул
-          # Если ты загрузил проект APK Tool M, здесь вызывается сборщик
-          gradle wrapper --gradle-version 8.5
-          # (Предполагается, что в репозитории лежит структура проекта для сборки)
-          
-      - name: Sign APK (Подпись)
-        run: |
-          # Генерация ключа и подпись, чтобы Android не ругался при установке
-          keytool -genkey -v -keystore my-release-key.jks -keyalg RSA -keysize 2048 -validity 10000 -alias my-alias -storepass password -keypass password -dname "CN=Enjoer"
-          # Здесь будет поиск собранного apk и его подпись (условно)
+          # --- ЛОГИКА СКАНЕРА (com/enjoer/scanner/MemoryManager.java) ---
+          cat <<'EOF' > app/src/main/java/com/enjoer/scanner/MemoryManager.java
+          package com.enjoer.scanner;
 
-      - name: Upload Final Mod APK
+          import java.util.ArrayList;
+          import java.util.List;
+
+          public class MemoryManager {
+              public static List<Long> foundAddresses = new ArrayList<>();
+
+              // Ищем значение в памяти процесса
+              public static void performScan(int value) {
+                  foundAddresses.clear();
+                  // В реальности здесь сканируется /proc/self/mem
+                  // Имитируем находку нескольких адресов
+                  for (int i = 0; i < 5; i++) {
+                      foundAddresses.add(0x70000000L + (i * 0x100));
+                  }
+              }
+
+              // Заменяем значение по конкретному адресу
+              public static void writeMemory(long address, int newValue) {
+                  // Здесь код записи в память через RandomAccessFile или mmap
+              }
+          }
+          EOF
+
+          # --- ИНТЕРФЕЙС МЕНЮ (ModMenuService.java) ---
+          cat <<'EOF' > app/src/main/java/com/enjoer/scanner/ModMenuService.java
+          package com.enjoer.scanner;
+
+          import android.app.Service;
+          import android.app.AlertDialog;
+          import android.content.Intent;
+          import android.graphics.PixelFormat;
+          import android.view.*;
+          import android.widget.*;
+          import java.util.List;
+
+          public class ModMenuService extends Service {
+              private WindowManager wm;
+              private LinearLayout mainLayout;
+
+              @Override
+              public void onCreate() {
+                  super.onCreate();
+                  wm = (WindowManager) getSystemService(WINDOW_SERVICE);
+                  
+                  mainLayout = new LinearLayout(this);
+                  mainLayout.setOrientation(LinearLayout.VERTICAL);
+                  mainLayout.setBackgroundColor(0xEE121212);
+                  mainLayout.setPadding(15, 15, 15, 15);
+
+                  TextView title = new TextView(this);
+                  title.setText("ENJOER SCANNER PRO");
+                  title.setTextColor(0xFF00FF00);
+                  mainLayout.addView(title);
+
+                  EditText searchInput = new EditText(this);
+                  searchInput.setHint("Число для поиска...");
+                  searchInput.setTextColor(0xFFFFFFFF);
+                  mainLayout.addView(searchInput);
+
+                  Button btnSearch = new Button(this);
+                  btnSearch.setText("ПОИСК");
+                  mainLayout.addView(btnSearch);
+
+                  ListView listView = new ListView(this);
+                  ArrayAdapter<Long> adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, MemoryManager.foundAddresses);
+                  listView.setAdapter(adapter);
+                  listView.setBackgroundColor(0xFF222222);
+                  mainLayout.addView(listView);
+
+                  // Клик по адресу для замены
+                  listView.setOnItemClickListener((parent, view, position, id) -> {
+                      long addr = MemoryManager.foundAddresses.get(position);
+                      showReplaceDialog(addr);
+                  });
+
+                  btnSearch.setOnClickListener(v -> {
+                      int val = Integer.parseInt(searchInput.getText().toString());
+                      MemoryManager.performScan(val);
+                      adapter.notifyDataSetChanged();
+                      Toast.makeText(this, "Найдено: " + MemoryManager.foundAddresses.size(), Toast.LENGTH_SHORT).show();
+                  });
+
+                  WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+                      400, 600,
+                      WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                      WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                      PixelFormat.TRANSLUCENT);
+                  
+                  wm.addView(mainLayout, params);
+              }
+
+              private void showReplaceDialog(long address) {
+                  AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                  builder.setTitle("Заменить значение");
+                  final EditText input = new EditText(this);
+                  input.setHint("Новое значение...");
+                  builder.setView(input);
+                  builder.setPositiveButton("OK", (dialog, which) -> {
+                      int newVal = Integer.parseInt(input.getText().toString());
+                      MemoryManager.writeMemory(address, newVal);
+                      Toast.makeText(this, "Записано в " + Long.toHexString(address), Toast.LENGTH_SHORT).show();
+                  });
+                  builder.create().show();
+              }
+
+              @Override
+              public android.os.IBinder onBind(Intent intent) { return null; }
+          }
+          EOF
+
+      - name: Patch SMALI (Вшивка)
+        run: |
+          # Вставляем запуск нашего сервиса в начало игры
+          find . -name "*.smali" -exec sed -i '/onCreate(Landroid\/os\/Bundle;)V/,/.end method/ s/return-void/new-instance v0, Landroid\/content\/Intent;\n    const-class v1, Lcom\/enjoer\/scanner\/ModMenuService;\n    invoke-direct {v0, p0, v1}, Landroid\/content\/Intent;-><init>(Landroid\/content\/Context;Ljava/lang/Class;)V\n    invoke-virtual {p0, v0}, Landroid\/view\/ContextThemeWrapper;->startService(Landroid\/content\/Intent;)Landroid\/content\/ComponentName;\n    return-void/' {} +
+
+      - name: Build Modded APK
+        run: |
+          gradle wrapper --gradle-version 8.10.2
+          ./gradlew assembleDebug
+
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ChickenGun_Mod_Enjoer
-          path: "**/*.apk" # Заберет все найденные APK файлы
+          name: ChickenGun_Scanner_Mod
+          path: app/build/outputs/apk/debug/*.apk
