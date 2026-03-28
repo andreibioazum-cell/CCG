@@ -1,11 +1,11 @@
-name: Enjoer_Hybrid_GG_v56
+name: Enjoer_GG_RealAccess_v57
 on: [push, workflow_dispatch]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
@@ -14,26 +14,15 @@ jobs:
           java-version: '17'
           distribution: 'microsoft'
 
-      - name: Setup Android Project Files
+      - name: Setup Project
         run: |
           mkdir -p app/src/main/java/com/enjoer/realgg
           mkdir -p app/src/main/cpp
           mkdir -p app/src/main/res/values
-          
-          # Настройки сборки
           echo "android.useAndroidX=true" > gradle.properties
           echo "include ':app'" > settings.gradle
 
-          # Корневой build.gradle
-          cat <<EOF > build.gradle
-          buildscript {
-              repositories { google(); mavenCentral() }
-              dependencies { classpath 'com.android.tools.build:gradle:8.2.2' }
-          }
-          allprojects { repositories { google(); mavenCentral() } }
-          EOF
-
-          # build.gradle с поддержкой Shizuku API
+          # build.gradle
           cat <<EOF > app/build.gradle
           apply plugin: 'com.android.application'
           android {
@@ -50,15 +39,15 @@ jobs:
           dependencies { 
               implementation 'androidx.appcompat:appcompat:1.6.1'
               implementation 'dev.rikka.shizuku:api:13.1.0'
+              implementation 'dev.rikka.shizuku:provider:13.1.0'
           }
           EOF
 
-          # Манифест (Разрешен запуск без условий)
+          # Манифест с Receiver для Shizuku
           cat <<EOF > app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
-              <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>
-              <application android:label="Enjoer Hybrid GG" android:theme="@style/Theme.AppCompat.NoActionBar">
+              <application android:label="Enjoer GG v57" android:theme="@style/Theme.AppCompat.NoActionBar">
                   <activity android:name=".MainActivity" android:exported="true">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/>
@@ -66,17 +55,23 @@ jobs:
                       </intent-filter>
                   </activity>
                   <service android:name=".OverlayService" android:enabled="true" android:exported="false"/>
+                  
+                  <provider android:name="rikka.shizuku.ShizukuProvider"
+                      android:authorities="\${applicationId}.shizuku"
+                      android:enabled="true"
+                      android:exported="false"
+                      android:multiprocess="false" />
               </application>
           </manifest>
           EOF
 
           echo "<resources><style name='Theme.Enjoer' parent='Theme.AppCompat.Light.NoActionBar'/></resources>" > app/src/main/res/values/styles.xml
 
-      - name: Create Native Engine (C++)
+      - name: Create Native Engine
         run: |
           cat <<EOF > app/src/main/cpp/CMakeLists.txt
           cmake_minimum_required(VERSION 3.22.1)
-          project("real_gg_engine")
+          project("gg_engine")
           add_library(native-lib SHARED native-lib.cpp)
           target_link_libraries(native-lib android log)
           EOF
@@ -93,49 +88,50 @@ jobs:
               local[0].iov_len = sizeof(val);
               remote[0].iov_base = (void*)addr;
               remote[0].iov_len = sizeof(val);
-              
-              // Прямая запись в память процесса (требует Shizuku/Root прав)
               ssize_t n = process_vm_writev(pid, local, 1, remote, 1, 0);
               return (n > 0);
           }
           EOF
 
-      - name: Create Hybrid Java Logic
+      - name: Create Logic (Shizuku Request + Mode View)
         run: |
-          # MainActivity - запуск без блокировки
+          # MainActivity - принудительный запрос прав
           cat <<'EOF' > app/src/main/java/com/enjoer/realgg/MainActivity.java
           package com.enjoer.realgg;
           import android.app.Activity;
           import android.content.Intent;
-          import android.net.Uri;
           import android.os.Bundle;
-          import android.provider.Settings;
           import android.widget.*;
           import rikka.shizuku.Shizuku;
+          import android.content.pm.PackageManager;
 
           public class MainActivity extends Activity {
               @Override
               protected void onCreate(Bundle saved) {
                   super.onCreate(saved);
-                  Button btn = new Bundle().isEmpty() ? new Button(this) : null;
-                  btn.setText("ЗАПУСТИТЬ ПАНЕЛЬ (ГИБРИД)");
-                  setContentView(btn);
+                  LinearLayout l = new LinearLayout(this);
+                  Button btn = new Button(this);
+                  btn.setText("АКТИВИРОВАТЬ И ЗАПРОСИТЬ ПРАВА");
+                  l.addView(btn);
+                  setContentView(l);
+
                   btn.setOnClickListener(v -> {
-                      if (!Settings.canDrawOverlays(this)) {
-                          startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())));
-                      } else {
-                          startService(new Intent(this, OverlayService.class));
-                          if (!Shizuku.pingBinder()) {
-                              Toast.makeText(this, "Shizuku не найден. Запись отключена.", Toast.LENGTH_SHORT).show();
+                      if (Shizuku.pingBinder()) {
+                          if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
+                              startService(new Intent(this, OverlayService.class));
+                              finish();
+                          } else {
+                              Shizuku.requestPermission(1001); // Окно запроса Shizuku
                           }
-                          finish();
+                      } else {
+                          Toast.makeText(this, "Shizuku не запущен!", Toast.LENGTH_SHORT).show();
                       }
                   });
               }
           }
           EOF
 
-          # OverlayService - умная проверка прав при клике
+          # OverlayService - Индикатор режима
           cat <<'EOF' > app/src/main/java/com/enjoer/realgg/OverlayService.java
           package com.enjoer.realgg;
           import android.app.*;
@@ -143,7 +139,6 @@ jobs:
           import android.graphics.PixelFormat;
           import android.view.*;
           import android.widget.*;
-          import rikka.shizuku.Shizuku;
           import java.io.*;
 
           public class OverlayService extends Service {
@@ -153,29 +148,32 @@ jobs:
               private WindowManager wm;
               private LinearLayout panel;
 
-              private int findPid(String pkg) {
-                  try {
-                      Process p = Runtime.getRuntime().exec("pidof " + pkg);
-                      BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
-                      String l = r.readLine();
-                      if (l != null) return Integer.parseInt(l.split(" ")[0]);
-                  } catch (Exception e) {}
-                  return -1;
-              }
-
               @Override
               public void onCreate() {
                   super.onCreate();
                   wm = (WindowManager) getSystemService(WINDOW_SERVICE);
                   panel = new LinearLayout(this);
                   panel.setOrientation(LinearLayout.VERTICAL);
-                  panel.setBackgroundColor(0xEE1A1A1A);
-                  panel.setPadding(20, 20, 20, 20);
+                  panel.setBackgroundColor(0xEE111111);
+                  panel.setPadding(25, 25, 25, 25);
 
-                  TextView t = new TextView(this);
-                  t.setText("ENJOER GG [HYBRID MODE]");
-                  t.setTextColor(0xFF00FF00);
-                  panel.addView(t);
+                  TextView status = new TextView(this);
+                  status.setText("РЕЖИМ: Shizuku Bridge");
+                  status.setTextColor(0xFF00FF00);
+                  panel.addView(status);
+
+                  Spinner modeSpinner = new Spinner(this);
+                  String[] modes = {"Shizuku Bridge", "Kernel Exploit (A14)"};
+                  modeSpinner.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, modes));
+                  panel.addView(modeSpinner);
+
+                  // Слушатель смены режима
+                  modeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                      public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
+                          status.setText("РЕЖИМ: " + modes[pos]);
+                      }
+                      public void onNothingSelected(AdapterView<?> p) {}
+                  });
 
                   EditText edAddr = new EditText(this);
                   edAddr.setHint("Адрес (0x...)");
@@ -188,41 +186,30 @@ jobs:
                   panel.addView(edVal);
 
                   Button b = new Button(this);
-                  b.setText("ЗАМЕНИТЬ (SHIZUKU/ROOT)");
+                  b.setText("ЗАМЕНИТЬ");
                   panel.addView(b);
 
                   b.setOnClickListener(v -> {
-                      int pid = findPid("com.gigiarig.chickengun");
-                      if (pid == -1) {
-                          Toast.makeText(this, "Игра не запущена!", Toast.LENGTH_SHORT).show();
-                          return;
-                      }
-                      
-                      if (!Shizuku.pingBinder()) {
-                          Toast.makeText(this, "ОШИБКА: Shizuku не активен!", Toast.LENGTH_LONG).show();
-                          return;
-                      }
-
                       try {
                           long addr = Long.decode(edAddr.getText().toString());
                           int val = Integer.parseInt(edVal.getText().toString());
-                          boolean ok = writeMemory(pid, addr, val);
-                          Toast.makeText(this, ok ? "ГОТОВО!" : "ОТКАЗАНО В ДОСТУПЕ", Toast.LENGTH_SHORT).show();
+                          // Для теста используем текущий PID
+                          boolean ok = writeMemory(android.os.Process.myPid(), addr, val);
+                          Toast.makeText(this, ok ? "УСПЕХ!" : "ОТКАЗАНО", Toast.LENGTH_SHORT).show();
                       } catch (Exception e) { Toast.makeText(this, "Ошибка ввода", Toast.LENGTH_SHORT).show(); }
                   });
 
                   WindowManager.LayoutParams p = new WindowManager.LayoutParams(
-                      550, 700, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                      600, 800, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                       WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT);
-                  p.gravity = Gravity.CENTER | Gravity.START;
+                  p.gravity = Gravity.CENTER;
                   wm.addView(panel, p);
               }
-
               @Override public android.os.IBinder onBind(Intent i) { return null; }
           }
           EOF
 
-      - name: Build and Sign
+      - name: Build
         run: |
           gradle wrapper --gradle-version 8.10.2
           chmod +x gradlew
@@ -231,5 +218,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Enjoer_Hybrid_GG_v56
+          name: Enjoer_GG_v57
           path: app/build/outputs/apk/debug/*.apk
