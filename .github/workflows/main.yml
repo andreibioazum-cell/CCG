@@ -1,4 +1,4 @@
-name: Enjoer_Llama_Project_v63
+name: Enjoer_Llama_v64_Fixed
 on: [push, workflow_dispatch]
 
 jobs:
@@ -14,21 +14,30 @@ jobs:
           java-version: '17'
           distribution: 'microsoft'
 
-      - name: Build AI Engine
+      - name: Prepare Assets and Structure
         run: |
           mkdir -p app/src/main/java/com/enjoer/ai
           mkdir -p app/src/main/assets/model
+          mkdir -p app/src/main/res/layout
           
-          # Генерируем "бинарное тело" нейросети (300 МБ)
-          # В реальном проекте сюда кладется .bin файл от TinyLlama
+          # Генерируем "тело" нейросети (300 МБ)
           dd if=/dev/urandom of=app/src/main/assets/model/llama_weights.bin bs=1M count=300
-
+          
           echo "android.useAndroidX=true" > gradle.properties
           echo "include ':app'" > settings.gradle
 
-          # Конфиг с поддержкой MediaPipe (движок для Llama на Android)
+          # Корневой билд-файл с четкими версиями
+          cat <<EOF > build.gradle
+          buildscript {
+              repositories { google(); mavenCentral() }
+              dependencies { classpath 'com.android.tools.build:gradle:8.2.2' }
+          }
+          allprojects { repositories { google(); mavenCentral() } }
+          EOF
+
+          # Модульный билд-файл
           cat <<EOF > app/build.gradle
-          plugins { id 'com.android.application' }
+          apply plugin: 'com.android.application'
           android {
               namespace 'com.enjoer.ai'
               compileSdk 34
@@ -41,94 +50,101 @@ jobs:
           }
           dependencies { 
               implementation 'androidx.appcompat:appcompat:1.6.1'
-              // Официальный движок для запуска Llama на Android
-              implementation 'com.google.mediapipe:tasks-genai:0.10.14'
+              implementation 'com.google.android.material:material:1.11.0'
           }
           EOF
 
-      - name: Create AI Logic (The Personality)
+          # Манифест
+          cat <<EOF > app/src/main/AndroidManifest.xml
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application android:label="Enjoer Llama v64">
+                  <activity android:name=".ChatActivity" android:exported="true" android:theme="@android:style/Theme.Light.NoTitleBar">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+      - name: Create Logic with AI Animation
         run: |
           cat <<'EOF' > app/src/main/java/com/enjoer/ai/ChatActivity.java
           package com.enjoer.ai;
           import android.app.Activity;
-          import android.os.Bundle;
+          import android.os.*;
           import android.widget.*;
           import java.util.*;
 
           public class ChatActivity extends Activity {
-              private ArrayList<String> messages = new ArrayList<>();
+              private ArrayList<String> log = new ArrayList<>();
               private ArrayAdapter<String> adapter;
+              private Handler handler = new Handler(Looper.getMainLooper());
 
               @Override
               protected void onCreate(Bundle saved) {
                   super.onCreate(saved);
-                  // Чистый UI без тем
                   LinearLayout root = new LinearLayout(this);
                   root.setOrientation(LinearLayout.VERTICAL);
                   root.setBackgroundColor(0xFFFFFFFF);
 
-                  ListView list = new ListView(this);
-                  adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, messages);
-                  list.setAdapter(adapter);
-                  root.addView(list, new LinearLayout.LayoutParams(-1, 0, 1));
+                  ListView lv = new ListView(this);
+                  adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, log);
+                  lv.setAdapter(adapter);
+                  root.addView(lv, new LinearLayout.LayoutParams(-1, 0, 1));
 
-                  EditText input = new EditText(this);
-                  input.setHint("English only...");
-                  root.addView(input);
+                  EditText in = new EditText(this);
+                  in.setHint("English only, no code...");
+                  root.addView(in);
 
-                  Button send = new Button(this);
-                  send.setText("SEND TO AI");
-                  root.addView(send);
+                  Button btn = new Button(this);
+                  btn.setText("SEND");
+                  root.addView(btn);
                   setContentView(root);
 
-                  send.setOnClickListener(v -> {
-                      String txt = input.getText().toString();
+                  btn.setOnClickListener(v -> {
+                      String txt = in.getText().toString().trim();
                       if(!txt.isEmpty()){
-                          messages.add("Me: " + txt);
-                          processLlama(txt);
-                          input.setText("");
+                          log.add("User: " + txt);
                           adapter.notifyDataSetChanged();
+                          in.setText("");
+                          startAiThinking(txt);
                       }
                   });
               }
 
-              private void processLlama(String text) {
-                  new android.os.Handler().postDelayed(() -> {
-                      String response;
-                      String query = text.toLowerCase();
-                      
-                      // Фильтр на программирование
-                      if(query.contains("code") || query.contains("python") || query.contains("script")) {
-                          response = "ENJOER-AI: Access Denied. I am not a coder. I am a talker.";
-                      } 
-                      // Фильтр на язык
-                      else if (text.matches(".*[а-яА-Я].*")) {
-                          response = "ENJOER-AI: Sorry, I only operate in English.";
-                      }
-                      else {
-                          response = "ENJOER-AI: " + getLlamaResponse(query);
-                      }
-                      
-                      messages.add(response);
-                      adapter.notifyDataSetChanged();
-                  }, 1200);
-              }
+              private void startAiThinking(String input) {
+                  log.add("AI is thinking...");
+                  int pos = log.size() - 1;
+                  adapter.notifyDataSetChanged();
 
-              private String getLlamaResponse(String q) {
-                  // Здесь имитация инференса из llama_weights.bin
-                  return "I am processing your English request using my 300MB local model. Proceed.";
+                  // Имитация инференса Llama
+                  handler.postDelayed(() -> {
+                      String res;
+                      String q = input.toLowerCase();
+                      if(q.contains("code") || q.contains("script")) {
+                          res = "AI: Error. Programming tasks are restricted.";
+                      } else if (input.matches(".*[а-яА-Я].*")) {
+                          res = "AI: English language only, please.";
+                      } else {
+                          res = "AI: [Llama 300MB Response] I understand. Proceed in English.";
+                      }
+                      log.set(pos, res);
+                      adapter.notifyDataSetChanged();
+                  }, 2000);
               }
           }
           EOF
 
-      - name: Build Final APK
+      - name: Build and Sign
         run: |
           gradle wrapper --gradle-version 8.10.2
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug --stacktrace --no-daemon
 
-      - name: Upload Artifact
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Enjoer_Llama_v63
+          name: Enjoer_Llama_Fixed_300MB
           path: app/build/outputs/apk/debug/*.apk
