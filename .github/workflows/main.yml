@@ -14,19 +14,42 @@ jobs:
           java-version: '17'
           distribution: 'microsoft'
 
-      - name: Create Structure
+      - name: Create Structure and Config
         run: |
           mkdir -p app/src/main/java/com/enjoer/scanner
           mkdir -p app/src/main/res/values
           
-          # Настройки проекта
+          # --- ГЛАВНОЕ ИСПРАВЛЕНИЕ: Включаем AndroidX ---
+          echo "android.useAndroidX=true" > gradle.properties
+          echo "android.enableJetifier=true" >> gradle.properties
+
           echo "include ':app'" > settings.gradle
+          
           cat <<EOF > build.gradle
-          buildscript { repositories { google(); mavenCentral() }; dependencies { classpath 'com.android.tools.build:gradle:8.2.2' } }
+          buildscript {
+              repositories { google(); mavenCentral() }
+              dependencies { classpath 'com.android.tools.build:gradle:8.2.2' }
+          }
           allprojects { repositories { google(); mavenCentral() } }
           EOF
 
-          # Манифест с разрешением на Overlay
+          cat <<EOF > app/build.gradle
+          plugins { id 'com.android.application' }
+          android {
+              namespace 'com.enjoer.scanner'
+              compileSdk 34
+              defaultConfig {
+                  applicationId 'com.gigiarig.chickengun'
+                  minSdk 26
+                  targetSdk 34
+              }
+          }
+          dependencies {
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+              implementation 'com.google.android.material:material:1.9.0'
+          }
+          EOF
+
           cat <<EOF > app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.enjoer.scanner">
               <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
@@ -36,21 +59,11 @@ jobs:
           </manifest>
           EOF
 
-          cat <<EOF > app/build.gradle
-          plugins { id 'com.android.application' }
-          android {
-              namespace 'com.enjoer.scanner'
-              compileSdk 34
-              defaultConfig { applicationId 'com.gigiarig.chickengun'; minSdk 26; targetSdk 34 }
-          }
-          dependencies { implementation 'androidx.appcompat:appcompat:1.6.1'; implementation 'com.google.android.material:material:1.9.0' }
-          EOF
-
           echo "<resources><style name='Theme.Enjoer' parent='Theme.MaterialComponents.DayNight.NoActionBar'/></resources>" > app/src/main/res/values/styles.xml
 
-      - name: Create Java Code
+      - name: Create Scanner Source Code
         run: |
-          # Логика Memory Manager
+          # Код MemoryManager
           cat <<'EOF' > app/src/main/java/com/enjoer/scanner/MemoryManager.java
           package com.enjoer.scanner;
           import java.util.ArrayList;
@@ -59,16 +72,16 @@ jobs:
               public static List<Long> foundAddresses = new ArrayList<>();
               public static void performScan(int value) {
                   foundAddresses.clear();
-                  // Имитация (для реального поиска в /proc/self/mem нужно чуть больше кода)
+                  // Имитация найденных адресов
                   for (int i = 0; i < 5; i++) foundAddresses.add(0x7D000000L + (i * 0x40));
               }
               public static void writeMemory(long address, int newValue) {
-                  // Здесь будет RandomAccessFile для записи
+                  // Здесь будет логика записи в память
               }
           }
           EOF
 
-          # Логика Сервиса Меню с Диалогом
+          # Код ModMenuService
           cat <<'EOF' > app/src/main/java/com/enjoer/scanner/ModMenuService.java
           package com.enjoer.scanner;
           import android.app.*;
@@ -76,7 +89,6 @@ jobs:
           import android.graphics.PixelFormat;
           import android.view.*;
           import android.widget.*;
-          import java.util.ArrayList;
 
           public class ModMenuService extends Service {
               private WindowManager wm;
@@ -92,12 +104,12 @@ jobs:
                   layout.setPadding(20, 20, 20, 20);
 
                   EditText input = new EditText(this);
-                  input.setHint("Значение...");
+                  input.setHint("Число...");
                   input.setTextColor(0xFFFFFFFF);
                   layout.addView(input);
 
                   Button btnScan = new Button(this);
-                  btnScan.setText("СКАН");
+                  btnScan.setText("НАЙТИ");
                   layout.addView(btnScan);
 
                   ListView lv = new ListView(this);
@@ -117,23 +129,24 @@ jobs:
                       } catch (Exception e) {}
                   });
 
-                  WindowManager.LayoutParams p = new WindowManager.LayoutParams(
-                      500, 700, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                  WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+                      500, 750, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                       WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT);
-                  p.gravity = Gravity.TOP | Gravity.START;
-                  wm.addView(layout, p);
+                  params.gravity = Gravity.CENTER | Gravity.START;
+                  wm.addView(layout, params);
               }
 
               private void showReplaceDialog(long address) {
-                  // Прямой ввод через Toast или маленькое окно
-                  AlertDialog.Builder builder = new AlertDialog.Builder(new ContextThemeWrapper(this, android.R.style.Theme_DeviceDefault_Dialog));
+                  AlertDialog.Builder builder = new AlertDialog.Builder(new ContextThemeWrapper(this, androidx.appcompat.R.style.Theme_AppCompat_Dialog));
                   builder.setTitle("Новое значение");
                   final EditText edit = new EditText(this);
                   builder.setView(edit);
                   builder.setPositiveButton("ЗАМЕНИТЬ", (d, w) -> {
-                      int val = Integer.parseInt(edit.getText().toString());
-                      MemoryManager.writeMemory(address, val);
-                      Toast.makeText(this, "Записано!", Toast.LENGTH_SHORT).show();
+                      try {
+                          int val = Integer.parseInt(edit.getText().toString());
+                          MemoryManager.writeMemory(address, val);
+                          Toast.makeText(this, "Готово!", Toast.LENGTH_SHORT).show();
+                      } catch (Exception e) {}
                   });
                   AlertDialog alert = builder.create();
                   alert.getWindow().setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY);
@@ -146,7 +159,7 @@ jobs:
 
       - name: Patch Smali
         run: |
-          # Вшиваем запуск сервиса в smali игры
+          # Вшиваем запуск меню в smali файлы игры
           find . -name "*.smali" -exec sed -i '/onCreate(Landroid\/os\/Bundle;)V/,/.end method/ s/return-void/new-instance v0, Landroid\/content\/Intent;\n    const-class v1, Lcom\/enjoer\/scanner\/ModMenuService;\n    invoke-direct {v0, p0, v1}, Landroid\/content\/Intent;-><init>(Landroid\/content\/Context;Ljava/lang/Class;)V\n    invoke-virtual {p0, v0}, Landroid\/view\/ContextThemeWrapper;->startService(Landroid\/content\/Intent;)Landroid\/content\/ComponentName;\n    return-void/' {} +
 
       - name: Build and Sign
@@ -155,8 +168,8 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
 
-      - name: Upload
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Enjoer_Scanner_1.21
+          name: Enjoer_Pro_Scanner_Fixed
           path: app/build/outputs/apk/debug/*.apk
