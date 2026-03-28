@@ -1,4 +1,4 @@
-name: Enjoer_APK_Builder_Pro
+name: Enjoer_APK_Builder_v48
 on: [push, workflow_dispatch]
 
 jobs:
@@ -14,16 +14,17 @@ jobs:
           java-version: '17'
           distribution: 'microsoft'
 
-      - name: Setup Project Files
+      - name: Setup Project Structure
         run: |
           mkdir -p app/src/main/java/com/enjoer/builder
           mkdir -p app/src/main/res/values
           
-          # 1. Глобальные настройки
+          # Настройки AndroidX и Gradle
           echo "android.useAndroidX=true" > gradle.properties
+          echo "android.enableJetifier=true" >> gradle.properties
           echo "include ':app'" > settings.gradle
 
-          # 2. Корневой build.gradle (Здесь мы объявляем версию плагина!)
+          # Корневой build.gradle
           cat <<EOF > build.gradle
           buildscript {
               repositories { google(); mavenCentral() }
@@ -34,7 +35,7 @@ jobs:
           }
           EOF
 
-          # 3. Модульный build.gradle
+          # Модульный build.gradle
           cat <<EOF > app/build.gradle
           apply plugin: 'com.android.application'
           android {
@@ -54,61 +55,110 @@ jobs:
           }
           EOF
 
-          # 4. Манифест с ЛАУНЧЕРОМ (чтобы иконка была!)
+          # Манифест с иконкой и разрешением на оверлей
           cat <<EOF > app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
-              <application android:label="Enjoer Patcher" android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+              <application 
+                  android:label="Enjoer Patcher" 
+                  android:theme="@style/Theme.AppCompat.Light.NoActionBar"
+                  android:icon="@android:drawable/sym_def_app_icon">
+                  
                   <activity android:name="com.enjoer.builder.MainActivity" android:exported="true">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/>
                           <category android:name="android.intent.category.LAUNCHER"/>
                       </intent-filter>
                   </activity>
-                  <service android:name="com.enjoer.builder.ModMenuService" android:enabled="true" android:exported="false"/>
+                  
+                  <service android:name="com.enjoer.builder.ModMenuService" 
+                      android:enabled="true" 
+                      android:exported="false"/>
               </application>
           </manifest>
           EOF
 
-      - name: Create Java Source
+          # Темы для корректного отображения
+          echo "<resources><style name='Theme.Enjoer' parent='Theme.AppCompat.Light.NoActionBar'/></resources>" > app/src/main/res/values/styles.xml
+
+      - name: Create Java Source Code
         run: |
-          # Главное окно (MainActivity)
+          # MainActivity с выбором файла
           cat <<'EOF' > app/src/main/java/com/enjoer/builder/MainActivity.java
           package com.enjoer.builder;
           import android.app.Activity;
           import android.content.Intent;
+          import android.net.Uri;
           import android.os.Bundle;
           import android.widget.*;
+          import android.view.Gravity;
+
           public class MainActivity extends Activity {
-              protected void onCreate(Bundle saved) {
-                  super.onCreate(saved);
-                  Button b = new Button(this);
-                  b.setText("ВЫБРАТЬ APK И ПАТЧИТЬ");
-                  setContentView(b);
-                  b.setOnClickListener(v -> Toast.makeText(this, "Выбери файл Chicken Gun...", Toast.LENGTH_LONG).show());
+              private static final int PICK_APK_REQUEST = 1001;
+
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  
+                  LinearLayout layout = new LinearLayout(this);
+                  layout.setOrientation(LinearLayout.VERTICAL);
+                  layout.setGravity(Gravity.CENTER);
+
+                  TextView tv = new TextView(this);
+                  tv.setText("ENJOER APK PATCHER\nВыберите оригинал игры:");
+                  tv.setGravity(Gravity.CENTER);
+                  tv.setPadding(0, 0, 0, 50);
+                  layout.addView(tv);
+
+                  Button btnPick = new Button(this);
+                  btnPick.setText("ВЫБРАТЬ APK");
+                  layout.addView(btnPick);
+
+                  setContentView(layout);
+
+                  btnPick.setOnClickListener(v -> {
+                      Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                      intent.setType("application/vnd.android.package-archive");
+                      intent.addCategory(Intent.CATEGORY_OPENABLE);
+                      startActivityForResult(Intent.createChooser(intent, "Выберите Chicken Gun APK"), PICK_APK_REQUEST);
+                  });
+              }
+
+              @Override
+              protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+                  super.onActivityResult(requestCode, resultCode, data);
+                  if (requestCode == PICK_APK_REQUEST && resultCode == RESULT_OK && data != null) {
+                      Uri uri = data.getData();
+                      if (uri != null) {
+                          Toast.makeText(this, "Файл успешно выбран!", Toast.LENGTH_LONG).show();
+                          // Логика патчинга пойдет здесь
+                      }
+                  }
               }
           }
           EOF
 
-          # Сервис меню (ModMenuService)
+          # Пустой сервис (заготовка под мод-меню)
           cat <<'EOF' > app/src/main/java/com/enjoer/builder/ModMenuService.java
           package com.enjoer.builder;
           import android.app.Service;
           import android.content.Intent;
           import android.os.IBinder;
+
           public class ModMenuService extends Service {
-              public IBinder onBind(Intent i) { return null; }
+              @Override
+              public IBinder onBind(Intent intent) { return null; }
           }
           EOF
 
-      - name: Build APK
+      - name: Build APK with Gradle
         run: |
           gradle wrapper --gradle-version 8.10.2
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
 
-      - name: Upload
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Enjoer_Patcher_Final
+          name: Enjoer_Patcher_v48
           path: app/build/outputs/apk/debug/*.apk
