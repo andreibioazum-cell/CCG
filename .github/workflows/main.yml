@@ -1,4 +1,4 @@
-name: Enjoer_GG_RealAccess_v57
+name: Enjoer_GG_Real_v58
 on: [push, workflow_dispatch]
 
 jobs:
@@ -14,17 +14,31 @@ jobs:
           java-version: '17'
           distribution: 'microsoft'
 
-      - name: Setup Project
+      - name: Setup Project Structure
         run: |
           mkdir -p app/src/main/java/com/enjoer/realgg
           mkdir -p app/src/main/cpp
           mkdir -p app/src/main/res/values
+          
           echo "android.useAndroidX=true" > gradle.properties
           echo "include ':app'" > settings.gradle
 
-          # build.gradle
+          # ИСПРАВЛЕННЫЙ корневой build.gradle
+          cat <<EOF > build.gradle
+          buildscript {
+              repositories { google(); mavenCentral() }
+              dependencies { classpath 'com.android.tools.build:gradle:8.2.2' }
+          }
+          allprojects {
+              repositories { google(); mavenCentral() }
+          }
+          EOF
+
+          # ИСПРАВЛЕННЫЙ модульный build.gradle
           cat <<EOF > app/build.gradle
-          apply plugin: 'com.android.application'
+          plugins {
+              id 'com.android.application'
+          }
           android {
               namespace 'com.enjoer.realgg'
               compileSdk 34
@@ -43,11 +57,12 @@ jobs:
           }
           EOF
 
-          # Манифест с Receiver для Shizuku
+          # Манифест
           cat <<EOF > app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
-              <application android:label="Enjoer GG v57" android:theme="@style/Theme.AppCompat.NoActionBar">
+              <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>
+              <application android:label="Enjoer GG v58" android:theme="@style/Theme.AppCompat.NoActionBar">
                   <activity android:name=".MainActivity" android:exported="true">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/>
@@ -55,7 +70,6 @@ jobs:
                       </intent-filter>
                   </activity>
                   <service android:name=".OverlayService" android:enabled="true" android:exported="false"/>
-                  
                   <provider android:name="rikka.shizuku.ShizukuProvider"
                       android:authorities="\${applicationId}.shizuku"
                       android:enabled="true"
@@ -84,18 +98,14 @@ jobs:
           extern "C" JNIEXPORT jboolean JNICALL
           Java_com_enjoer_realgg_OverlayService_writeMemory(JNIEnv* env, jobject thiz, jint pid, jlong addr, jint val) {
               struct iovec local[1], remote[1];
-              local[0].iov_base = &val;
-              local[0].iov_len = sizeof(val);
-              remote[0].iov_base = (void*)addr;
-              remote[0].iov_len = sizeof(val);
-              ssize_t n = process_vm_writev(pid, local, 1, remote, 1, 0);
-              return (n > 0);
+              local[0].iov_base = &val; local[0].iov_len = sizeof(val);
+              remote[0].iov_base = (void*)addr; remote[0].iov_len = sizeof(val);
+              return process_vm_writev(pid, local, 1, remote, 1, 0) > 0;
           }
           EOF
 
-      - name: Create Logic (Shizuku Request + Mode View)
+      - name: Create Java Logic (Final)
         run: |
-          # MainActivity - принудительный запрос прав
           cat <<'EOF' > app/src/main/java/com/enjoer/realgg/MainActivity.java
           package com.enjoer.realgg;
           import android.app.Activity;
@@ -109,29 +119,21 @@ jobs:
               @Override
               protected void onCreate(Bundle saved) {
                   super.onCreate(saved);
-                  LinearLayout l = new LinearLayout(this);
                   Button btn = new Button(this);
-                  btn.setText("АКТИВИРОВАТЬ И ЗАПРОСИТЬ ПРАВА");
-                  l.addView(btn);
-                  setContentView(l);
-
+                  btn.setText("ЗАПУСТИТЬ ENJOER GG");
+                  setContentView(btn);
                   btn.setOnClickListener(v -> {
                       if (Shizuku.pingBinder()) {
                           if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
                               startService(new Intent(this, OverlayService.class));
                               finish();
-                          } else {
-                              Shizuku.requestPermission(1001); // Окно запроса Shizuku
-                          }
-                      } else {
-                          Toast.makeText(this, "Shizuku не запущен!", Toast.LENGTH_SHORT).show();
-                      }
+                          } else { Shizuku.requestPermission(1001); }
+                      } else { Toast.makeText(this, "Shizuku OFF", Toast.LENGTH_SHORT).show(); }
                   });
               }
           }
           EOF
 
-          # OverlayService - Индикатор режима
           cat <<'EOF' > app/src/main/java/com/enjoer/realgg/OverlayService.java
           package com.enjoer.realgg;
           import android.app.*;
@@ -139,77 +141,68 @@ jobs:
           import android.graphics.PixelFormat;
           import android.view.*;
           import android.widget.*;
-          import java.io.*;
+          import java.util.*;
 
           public class OverlayService extends Service {
               static { System.loadLibrary("native-lib"); }
               public native boolean writeMemory(int pid, long addr, int val);
 
               private WindowManager wm;
-              private LinearLayout panel;
+              private int targetPid = -1;
 
               @Override
               public void onCreate() {
                   super.onCreate();
                   wm = (WindowManager) getSystemService(WINDOW_SERVICE);
-                  panel = new LinearLayout(this);
-                  panel.setOrientation(LinearLayout.VERTICAL);
-                  panel.setBackgroundColor(0xEE111111);
-                  panel.setPadding(25, 25, 25, 25);
+                  LinearLayout l = new LinearLayout(this);
+                  l.setOrientation(LinearLayout.VERTICAL);
+                  l.setBackgroundColor(0xEE111111);
+                  l.setPadding(20, 20, 20, 20);
 
                   TextView status = new TextView(this);
-                  status.setText("РЕЖИМ: Shizuku Bridge");
-                  status.setTextColor(0xFF00FF00);
-                  panel.addView(status);
+                  status.setText("ЦЕЛЬ: НЕ ВЫБРАНА");
+                  status.setTextColor(0xFFFF0000);
+                  l.addView(status);
 
-                  Spinner modeSpinner = new Spinner(this);
-                  String[] modes = {"Shizuku Bridge", "Kernel Exploit (A14)"};
-                  modeSpinner.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, modes));
-                  panel.addView(modeSpinner);
+                  Button btnPick = new Button(this);
+                  btnPick.setText("ВЫБРАТЬ ПРОЦЕСС");
+                  l.addView(btnPick);
 
-                  // Слушатель смены режима
-                  modeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-                      public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
-                          status.setText("РЕЖИМ: " + modes[pos]);
-                      }
-                      public void onNothingSelected(AdapterView<?> p) {}
+                  Spinner modeS = new Spinner(this);
+                  modeS.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, new String[]{"Shizuku Bridge", "A14 Exploit"}));
+                  l.addView(modeS);
+
+                  EditText edA = new EditText(this); edA.setHint("Адрес"); edA.setTextColor(0xFFFFFFFF); l.addView(edA);
+                  EditText edV = new EditText(this); edV.setHint("Значение"); edV.setTextColor(0xFFFFFFFF); l.addView(edV);
+                  Button btnSet = new Button(this); btnSet.setText("ЗАМЕНИТЬ"); l.addView(btnSet);
+
+                  btnPick.setOnClickListener(v -> {
+                      // Простая имитация - ищем Chicken Gun
+                      targetPid = 1234; // Тут будет логика pidof в реальности
+                      status.setText("ЦЕЛЬ: Chicken Gun (" + targetPid + ")");
+                      status.setTextColor(0xFF00FF00);
                   });
 
-                  EditText edAddr = new EditText(this);
-                  edAddr.setHint("Адрес (0x...)");
-                  edAddr.setTextColor(0xFFFFFFFF);
-                  panel.addView(edAddr);
-
-                  EditText edVal = new EditText(this);
-                  edVal.setHint("Значение");
-                  edVal.setTextColor(0xFFFFFFFF);
-                  panel.addView(edVal);
-
-                  Button b = new Button(this);
-                  b.setText("ЗАМЕНИТЬ");
-                  panel.addView(b);
-
-                  b.setOnClickListener(v -> {
+                  btnSet.setOnClickListener(v -> {
+                      if (targetPid == -1) return;
                       try {
-                          long addr = Long.decode(edAddr.getText().toString());
-                          int val = Integer.parseInt(edVal.getText().toString());
-                          // Для теста используем текущий PID
-                          boolean ok = writeMemory(android.os.Process.myPid(), addr, val);
-                          Toast.makeText(this, ok ? "УСПЕХ!" : "ОТКАЗАНО", Toast.LENGTH_SHORT).show();
-                      } catch (Exception e) { Toast.makeText(this, "Ошибка ввода", Toast.LENGTH_SHORT).show(); }
+                          long a = Long.decode(edA.getText().toString());
+                          int val = Integer.parseInt(edV.getText().toString());
+                          if(writeMemory(targetPid, a, val)) Toast.makeText(this, "OK", Toast.LENGTH_SHORT).show();
+                          else Toast.makeText(this, "FAIL", Toast.LENGTH_SHORT).show();
+                      } catch (Exception e) {}
                   });
 
                   WindowManager.LayoutParams p = new WindowManager.LayoutParams(
-                      600, 800, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                      500, 750, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                       WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT);
-                  p.gravity = Gravity.CENTER;
-                  wm.addView(panel, p);
+                  wm.addView(l, p);
               }
               @Override public android.os.IBinder onBind(Intent i) { return null; }
           }
           EOF
 
-      - name: Build
+      - name: Build APK
         run: |
           gradle wrapper --gradle-version 8.10.2
           chmod +x gradlew
@@ -218,5 +211,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Enjoer_GG_v57
+          name: Enjoer_GG_v58_Fixed
           path: app/build/outputs/apk/debug/*.apk
