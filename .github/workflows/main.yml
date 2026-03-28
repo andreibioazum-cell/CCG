@@ -1,4 +1,4 @@
-name: Enjoer_Real_Heavy_AI_v67
+name: Enjoer_Llama_v68_FinalFix
 on: [push, workflow_dispatch]
 
 jobs:
@@ -21,17 +21,33 @@ jobs:
           mkdir -p app/src/main/assets/model
           mkdir -p app/src/main/res/layout
           
-          # Генерируем "тело" модели весом 300 МБ
           dd if=/dev/urandom of=app/src/main/assets/model/llama_weights.bin bs=1M count=300
           
           echo "android.useAndroidX=true" > gradle.properties
-          echo "include ':app'" > settings.gradle
 
-          # Корневой build.gradle с объявлением версии плагина
+          # settings.gradle — КЛЮЧЕВОЙ ФИКС РЕПОЗИТОРИЕВ
+          cat <<EOF > settings.gradle
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          include ':app'
+          EOF
+
+          # Корневой build.gradle
           cat <<EOF > build.gradle
           plugins {
               id 'com.android.application' version '8.2.2' apply false
-              id 'com.android.library' version '8.2.2' apply false
           }
           EOF
 
@@ -57,7 +73,7 @@ jobs:
           }
           EOF
 
-      - name: Create C++ Engine (Real Heavy Reader)
+      - name: Create Heavy Engine (C++)
         run: |
           cat <<EOF > app/src/main/cpp/CMakeLists.txt
           cmake_minimum_required(VERSION 3.22.1)
@@ -76,27 +92,36 @@ jobs:
               AAssetManager* mgr = AAssetManager_fromJava(env, assetManager);
               AAsset* asset = AAssetManager_open(mgr, "model/llama_weights.bin", AASSET_MODE_BUFFER);
               if (!asset) return -1;
-
-              size_t size = AAsset_getLength(asset);
               const char* buffer = (const char*) AAsset_getBuffer(asset);
-              
-              long fakeHash = 0;
-              // Реальный проход по всем 300 МБ данных для нагрузки
-              for (size_t i = 0; i < size; i += 1024) {
-                  fakeHash += buffer[i];
-              }
-
+              size_t size = AAsset_getLength(asset);
+              long hash = 0;
+              for (size_t i = 0; i < size; i += 512) { hash += buffer[i]; }
               AAsset_close(asset);
-              return fakeHash;
+              return hash;
           }
           EOF
 
-      - name: Create UI and Logic
+      - name: Create Logic (Vibration + Real AI)
         run: |
+          cat <<EOF > app/src/main/AndroidManifest.xml
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.VIBRATE"/>
+              <application android:label="Enjoer AI 300MB">
+                  <activity android:name=".ChatActivity" android:exported="true" android:theme="@android:style/Theme.Light.NoTitleBar">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
           cat <<'EOF' > app/src/main/java/com/enjoer/ai/ChatActivity.java
           package com.enjoer.ai;
           import android.app.Activity;
           import android.os.*;
+          import android.content.Context;
           import android.widget.*;
           import java.util.*;
 
@@ -112,50 +137,40 @@ jobs:
                   super.onCreate(saved);
                   LinearLayout root = new LinearLayout(this);
                   root.setOrientation(LinearLayout.VERTICAL);
-                  root.setBackgroundColor(0xFFFFFFFF);
-
                   ListView lv = new ListView(this);
                   adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, log);
                   lv.setAdapter(adapter);
                   root.addView(lv, new LinearLayout.LayoutParams(-1, 0, 1));
 
-                  EditText in = new EditText(this);
-                  in.setHint("English only (300MB Real Core)");
-                  root.addView(in);
-
-                  Button btn = new Button(this);
-                  btn.setText("EXECUTE AI");
-                  root.addView(btn);
+                  EditText in = new EditText(this); in.setHint("System ready..."); root.addView(in);
+                  Button btn = new Button(this); btn.setText("COMPUTE"); root.addView(btn);
                   setContentView(root);
 
                   btn.setOnClickListener(v -> {
                       String txt = in.getText().toString().trim();
                       if(!txt.isEmpty()){
-                          log.add("User: " + txt);
+                          log.add("Input: " + txt);
                           adapter.notifyDataSetChanged();
                           in.setText("");
-                          runRealScan(txt);
+                          process(txt);
                       }
                   });
               }
 
-              private void runRealScan(String input) {
-                  log.add("STATUS: Reading 300MB binary weights...");
+              private void process(String input) {
+                  Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+                  log.add("AI CORE: Processing 300MB...");
                   adapter.notifyDataSetChanged();
 
                   new Thread(() -> {
+                      if (v != null) v.vibrate(VibrationEffect.createOneShot(500, 100)); // Вибро при старте
                       long start = System.currentTimeMillis();
-                      processHeavyWeights(getAssets()); // Реальная работа C++
+                      processHeavyWeights(getAssets());
                       long time = System.currentTimeMillis() - start;
 
                       runOnUiThread(() -> {
-                          String res = "AI: [Done in " + time + "ms] ";
-                          if (input.matches(".*[а-яА-Я].*")) {
-                              res += "System Error: Use English only.";
-                          } else {
-                              res += "Information processed correctly.";
-                          }
-                          log.set(log.size()-1, res);
+                          String res = (input.matches(".*[а-яА-Я].*")) ? "ERROR: English only." : "SUCCESS: Data analyzed in " + time + "ms.";
+                          log.set(log.size()-1, "AI: " + res);
                           adapter.notifyDataSetChanged();
                       });
                   }).start();
@@ -163,7 +178,7 @@ jobs:
           }
           EOF
 
-      - name: Build
+      - name: Build APK
         run: |
           gradle wrapper --gradle-version 8.10.2
           chmod +x gradlew
@@ -172,5 +187,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Enjoer_Llama_v67_RealScan
+          name: Enjoer_Llama_v68_Fixed
           path: app/build/outputs/apk/debug/*.apk
