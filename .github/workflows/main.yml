@@ -283,17 +283,14 @@ jobs:
           public class Block {
               public float x, y, z, sx, sy, sz, r, g, b;
               public boolean isTrigger, hidden, noCollision;
-              public String scriptName, scriptCode;
-              public float teleportX, teleportY, teleportZ;
+              public String scriptCode;
               
               public Block(float x, float y, float z, float sx, float sy, float sz, float r, float g, float b) {
                   this.x=x; this.y=y; this.z=z; this.sx=sx; this.sy=sy; this.sz=sz; this.r=r; this.g=g; this.b=b;
                   this.isTrigger = false;
                   this.hidden = false;
                   this.noCollision = false;
-                  this.scriptName = null;
                   this.scriptCode = null;
-                  this.teleportX = 0; this.teleportY = 5; this.teleportZ = 0;
               }
               
               public float minX(){return x-sx/2;} public float maxX(){return x+sx/2;}
@@ -301,84 +298,6 @@ jobs:
               public float minZ(){return z-sz/2;} public float maxZ(){return z+sz/2;}
           }
           EOF
-
-          cat <<'SCRIPT' > app/src/main/java/com/enjoer/game/GameScript.java
-          package com.enjoer.game;
-          import java.util.*;
-          import javax.script.*;
-          
-          public class GameScript {
-              private GameRenderer renderer;
-              private ScriptEngineManager manager;
-              private ScriptEngine engine;
-              private Map<String, CompiledScript> compiledScripts = new HashMap<>();
-              
-              public interface ScriptMessageCallback {
-                  void onMessage(String msg);
-              }
-              
-              public GameScript(GameRenderer ren) {
-                  this.renderer = ren;
-                  this.manager = new ScriptEngineManager();
-                  this.engine = manager.getEngineByName("rhino");
-                  if (this.engine == null) {
-                      this.engine = manager.getEngineByName("javascript");
-                  }
-                  registerBuiltInFunctions();
-              }
-              
-              private void registerBuiltInFunctions() {
-                  if (engine != null) {
-                      engine.put("game", renderer);
-                      engine.put("console", new Object() {
-                          public void log(String msg) {
-                              if (renderer.messageCallback != null) {
-                                  renderer.messageCallback.onMessage(msg);
-                              }
-                          }
-                      });
-                  }
-              }
-              
-              public void executeScript(Block block) {
-                  if (block == null || block.scriptCode == null || block.scriptCode.isEmpty()) return;
-                  if (engine == null) {
-                      if (renderer.messageCallback != null) {
-                          renderer.messageCallback.onMessage("JavaScript engine not available");
-                      }
-                      return;
-                  }
-                  
-                  try {
-                      engine.put("block", block);
-                      engine.put("player", new PlayerProxy(renderer));
-                      engine.eval(block.scriptCode);
-                  } catch (ScriptException e) {
-                      if (renderer.messageCallback != null) {
-                          renderer.messageCallback.onMessage("Script error: " + e.getMessage());
-                      }
-                  }
-              }
-              
-              public void executeTrigger(Block block) {
-                  if (block != null && block.isTrigger && block.scriptCode != null && !block.scriptCode.isEmpty()) {
-                      executeScript(block);
-                  }
-              }
-              
-              public class PlayerProxy {
-                  private GameRenderer ren;
-                  public PlayerProxy(GameRenderer r) { this.ren = r; }
-                  public void teleport(float x, float y, float z) { ren.pX = x; ren.pY = y; ren.pZ = z; }
-                  public void setColor(float r, float g, float b) { ren.blockR = r; ren.blockG = g; ren.blockB = b; }
-                  public void setSpeed(float mult) { ren.speedMultiplier = mult; }
-                  public void jump() { if(ren.isOnGround()) ren.vY = 0.55f; }
-                  public float getX() { return ren.pX; }
-                  public float getY() { return ren.pY; }
-                  public float getZ() { return ren.pZ; }
-              }
-          }
-          SCRIPT
 
           cat <<'RENDERER' > app/src/main/java/com/enjoer/game/GameRenderer.java
           package com.enjoer.game;
@@ -395,7 +314,8 @@ jobs:
               public float pX=0, pY=6, pZ=15, rY=0, rX=0, jX=0, jY=0, vY=0;
               public boolean isEngineMode=false, isPlayingLevel=false;
               public float speedMultiplier = 1.0f;
-              public GameScript.ScriptMessageCallback messageCallback;
+              public interface MessageCallback { void onMessage(String msg); }
+              public MessageCallback messageCallback;
               private int prog;
               private FloatBuffer vBuf, nBuf;
               public float blockR=0.8f, blockG=0.3f, blockB=0.3f, blockSX=4, blockSY=4, blockSZ=4, placeDist=6f;
@@ -403,10 +323,9 @@ jobs:
               public int selectedIndex = -1;
               public float screenW=1, screenH=1;
               private static final float FLOOR_Y=0f, PLAYER_HEIGHT=3.2f, PLAYER_RADIUS=0.5f;
-              private GameScript scriptSystem;
               private Block lastTouchedTrigger = null;
 
-              public void setMessageCallback(GameScript.ScriptMessageCallback cb) { messageCallback = cb; }
+              public void setMessageCallback(MessageCallback cb) { messageCallback = cb; }
               
               public void loadBuiltInLevel() {
                   blocks.clear();
@@ -416,10 +335,9 @@ jobs:
                   blocks.add(new Block(0,1,-38, 14,2,14, 0.9f,0.9f,0.3f));
                   blocks.add(new Block(0,0.5f,-60, 18,1,18, 0.95f,0.95f,0.95f));
                   
-                  // Пример телепорта
                   Block teleport = new Block(0, 1.5f, -45, 4, 3, 4, 0.8f, 0.2f, 0.8f);
                   teleport.isTrigger = true;
-                  teleport.scriptCode = "player.teleport(0, 10, -20); console.log('Teleported!');";
+                  teleport.scriptCode = "// Teleport script\nplayer.teleport(0, 10, -20);";
                   blocks.add(teleport);
               }
 
@@ -493,6 +411,61 @@ jobs:
                   return closest;
               }
 
+              private void executeBlockScript(Block block) {
+                  if(block == null || block.scriptCode == null || block.scriptCode.isEmpty()) return;
+                  try {
+                      // Простой парсер скриптов
+                      String code = block.scriptCode;
+                      if(code.contains("player.teleport")) {
+                          String[] parts = code.split("player.teleport\\(");
+                          if(parts.length > 1) {
+                              String params = parts[1].split("\\)")[0];
+                              String[] coords = params.split(",");
+                              if(coords.length >= 3) {
+                                  float x = Float.parseFloat(coords[0].trim());
+                                  float y = Float.parseFloat(coords[1].trim());
+                                  float z = Float.parseFloat(coords[2].trim());
+                                  pX = x; pY = y; pZ = z;
+                                  if(messageCallback != null) messageCallback.onMessage("Teleported!");
+                              }
+                          }
+                      }
+                      if(code.contains("player.setColor")) {
+                          String[] parts = code.split("player.setColor\\(");
+                          if(parts.length > 1) {
+                              String params = parts[1].split("\\)")[0];
+                              String[] colors = params.split(",");
+                              if(colors.length >= 3) {
+                                  block.r = Float.parseFloat(colors[0].trim());
+                                  block.g = Float.parseFloat(colors[1].trim());
+                                  block.b = Float.parseFloat(colors[2].trim());
+                                  if(messageCallback != null) messageCallback.onMessage("Color changed!");
+                              }
+                          }
+                      }
+                      if(code.contains("player.setSpeed")) {
+                          String[] parts = code.split("player.setSpeed\\(");
+                          if(parts.length > 1) {
+                              String params = parts[1].split("\\)")[0];
+                              speedMultiplier = Float.parseFloat(params.trim());
+                              if(messageCallback != null) messageCallback.onMessage("Speed: " + speedMultiplier);
+                          }
+                      }
+                      if(code.contains("player.jump")) {
+                          if(isOnGround()) vY = 0.55f;
+                      }
+                      if(code.contains("console.log")) {
+                          String[] parts = code.split("console.log\\(");
+                          if(parts.length > 1) {
+                              String msg = parts[1].split("\\)")[0].replace("\"", "").replace("'", "");
+                              if(messageCallback != null) messageCallback.onMessage(msg);
+                          }
+                      }
+                  } catch(Exception e) {
+                      if(messageCallback != null) messageCallback.onMessage("Script error: " + e.getMessage());
+                  }
+              }
+
               @Override
               public void onSurfaceCreated(GL10 gl, EGLConfig cfg) {
                   GLES30.glEnable(GLES30.GL_DEPTH_TEST);
@@ -542,7 +515,6 @@ jobs:
                   float[] nc={0,0,1, 0,0,1, 0,0,1, 0,0,1, 0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1, 0,1,0, 0,1,0, 0,1,0, 0,1,0, 0,-1,0, 0,-1,0, 0,-1,0, 0,-1,0, -1,0,0, -1,0,0, -1,0,0, -1,0,0, 1,0,0, 1,0,0, 1,0,0, 1,0,0};
                   vBuf=ByteBuffer.allocateDirect(vc.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(vc);vBuf.position(0);
                   nBuf=ByteBuffer.allocateDirect(nc.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(nc);nBuf.position(0);
-                  scriptSystem = new GameScript(this);
                   loadBuiltInLevel();
               }
 
@@ -572,12 +544,12 @@ jobs:
               
               private void checkTriggers() {
                   for(Block b : blocks) {
-                      if(b.isTrigger && b.scriptCode != null && !b.hidden) {
+                      if(b.isTrigger && b.scriptCode != null && !b.scriptCode.isEmpty() && !b.hidden) {
                           if(pX + PLAYER_RADIUS > b.minX() && pX - PLAYER_RADIUS < b.maxX() &&
                              pZ + PLAYER_RADIUS > b.minZ() && pZ - PLAYER_RADIUS < b.maxZ() &&
                              pY - PLAYER_HEIGHT < b.maxY() && pY > b.minY()) {
                               if(lastTouchedTrigger != b) {
-                                  scriptSystem.executeScript(b);
+                                  executeBlockScript(b);
                                   lastTouchedTrigger = b;
                               }
                               return;
@@ -677,7 +649,7 @@ jobs:
                       if(res.getResultCode()==RESULT_OK&&res.getData()!=null){
                           try{OutputStream out=getContentResolver().openOutputStream(res.getData().getData());
                           JSONArray arr=new JSONArray();for(Block b:ren.blocks){JSONObject o=new JSONObject();o.put("x",b.x);o.put("y",b.y);o.put("z",b.z);o.put("sx",b.sx);o.put("sy",b.sy);o.put("sz",b.sz);o.put("r",b.r);o.put("g",b.g);o.put("b",b.b);o.put("isTrigger",b.isTrigger);o.put("hidden",b.hidden);o.put("noCollision",b.noCollision);if(b.scriptCode!=null)o.put("scriptCode",b.scriptCode);arr.put(o);}
-                          JSONObject root=new JSONObject();root.put("blocks",arr);out.write(root.toString().getBytes());out.close();Toast.makeText(this,"Exported!",Toast.LENGTH_SHORT).show();}catch(Exception e){Toast.makeText(this,"Error",Toast.LENGTH_SHORT).show();}}});
+                          JSONObject root=new JSONObject();root.put("blocks",arr);out.write(root.toString().getBytes());out.close();Toast.makeText(this,"Exported!",Toast.LENGTH_SHORT).show();}catch(Exception e){Toast.makeText(this,"Error: "+e.getMessage(),Toast.LENGTH_SHORT).show();}}});
 
                   loadLauncher=registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),res->{
                       if(res.getResultCode()==RESULT_OK&&res.getData()!=null){
@@ -688,7 +660,7 @@ jobs:
                           ren.isEngineMode=false;ren.isPlayingLevel=false;resetP();
                           menuUI.setVisibility(View.GONE);gameUI.setVisibility(View.VISIBLE);
                           setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
-                          Toast.makeText(this,"Loaded!",Toast.LENGTH_SHORT).show();}catch(Exception e){Toast.makeText(this,"Invalid file",Toast.LENGTH_SHORT).show();}}});
+                          Toast.makeText(this,"Loaded "+ren.blocks.size()+" blocks!",Toast.LENGTH_SHORT).show();}catch(Exception e){Toast.makeText(this,"Invalid file: "+e.getMessage(),Toast.LENGTH_SHORT).show();}}});
 
                   findViewById(R.id.btn_play).setOnClickListener(v->{
                       pendingMode = 1;
@@ -729,7 +701,8 @@ jobs:
                   findViewById(R.id.btn_script).setOnClickListener(v->{
                       if(ren.selectedIndex >= 0) {
                           Block b = ren.blocks.get(ren.selectedIndex);
-                          scriptCode.setText(b.scriptCode != null ? b.scriptCode : "// Write your script here\n// Available: player.teleport(x,y,z), player.setColor(r,g,b)\n// player.setSpeed(mult), player.jump(), console.log(msg)\n\nplayer.teleport(0, 10, 0);\nconsole.log('Hello!');");
+                          String defaultScript = "// Available commands:\n// player.teleport(x, y, z)\n// player.setColor(r, g, b)\n// player.setSpeed(multiplier)\n// player.jump()\n// console.log(\"message\")\n\n";
+                          scriptCode.setText(b.scriptCode != null ? b.scriptCode : defaultScript + "console.log(\"Hello from block!\");");
                           scriptEditor.setVisibility(View.VISIBLE);
                       } else {
                           Toast.makeText(this, "Select a block first", Toast.LENGTH_SHORT).show();
@@ -742,7 +715,7 @@ jobs:
                           b.scriptCode = scriptCode.getText().toString();
                           b.isTrigger = true;
                           scriptEditor.setVisibility(View.GONE);
-                          Toast.makeText(this, "Script saved!", Toast.LENGTH_SHORT).show();
+                          Toast.makeText(this, "Script saved! Touch the block to activate.", Toast.LENGTH_LONG).show();
                       }
                   });
                   
@@ -754,7 +727,7 @@ jobs:
                       if(ren.selectedIndex >= 0) {
                           Block b = ren.blocks.get(ren.selectedIndex);
                           b.hidden = !b.hidden;
-                          Toast.makeText(this, "Hidden: " + b.hidden, Toast.LENGTH_SHORT).show();
+                          Toast.makeText(this, "Block " + (b.hidden ? "hidden" : "visible"), Toast.LENGTH_SHORT).show();
                       } else {
                           Toast.makeText(this, "Select a block first", Toast.LENGTH_SHORT).show();
                       }
@@ -764,9 +737,9 @@ jobs:
                       if(ren.selectedIndex >= 0) {
                           Block b = ren.blocks.get(ren.selectedIndex);
                           if(b.scriptCode == null) b.scriptCode = "";
-                          b.scriptCode += "\nplayer.teleport(" + ren.pX + ", " + (ren.pY+2) + ", " + ren.pZ + ");\nconsole.log('Teleport to player position');";
+                          b.scriptCode += "\nplayer.teleport(" + ren.pX + ", " + (ren.pY+2) + ", " + ren.pZ + ");\nconsole.log(\"Teleported to player position!\");";
                           b.isTrigger = true;
-                          Toast.makeText(this, "Teleport added to block", Toast.LENGTH_SHORT).show();
+                          Toast.makeText(this, "Teleport script added!", Toast.LENGTH_SHORT).show();
                       } else {
                           Toast.makeText(this, "Select a block first", Toast.LENGTH_SHORT).show();
                       }
@@ -928,7 +901,6 @@ jobs:
           }
           dependencies { 
               implementation 'androidx.appcompat:appcompat:1.6.1'
-              implementation 'org.mozilla:rhino:1.7.14'
           }
           EOF
 
