@@ -1,4 +1,4 @@
-name: ENJOER_ULTRA_V18_FIXED
+name: ENJOER_ULTRA_V18_FINAL_FIX
 on: [push, workflow_dispatch]
 
 jobs:
@@ -194,7 +194,7 @@ jobs:
           }
           EOF
 
-      - name: Configure Gradle & Manifest
+      - name: Build Setup
         run: |
           cat <<'EOF' > app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.enjoer.game">
@@ -204,7 +204,6 @@ jobs:
           </activity></application></manifest>
           EOF
           
-          # Настройка корневого build.gradle (ИСПРАВЛЕНО)
           cat <<'EOF' > build.gradle
           buildscript {
               repositories { google(); mavenCentral() }
@@ -218,7 +217,7 @@ jobs:
           echo "include ':app'" > settings.gradle
           echo "android.useAndroidX=true" > gradle.properties
           
-          # Настройка app/build.gradle (ИСПРАВЛЕНО)
+          # ИСПРАВЛЕННАЯ СТРУКТУРА BUILD.GRADLE
           cat <<'EOF' > app/build.gradle
           apply plugin: 'com.android.application'
           android {
@@ -228,7 +227,11 @@ jobs:
                   applicationId 'com.enjoer.game'
                   minSdk 24
                   targetSdk 34
-                  externalNativeBuild { cmake { path 'src/main/cpp/CMakeLists.txt' } }
+              }
+              externalNativeBuild {
+                  cmake {
+                      path 'src/main/cpp/CMakeLists.txt'
+                  }
               }
           }
           dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }
@@ -239,8 +242,8 @@ jobs:
           gradle wrapper --gradle-version 8.5
           ./gradlew assembleDebug
 
-      - name: Upload APK
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Enjoer_V18_Fixed
+          name: Enjoer_V18_Final
           path: app/build/outputs/apk/debug/app-debug.apk
