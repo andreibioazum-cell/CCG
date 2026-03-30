@@ -92,22 +92,22 @@ jobs:
 
           cat <<EOF > app/src/main/res/drawable/crosshair.xml
           <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-            <item>
+            <item android:gravity="center">
               <shape android:shape="rectangle">
-                <size android:width="26dp" android:height="2dp"/>
-                <solid android:color="#FFFFFFFF"/>
+                <size android:width="22dp" android:height="2dp"/>
+                <solid android:color="#FF00BFFF"/>
               </shape>
             </item>
             <item android:gravity="center">
               <shape android:shape="rectangle">
-                <size android:width="2dp" android:height="26dp"/>
-                <solid android:color="#FFFFFFFF"/>
+                <size android:width="2dp" android:height="22dp"/>
+                <solid android:color="#FF00BFFF"/>
               </shape>
             </item>
             <item android:gravity="center">
               <shape android:shape="oval">
-                <size android:width="6dp" android:height="6dp"/>
-                <solid android:color="#FF00BFFF"/>
+                <size android:width="4dp" android:height="4dp"/>
+                <solid android:color="#FF7FDBFF"/>
               </shape>
             </item>
           </layer-list>
@@ -181,8 +181,8 @@ jobs:
 
                   <View
                       android:id="@+id/crosshair_game"
-                      android:layout_width="26dp"
-                      android:layout_height="26dp"
+                      android:layout_width="22dp"
+                      android:layout_height="22dp"
                       android:layout_centerInParent="true"
                       android:background="@drawable/crosshair"/>
               </RelativeLayout>
@@ -438,50 +438,6 @@ jobs:
                               android:textColor="#AEEBFF"
                               android:layout_marginTop="6dp"/>
 
-                          <TextView
-                              android:layout_width="match_parent"
-                              android:layout_height="wrap_content"
-                              android:text="Grid"
-                              android:textColor="#FFFFFF"
-                              android:textStyle="bold"
-                              android:layout_marginTop="10dp"/>
-
-                          <LinearLayout
-                              android:layout_width="match_parent"
-                              android:layout_height="wrap_content"
-                              android:orientation="horizontal"
-                              android:layout_marginTop="6dp">
-
-                              <Button
-                                  android:id="@+id/grid_1"
-                                  android:layout_width="0dp"
-                                  android:layout_height="36dp"
-                                  android:layout_weight="1"
-                                  android:text="1"
-                                  android:background="@drawable/btn_blue_filled"
-                                  android:textColor="#000"/>
-
-                              <Button
-                                  android:id="@+id/grid_2"
-                                  android:layout_width="0dp"
-                                  android:layout_height="36dp"
-                                  android:layout_weight="1"
-                                  android:text="2"
-                                  android:background="@drawable/btn_blue"
-                                  android:textColor="#00BFFF"
-                                  android:layout_marginLeft="4dp"/>
-
-                              <Button
-                                  android:id="@+id/grid_4"
-                                  android:layout_width="0dp"
-                                  android:layout_height="36dp"
-                                  android:layout_weight="1"
-                                  android:text="4"
-                                  android:background="@drawable/btn_blue"
-                                  android:textColor="#00BFFF"
-                                  android:layout_marginLeft="4dp"/>
-                          </LinearLayout>
-
                           <LinearLayout
                               android:layout_width="match_parent"
                               android:layout_height="wrap_content"
@@ -572,6 +528,13 @@ jobs:
                                   android:textColor="#00BFFF"
                                   android:layout_marginLeft="4dp"/>
                           </LinearLayout>
+
+                          <TextView
+                              android:layout_width="match_parent"
+                              android:layout_height="wrap_content"
+                              android:text="Grid: 2"
+                              android:textColor="#7FDBFF"
+                              android:layout_marginTop="8dp"/>
 
                           <Button
                               android:id="@+id/btn_place"
@@ -687,8 +650,8 @@ jobs:
 
                   <View
                       android:id="@+id/crosshair_engine"
-                      android:layout_width="26dp"
-                      android:layout_height="26dp"
+                      android:layout_width="22dp"
+                      android:layout_height="22dp"
                       android:layout_centerInParent="true"
                       android:background="@drawable/crosshair"/>
               </RelativeLayout>
@@ -749,8 +712,8 @@ jobs:
 
                   <View
                       android:id="@+id/crosshair_playtest"
-                      android:layout_width="26dp"
-                      android:layout_height="26dp"
+                      android:layout_width="22dp"
+                      android:layout_height="22dp"
                       android:layout_centerInParent="true"
                       android:background="@drawable/crosshair"/>
               </RelativeLayout>
@@ -955,13 +918,6 @@ jobs:
                       return;
                   }
 
-                  if(line.startsWith("phone.grid(") && line.endsWith(")")){
-                      String[] a = args(line);
-                      if(a.length != 1) throw new Exception("phone.grid requires 1 arg");
-                      ren.gridSize = Math.max(0.5f, f(a[0]));
-                      return;
-                  }
-
                   if(line.startsWith("world.place(") && line.endsWith(")")){
                       String[] a = args(line);
                       if(a.length != 9) throw new Exception("world.place requires 9 args");
@@ -1025,14 +981,14 @@ jobs:
           import javax.microedition.khronos.opengles.GL10;
 
           public class GameRenderer implements GLSurfaceView.Renderer {
-              private final float[] proj=new float[16], view=new float[16], model=new float[16];
+              private final float[] proj=new float[16], view=new float[16], model=new float[16], vp=new float[16];
               public float pX=0, pY=6, pZ=15, rY=0, rX=0, jX=0, jY=0, vY=0;
               public boolean isEngineMode=false, isPlayingLevel=false;
-              private int prog;
-              private FloatBuffer vBuf, nBuf;
+              private int prog, skyProg;
+              private FloatBuffer vBuf, nBuf, skyBuf;
               public float blockR=0.8f, blockG=0.3f, blockB=0.3f, blockSX=4, blockSY=4, blockSZ=4, placeDist=6f;
               public String blockShape="square";
-              public float gridSize = 1f;
+              public final float gridSize = 2f;
               public CopyOnWriteArrayList<Block> blocks = new CopyOnWriteArrayList<>();
               public int selectedIndex = -1;
               public float screenW=1, screenH=1;
@@ -1054,7 +1010,7 @@ jobs:
                   b1.shape="square";
                   blocks.add(b1);
 
-                  Block b2 = new Block(-12,2,-22, 5,4,8, 0.2f,0.9f,0.2f);
+                  Block b2 = new Block(-12,2,-22, 8,4,4, 0.2f,0.9f,0.2f);
                   b2.shape="rectangle";
                   blocks.add(b2);
 
@@ -1154,6 +1110,7 @@ jobs:
               @Override
               public void onSurfaceCreated(GL10 gl, EGLConfig cfg) {
                   GLES30.glEnable(GLES30.GL_DEPTH_TEST);
+                  GLES30.glDepthFunc(GLES30.GL_LEQUAL);
 
                   String vs="#version 300 es\n"+
                       "layout(location=0)in vec4 aP;layout(location=1)in vec3 aN;"+
@@ -1162,41 +1119,56 @@ jobs:
 
                   String fs="#version 300 es\nprecision highp float;"+
                       "in vec3 vN,vP;uniform vec3 camP;uniform vec4 uC;uniform float uSel,isFloor;out vec4 fC;"+
-                      "float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}"+
-                      "vec3 sky(vec3 d){"+
-                      "  float t=clamp(d.y*.5+.5,0.,1.);"+
-                      "  vec3 base=mix(vec3(.003,.006,.018),vec3(.02,.18,.45),t);"+
-                      "  if(d.y>0.12){"+
-                      "    vec2 uv=d.xz/(abs(d.y)+0.35);"+
-                      "    uv*=90.0;"+
-                      "    vec2 id=floor(uv);"+
-                      "    vec2 gv=fract(uv)-.5;"+
-                      "    float rnd=hash(id);"+
-                      "    float star=step(.985,rnd);"+
-                      "    float dist=length(gv);"+
-                      "    float tw=0.7+0.3*sin(rnd*200.0 + uv.x*0.02 + uv.y*0.02);"+
-                      "    float core=smoothstep(.08,.0,dist)*star*tw*2.2;"+
-                      "    float glow=smoothstep(.35,.0,dist)*star*tw*0.9;"+
-                      "    vec3 scol=mix(vec3(1.0,.95,.85),vec3(.8,.9,1.0),hash(id+5.1));"+
-                      "    base += scol*(core+glow);"+
-                      "  }"+
-                      "  return base;"+
-                      "}"+
                       "void main(){"+
                       "vec3 n=normalize(vN),vD=normalize(camP-vP),lD=normalize(vec3(.4,1.,.2));"+
                       "float diff=max(dot(n,lD),0.),ao=clamp(vP.y*.08+.6,.3,1.);"+
                       "vec3 h=normalize(lD+vD);float spec=pow(max(dot(n,h),0.),48.)*.6;"+
-                      "float fres=pow(1.-max(dot(n,vD),0.),4.);"+
                       "vec3 col=uC.rgb;if(uSel>.5)col+=vec3(0.,.5,.8);"+
-                      "vec3 amb=vec3(.06,.09,.15)*ao;vec3 fin=col*(diff*vec3(1.,.97,.92)+amb)+spec;"+
-                      "fin+=sky(reflect(-vD,n))*fres*.35;"+
-                      "if(isFloor>.5){vec2 g=fract(vP.xz*.2);float ln=step(.97,g.x)+step(.97,g.y);fin=mix(fin,vec3(0.,.4,.8),clamp(ln,0.,1.)*.55);}"+
+                      "vec3 amb=vec3(.05,.08,.13)*ao;vec3 fin=col*(diff*vec3(1.,.97,.92)+amb)+spec;"+
+                      "if(isFloor>.5){vec2 g=fract(vP.xz*.2);float ln=step(.97,g.x)+step(.97,g.y);fin=mix(fin,vec3(0.,.4,.8),clamp(ln,0.,1.)*.45);}"+
                       "float dist=length(camP-vP),fog=1.-exp(-dist*.006);"+
-                      "vec3 c=mix(fin,sky(vD),clamp(fog,0.,.88));"+
+                      "vec3 fogCol=vec3(.02,.06,.14);"+
+                      "vec3 c=mix(fin,fogCol,clamp(fog,0.,.82));"+
                       "c=(c*(2.51*c+.03))/(c*(2.43*c+.59)+.14);"+
                       "fC=vec4(c,uC.a);}";
 
+                  String skyVs="#version 300 es\n"+
+                      "layout(location=0) in vec3 aP;"+
+                      "out vec3 vDir;"+
+                      "uniform mat4 uInvVP;"+
+                      "void main(){"+
+                      "  vec4 p = vec4(aP,1.0);"+
+                      "  vec4 w = uInvVP * p;"+
+                      "  vDir = normalize(w.xyz / w.w);"+
+                      "  gl_Position = p;"+
+                      "}";
+
+                  String skyFs="#version 300 es\nprecision highp float;"+
+                      "in vec3 vDir; out vec4 fC;"+
+                      "float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123);}"+
+                      "void main(){"+
+                      "  vec3 d=normalize(vDir);"+
+                      "  float t=clamp(d.y*0.5+0.5,0.0,1.0);"+
+                      "  vec3 col=mix(vec3(0.005,0.008,0.02), vec3(0.03,0.16,0.36), t);"+
+                      "  if(d.y>0.15){"+
+                      "    vec2 uv=d.xz/(d.y+0.25);"+
+                      "    uv*=120.0;"+
+                      "    vec2 id=floor(uv);"+
+                      "    vec2 gv=fract(uv)-0.5;"+
+                      "    float rnd=hash(id);"+
+                      "    float star=step(0.992,rnd);"+
+                      "    float dist=length(gv);"+
+                      "    float tw=0.65+0.35*sin(rnd*500.0);"+
+                      "    float s=smoothstep(0.16,0.0,dist)*star*tw*2.8;"+
+                      "    float glow=smoothstep(0.42,0.0,dist)*star*0.9;"+
+                      "    vec3 scol=mix(vec3(1.0,0.95,0.85),vec3(0.8,0.9,1.0),hash(id+4.3));"+
+                      "    col += scol*(s+glow);"+
+                      "  }"+
+                      "  fC=vec4(col,1.0);"+
+                      "}";
+
                   prog=mkProg(vs,fs);
+                  skyProg=mkProg(skyVs,skyFs);
 
                   float[] vc={
                       -.5f,.5f,.5f, -.5f,-.5f,.5f, .5f,.5f,.5f, .5f,-.5f,.5f,
@@ -1215,8 +1187,17 @@ jobs:
                       1,0,0, 1,0,0, 1,0,0, 1,0,0
                   };
 
+                  float[] skyQuad={
+                      -1f,-1f,1f,
+                       1f,-1f,1f,
+                      -1f, 1f,1f,
+                       1f, 1f,1f
+                  };
+
                   vBuf=ByteBuffer.allocateDirect(vc.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(vc);vBuf.position(0);
                   nBuf=ByteBuffer.allocateDirect(nc.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(nc);nBuf.position(0);
+                  skyBuf=ByteBuffer.allocateDirect(skyQuad.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(skyQuad);skyBuf.position(0);
+
                   loadBuiltInLevel();
               }
 
@@ -1230,14 +1211,38 @@ jobs:
               @Override
               public void onDrawFrame(GL10 gl) {
                   update();
-                  GLES30.glClearColor(.003f,.006f,.016f,1f);
+                  GLES30.glClearColor(.01f,.015f,.03f,1f);
                   GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT|GLES30.GL_DEPTH_BUFFER_BIT);
 
                   float vx=(float)(Math.sin(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
                   float vy=(float)Math.sin(Math.toRadians(rX));
                   float vz=(float)(-Math.cos(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
                   Matrix.setLookAtM(view,0,pX,pY,pZ,pX+vx,pY+vy,pZ+vz,0,1,0);
+                  Matrix.multiplyMM(vp,0,proj,0,view,0);
 
+                  drawSky();
+                  drawWorld(vx,vy,vz);
+              }
+
+              private void drawSky(){
+                  GLES30.glDepthMask(false);
+                  GLES30.glDisable(GLES30.GL_CULL_FACE);
+                  GLES30.glUseProgram(skyProg);
+
+                  float[] invVP = new float[16];
+                  Matrix.invertM(invVP,0,vp,0);
+
+                  int uInvVP = GLES30.glGetUniformLocation(skyProg,"uInvVP");
+                  GLES30.glUniformMatrix4fv(uInvVP,1,false,invVP,0);
+
+                  GLES30.glVertexAttribPointer(0,3,GLES30.GL_FLOAT,false,0,skyBuf);
+                  GLES30.glEnableVertexAttribArray(0);
+                  GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP,0,4);
+
+                  GLES30.glDepthMask(true);
+              }
+
+              private void drawWorld(float vx,float vy,float vz){
                   GLES30.glUseProgram(prog);
                   int uMVP=GLES30.glGetUniformLocation(prog,"uMVP"),uM=GLES30.glGetUniformLocation(prog,"uM"),uC=GLES30.glGetUniformLocation(prog,"uC");
                   int uSel=GLES30.glGetUniformLocation(prog,"uSel"),uFloor=GLES30.glGetUniformLocation(prog,"isFloor");
@@ -1250,7 +1255,7 @@ jobs:
                   Matrix.scaleM(model,0,800,.1f,800);
                   GLES30.glUniform1f(uSel,0f);
                   GLES30.glUniform1f(uFloor,1f);
-                  draw(uM,uMVP,uC,.04f,.06f,.1f,1f);
+                  draw(uM,uMVP,uC,.05f,.07f,.11f,1f);
 
                   GLES30.glUniform1f(uFloor,0f);
                   for(int i=0;i<blocks.size();i++){
@@ -1279,12 +1284,12 @@ jobs:
               }
 
               private void update(){
-                  float s=.35f,rad=(float)Math.toRadians(rY);
+                  float s=.35f,rad=(float)Math.toRadians(rY),pitch=(float)Math.toRadians(rX);
                   if(isEngineMode&&!isPlayingLevel){
-                      float fx=(float)Math.sin(rad),fz=(float)-Math.cos(rad);
+                      float fx=(float)Math.sin(rad),fz=(float)-Math.cos(rad),fy=(float)Math.sin(pitch);
                       pX+=(fx*-jY+(float)Math.cos(rad)*jX)*s;
                       pZ+=(fz*-jY+(float)Math.sin(rad)*jX)*s;
-                      if(pY<1)pY=1;
+                      pY+=(fy*-jY)*s;
                   } else {
                       float mX=((float)Math.sin(rad)*-jY+(float)Math.cos(rad)*jX)*s;
                       float mZ=((float)-Math.cos(rad)*-jY+(float)Math.sin(rad)*jX)*s;
@@ -1374,7 +1379,7 @@ jobs:
           public class MainActivity extends AppCompatActivity implements ScriptEngine.Host {
               private GameRenderer ren;
               private float lx,ly;
-              private Button[] shapeBtn,distBtn,gridBtn;
+              private Button[] shapeBtn,distBtn;
               private View[] colorBtn;
               private View axisPanel,menuUI,gameUI,engineUI,playtestUI;
               private Button btnDeselect, btnHide;
@@ -1428,7 +1433,6 @@ jobs:
                               }
                               JSONObject root=new JSONObject();
                               root.put("blocks",arr);
-                              root.put("gridSize",ren.gridSize);
                               out.write(root.toString().getBytes());
                               out.close();
                               Toast.makeText(this,"Exported!",Toast.LENGTH_SHORT).show();
@@ -1468,7 +1472,6 @@ jobs:
                                   b.shape = o.optString("shape", "square");
                                   ren.blocks.add(b);
                               }
-                              ren.gridSize = (float)root.optDouble("gridSize", 1.0);
                               pendingMode = 1;
                               ren.isEngineMode=false;
                               ren.isPlayingLevel=false;
@@ -1606,11 +1609,6 @@ jobs:
                       final int idx=i;
                       distBtn[i].setOnClickListener(v->{ ren.placeDist=dists[idx]; updBtnGrp(distBtn,idx); });
                   }
-
-                  gridBtn=new Button[]{findViewById(R.id.grid_1),findViewById(R.id.grid_2),findViewById(R.id.grid_4)};
-                  findViewById(R.id.grid_1).setOnClickListener(v->{ ren.gridSize=1f; updBtnGrp(gridBtn,0); });
-                  findViewById(R.id.grid_2).setOnClickListener(v->{ ren.gridSize=2f; updBtnGrp(gridBtn,1); });
-                  findViewById(R.id.grid_4).setOnClickListener(v->{ ren.gridSize=4f; updBtnGrp(gridBtn,2); });
 
                   colorBtn=new View[]{
                       findViewById(R.id.color_red),
