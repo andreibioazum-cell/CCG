@@ -90,6 +90,29 @@ jobs:
           </shape>
           EOF
 
+          cat <<EOF > app/src/main/res/drawable/crosshair.xml
+          <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+            <item>
+              <shape android:shape="rectangle">
+                <size android:width="26dp" android:height="2dp"/>
+                <solid android:color="#FFFFFFFF"/>
+              </shape>
+            </item>
+            <item android:gravity="center">
+              <shape android:shape="rectangle">
+                <size android:width="2dp" android:height="26dp"/>
+                <solid android:color="#FFFFFFFF"/>
+              </shape>
+            </item>
+            <item android:gravity="center">
+              <shape android:shape="oval">
+                <size android:width="6dp" android:height="6dp"/>
+                <solid android:color="#FF00BFFF"/>
+              </shape>
+            </item>
+          </layer-list>
+          EOF
+
           cat <<'LAYOUT' > app/src/main/res/layout/activity_main.xml
           <?xml version="1.0" encoding="utf-8"?>
           <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -155,6 +178,13 @@ jobs:
                       android:textSize="28sp"
                       android:background="@drawable/btn_blue"
                       android:textColor="#FFF"/>
+
+                  <View
+                      android:id="@+id/crosshair_game"
+                      android:layout_width="26dp"
+                      android:layout_height="26dp"
+                      android:layout_centerInParent="true"
+                      android:background="@drawable/crosshair"/>
               </RelativeLayout>
 
               <RelativeLayout
@@ -239,38 +269,9 @@ jobs:
                       android:layout_marginTop="35dp"
                       android:background="@drawable/joy_stick"/>
 
-                  <LinearLayout
-                      android:layout_width="wrap_content"
-                      android:layout_height="wrap_content"
-                      android:layout_above="@id/engine_joy_base"
-                      android:layout_alignParentLeft="true"
-                      android:layout_marginLeft="35dp"
-                      android:layout_marginBottom="10dp"
-                      android:orientation="horizontal">
-
-                      <Button
-                          android:id="@+id/btn_down"
-                          android:layout_width="50dp"
-                          android:layout_height="50dp"
-                          android:text="▼"
-                          android:textSize="20sp"
-                          android:background="@drawable/btn_blue"
-                          android:textColor="#00BFFF"/>
-
-                      <Button
-                          android:id="@+id/btn_up"
-                          android:layout_width="50dp"
-                          android:layout_height="50dp"
-                          android:text="▲"
-                          android:textSize="20sp"
-                          android:background="@drawable/btn_blue"
-                          android:textColor="#00BFFF"
-                          android:layout_marginLeft="10dp"/>
-                  </LinearLayout>
-
                   <ScrollView
                       android:id="@+id/tools_scroll"
-                      android:layout_width="190dp"
+                      android:layout_width="200dp"
                       android:layout_height="match_parent"
                       android:layout_alignParentRight="true"
                       android:layout_marginRight="10dp"
@@ -298,30 +299,20 @@ jobs:
                               android:layout_marginTop="6dp">
 
                               <Button
-                                  android:id="@+id/shape_cube"
+                                  android:id="@+id/shape_square"
                                   android:layout_width="0dp"
                                   android:layout_height="36dp"
                                   android:layout_weight="1"
-                                  android:text="Cube"
+                                  android:text="Square"
                                   android:background="@drawable/btn_blue_filled"
                                   android:textColor="#000"/>
 
                               <Button
-                                  android:id="@+id/shape_wide"
+                                  android:id="@+id/shape_rectangle"
                                   android:layout_width="0dp"
                                   android:layout_height="36dp"
                                   android:layout_weight="1"
-                                  android:text="Wide"
-                                  android:background="@drawable/btn_blue"
-                                  android:textColor="#00BFFF"
-                                  android:layout_marginLeft="4dp"/>
-
-                              <Button
-                                  android:id="@+id/shape_tall"
-                                  android:layout_width="0dp"
-                                  android:layout_height="36dp"
-                                  android:layout_weight="1"
-                                  android:text="Tall"
+                                  android:text="Rectangle"
                                   android:background="@drawable/btn_blue"
                                   android:textColor="#00BFFF"
                                   android:layout_marginLeft="4dp"/>
@@ -334,30 +325,20 @@ jobs:
                               android:layout_marginTop="4dp">
 
                               <Button
-                                  android:id="@+id/shape_pillar"
+                                  android:id="@+id/shape_circle"
                                   android:layout_width="0dp"
                                   android:layout_height="36dp"
                                   android:layout_weight="1"
-                                  android:text="Pillar"
+                                  android:text="Circle"
                                   android:background="@drawable/btn_blue"
                                   android:textColor="#00BFFF"/>
 
                               <Button
-                                  android:id="@+id/shape_wall"
+                                  android:id="@+id/shape_triangle"
                                   android:layout_width="0dp"
                                   android:layout_height="36dp"
                                   android:layout_weight="1"
-                                  android:text="Wall"
-                                  android:background="@drawable/btn_blue"
-                                  android:textColor="#00BFFF"
-                                  android:layout_marginLeft="4dp"/>
-
-                              <Button
-                                  android:id="@+id/shape_stair"
-                                  android:layout_width="0dp"
-                                  android:layout_height="36dp"
-                                  android:layout_weight="1"
-                                  android:text="Step"
+                                  android:text="Triangle"
                                   android:background="@drawable/btn_blue"
                                   android:textColor="#00BFFF"
                                   android:layout_marginLeft="4dp"/>
@@ -457,6 +438,50 @@ jobs:
                               android:textColor="#AEEBFF"
                               android:layout_marginTop="6dp"/>
 
+                          <TextView
+                              android:layout_width="match_parent"
+                              android:layout_height="wrap_content"
+                              android:text="Grid"
+                              android:textColor="#FFFFFF"
+                              android:textStyle="bold"
+                              android:layout_marginTop="10dp"/>
+
+                          <LinearLayout
+                              android:layout_width="match_parent"
+                              android:layout_height="wrap_content"
+                              android:orientation="horizontal"
+                              android:layout_marginTop="6dp">
+
+                              <Button
+                                  android:id="@+id/grid_1"
+                                  android:layout_width="0dp"
+                                  android:layout_height="36dp"
+                                  android:layout_weight="1"
+                                  android:text="1"
+                                  android:background="@drawable/btn_blue_filled"
+                                  android:textColor="#000"/>
+
+                              <Button
+                                  android:id="@+id/grid_2"
+                                  android:layout_width="0dp"
+                                  android:layout_height="36dp"
+                                  android:layout_weight="1"
+                                  android:text="2"
+                                  android:background="@drawable/btn_blue"
+                                  android:textColor="#00BFFF"
+                                  android:layout_marginLeft="4dp"/>
+
+                              <Button
+                                  android:id="@+id/grid_4"
+                                  android:layout_width="0dp"
+                                  android:layout_height="36dp"
+                                  android:layout_weight="1"
+                                  android:text="4"
+                                  android:background="@drawable/btn_blue"
+                                  android:textColor="#00BFFF"
+                                  android:layout_marginLeft="4dp"/>
+                          </LinearLayout>
+
                           <LinearLayout
                               android:layout_width="match_parent"
                               android:layout_height="wrap_content"
@@ -501,6 +526,14 @@ jobs:
                                   android:layout_height="26dp"
                                   android:background="@drawable/color_btn"
                                   android:backgroundTint="#FFFFFF"
+                                  android:layout_marginLeft="5dp"/>
+
+                              <View
+                                  android:id="@+id/color_black"
+                                  android:layout_width="26dp"
+                                  android:layout_height="26dp"
+                                  android:background="@drawable/color_btn"
+                                  android:backgroundTint="#000000"
                                   android:layout_marginLeft="5dp"/>
                           </LinearLayout>
 
@@ -556,7 +589,8 @@ jobs:
                               android:text="Hide"
                               android:background="@drawable/btn_blue"
                               android:textColor="#00BFFF"
-                              android:layout_marginTop="8dp"/>
+                              android:layout_marginTop="8dp"
+                              android:visibility="gone"/>
 
                           <Button
                               android:id="@+id/btn_delete"
@@ -652,11 +686,11 @@ jobs:
                   </LinearLayout>
 
                   <View
-                      android:id="@+id/crosshair"
-                      android:layout_width="6dp"
-                      android:layout_height="6dp"
+                      android:id="@+id/crosshair_engine"
+                      android:layout_width="26dp"
+                      android:layout_height="26dp"
                       android:layout_centerInParent="true"
-                      android:background="#00BFFF"/>
+                      android:background="@drawable/crosshair"/>
               </RelativeLayout>
 
               <RelativeLayout
@@ -712,6 +746,13 @@ jobs:
                       android:textSize="28sp"
                       android:background="@drawable/btn_blue"
                       android:textColor="#FFF"/>
+
+                  <View
+                      android:id="@+id/crosshair_playtest"
+                      android:layout_width="26dp"
+                      android:layout_height="26dp"
+                      android:layout_centerInParent="true"
+                      android:background="@drawable/crosshair"/>
               </RelativeLayout>
 
               <LinearLayout
@@ -776,7 +817,7 @@ jobs:
           public class Block {
               public float x, y, z, sx, sy, sz, r, g, b;
               public boolean hidden = false;
-              public String shape = "cube";
+              public String shape = "square";
 
               public Block(float x, float y, float z, float sx, float sy, float sz, float r, float g, float b) {
                   this.x=x; this.y=y; this.z=z; this.sx=sx; this.sy=sy; this.sz=sz; this.r=r; this.g=g; this.b=b;
@@ -794,7 +835,6 @@ jobs:
           cat <<'SCRIPT' > app/src/main/java/com/enjoer/game/ScriptEngine.java
           package com.enjoer.game;
 
-          import android.widget.Toast;
           import java.util.Locale;
 
           public class ScriptEngine {
@@ -915,6 +955,13 @@ jobs:
                       return;
                   }
 
+                  if(line.startsWith("phone.grid(") && line.endsWith(")")){
+                      String[] a = args(line);
+                      if(a.length != 1) throw new Exception("phone.grid requires 1 arg");
+                      ren.gridSize = Math.max(0.5f, f(a[0]));
+                      return;
+                  }
+
                   if(line.startsWith("world.place(") && line.endsWith(")")){
                       String[] a = args(line);
                       if(a.length != 9) throw new Exception("world.place requires 9 args");
@@ -984,7 +1031,8 @@ jobs:
               private int prog;
               private FloatBuffer vBuf, nBuf;
               public float blockR=0.8f, blockG=0.3f, blockB=0.3f, blockSX=4, blockSY=4, blockSZ=4, placeDist=6f;
-              public String blockShape="cube";
+              public String blockShape="square";
+              public float gridSize = 1f;
               public CopyOnWriteArrayList<Block> blocks = new CopyOnWriteArrayList<>();
               public int selectedIndex = -1;
               public float screenW=1, screenH=1;
@@ -995,28 +1043,28 @@ jobs:
                   return null;
               }
 
+              private float snap(float v){
+                  return Math.round(v / gridSize) * gridSize;
+              }
+
               public void loadBuiltInLevel() {
                   blocks.clear();
 
                   Block b1 = new Block(0,2,-10, 6,4,6, 0.9f,0.2f,0.2f);
-                  b1.shape="cube";
+                  b1.shape="square";
                   blocks.add(b1);
 
-                  Block b2 = new Block(-12,2,-22, 5,4,5, 0.2f,0.9f,0.2f);
-                  b2.shape="pillar";
+                  Block b2 = new Block(-12,2,-22, 5,4,8, 0.2f,0.9f,0.2f);
+                  b2.shape="rectangle";
                   blocks.add(b2);
 
-                  Block b3 = new Block(12,2,-22, 6,6,2, 0.2f,0.4f,0.9f);
-                  b3.shape="wall";
+                  Block b3 = new Block(12,2,-22, 6,6,6, 0.2f,0.4f,0.9f);
+                  b3.shape="circle";
                   blocks.add(b3);
 
                   Block b4 = new Block(0,1,-38, 14,2,14, 0.9f,0.9f,0.3f);
-                  b4.shape="wide";
+                  b4.shape="triangle";
                   blocks.add(b4);
-
-                  Block b5 = new Block(0,0.5f,-60, 18,1,18, 0.95f,0.95f,0.95f);
-                  b5.shape="wide";
-                  blocks.add(b5);
               }
 
               public void placeBlock() {
@@ -1024,7 +1072,13 @@ jobs:
                   float vy=(float)Math.sin(Math.toRadians(rX));
                   float vz=(float)(-Math.cos(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
                   float nx=pX+vx*placeDist, ny=pY+vy*placeDist, nz=pZ+vz*placeDist;
+
+                  nx = snap(nx);
+                  ny = snap(ny);
+                  nz = snap(nz);
+
                   if(ny-blockSY/2f<FLOOR_Y) ny=FLOOR_Y+blockSY/2f;
+
                   Block b = new Block(nx,ny,nz, blockSX,blockSY,blockSZ, blockR,blockG,blockB);
                   b.shape = blockShape;
                   blocks.add(b);
@@ -1046,7 +1100,9 @@ jobs:
               public void moveSelected(float dx, float dy, float dz) {
                   if(selectedIndex>=0 && selectedIndex<blocks.size()) {
                       Block b=blocks.get(selectedIndex);
-                      b.x+=dx; b.y+=dy; b.z+=dz;
+                      b.x=snap(b.x+dx);
+                      b.y=snap(b.y+dy);
+                      b.z=snap(b.z+dz);
                       if(b.y-b.sy/2f<FLOOR_Y) b.y=FLOOR_Y+b.sy/2f;
                   }
               }
@@ -1109,20 +1165,20 @@ jobs:
                       "float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}"+
                       "vec3 sky(vec3 d){"+
                       "  float t=clamp(d.y*.5+.5,0.,1.);"+
-                      "  vec3 base=mix(vec3(.004,.008,.02),vec3(.02,.16,.42),t);"+
-                      "  if(d.y>0.18){"+
-                      "    vec2 uv=d.xz/(d.y+.2);"+
-                      "    uv*=55.;"+
+                      "  vec3 base=mix(vec3(.003,.006,.018),vec3(.02,.18,.45),t);"+
+                      "  if(d.y>0.12){"+
+                      "    vec2 uv=d.xz/(abs(d.y)+0.35);"+
+                      "    uv*=90.0;"+
                       "    vec2 id=floor(uv);"+
                       "    vec2 gv=fract(uv)-.5;"+
-                      "    float h=hash(id);"+
-                      "    float star=step(.992,h);"+
+                      "    float rnd=hash(id);"+
+                      "    float star=step(.985,rnd);"+
                       "    float dist=length(gv);"+
-                      "    float tw=.65+.35*sin(h*200.0 + d.x*20.0 + d.z*18.0);"+
-                      "    float core=smoothstep(.08,.0,dist)*star*tw;"+
-                      "    float glow=smoothstep(.28,.0,dist)*star*0.35*tw;"+
-                      "    vec3 scol=mix(vec3(1.0,.92,.82),vec3(.82,.9,1.0),hash(id+2.3));"+
-                      "    base += scol*(core*1.8 + glow);"+
+                      "    float tw=0.7+0.3*sin(rnd*200.0 + uv.x*0.02 + uv.y*0.02);"+
+                      "    float core=smoothstep(.08,.0,dist)*star*tw*2.2;"+
+                      "    float glow=smoothstep(.35,.0,dist)*star*tw*0.9;"+
+                      "    vec3 scol=mix(vec3(1.0,.95,.85),vec3(.8,.9,1.0),hash(id+5.1));"+
+                      "    base += scol*(core+glow);"+
                       "  }"+
                       "  return base;"+
                       "}"+
@@ -1134,9 +1190,9 @@ jobs:
                       "vec3 col=uC.rgb;if(uSel>.5)col+=vec3(0.,.5,.8);"+
                       "vec3 amb=vec3(.06,.09,.15)*ao;vec3 fin=col*(diff*vec3(1.,.97,.92)+amb)+spec;"+
                       "fin+=sky(reflect(-vD,n))*fres*.35;"+
-                      "if(isFloor>.5){vec2 g=fract(vP.xz*.15);float ln=step(.95,g.x)+step(.95,g.y);fin=mix(fin,vec3(0.,.4,.8),clamp(ln,0.,1.)*.4);}"+
+                      "if(isFloor>.5){vec2 g=fract(vP.xz*.2);float ln=step(.97,g.x)+step(.97,g.y);fin=mix(fin,vec3(0.,.4,.8),clamp(ln,0.,1.)*.55);}"+
                       "float dist=length(camP-vP),fog=1.-exp(-dist*.006);"+
-                      "vec3 c=mix(fin,sky(vD),clamp(fog,0.,.92));"+
+                      "vec3 c=mix(fin,sky(vD),clamp(fog,0.,.88));"+
                       "c=(c*(2.51*c+.03))/(c*(2.43*c+.59)+.14);"+
                       "fC=vec4(c,uC.a);}";
 
@@ -1174,7 +1230,7 @@ jobs:
               @Override
               public void onDrawFrame(GL10 gl) {
                   update();
-                  GLES30.glClearColor(.005f,.01f,.025f,1f);
+                  GLES30.glClearColor(.003f,.006f,.016f,1f);
                   GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT|GLES30.GL_DEPTH_BUFFER_BIT);
 
                   float vx=(float)(Math.sin(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
@@ -1209,6 +1265,7 @@ jobs:
 
                   if(isEngineMode&&!isPlayingLevel&&selectedIndex<0){
                       float px=pX+vx*placeDist,py=pY+vy*placeDist,pz=pZ+vz*placeDist;
+                      px=snap(px); py=snap(py); pz=snap(pz);
                       if(py-blockSY/2f<FLOOR_Y)py=FLOOR_Y+blockSY/2f;
                       Matrix.setIdentityM(model,0);
                       Matrix.translateM(model,0,px,py,pz);
@@ -1222,12 +1279,11 @@ jobs:
               }
 
               private void update(){
-                  float s=.35f,rad=(float)Math.toRadians(rY),pitch=(float)Math.toRadians(rX);
+                  float s=.35f,rad=(float)Math.toRadians(rY);
                   if(isEngineMode&&!isPlayingLevel){
-                      float fx=(float)Math.sin(rad),fz=(float)-Math.cos(rad),fy=(float)Math.sin(pitch);
+                      float fx=(float)Math.sin(rad),fz=(float)-Math.cos(rad);
                       pX+=(fx*-jY+(float)Math.cos(rad)*jX)*s;
                       pZ+=(fz*-jY+(float)Math.sin(rad)*jX)*s;
-                      pY+=(fy*-jY)*s;
                       if(pY<1)pY=1;
                   } else {
                       float mX=((float)Math.sin(rad)*-jY+(float)Math.cos(rad)*jX)*s;
@@ -1318,7 +1374,7 @@ jobs:
           public class MainActivity extends AppCompatActivity implements ScriptEngine.Host {
               private GameRenderer ren;
               private float lx,ly;
-              private Button[] shapeBtn,distBtn;
+              private Button[] shapeBtn,distBtn,gridBtn;
               private View[] colorBtn;
               private View axisPanel,menuUI,gameUI,engineUI,playtestUI;
               private Button btnDeselect, btnHide;
@@ -1356,24 +1412,6 @@ jobs:
                   btnHide=findViewById(R.id.btn_hide);
                   txtSizeInfo=findViewById(R.id.txt_size_info);
 
-                  if(savedInstanceState != null) {
-                      int mode = savedInstanceState.getInt("mode", 0);
-                      if(mode == 1) {
-                          ren.isEngineMode = false;
-                          ren.isPlayingLevel = false;
-                          ren.loadBuiltInLevel();
-                          resetP();
-                          menuUI.setVisibility(View.GONE);
-                          gameUI.setVisibility(View.VISIBLE);
-                      } else if(mode == 2) {
-                          ren.isEngineMode = true;
-                          ren.isPlayingLevel = false;
-                          ren.pX=0; ren.pY=20; ren.pZ=35;
-                          menuUI.setVisibility(View.GONE);
-                          engineUI.setVisibility(View.VISIBLE);
-                      }
-                  }
-
                   saveLauncher=registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),res->{
                       if(res.getResultCode()==RESULT_OK&&res.getData()!=null){
                           try{
@@ -1390,6 +1428,7 @@ jobs:
                               }
                               JSONObject root=new JSONObject();
                               root.put("blocks",arr);
+                              root.put("gridSize",ren.gridSize);
                               out.write(root.toString().getBytes());
                               out.close();
                               Toast.makeText(this,"Exported!",Toast.LENGTH_SHORT).show();
@@ -1426,9 +1465,10 @@ jobs:
                                       (float)o.getDouble("b")
                                   );
                                   b.hidden = o.optBoolean("hidden", false);
-                                  b.shape = o.optString("shape", "cube");
+                                  b.shape = o.optString("shape", "square");
                                   ren.blocks.add(b);
                               }
+                              ren.gridSize = (float)root.optDouble("gridSize", 1.0);
                               pendingMode = 1;
                               ren.isEngineMode=false;
                               ren.isPlayingLevel=false;
@@ -1541,33 +1581,17 @@ jobs:
                   axisBtn(R.id.axis_y_plus,0,1,0); axisBtn(R.id.axis_y_minus,0,-1,0);
                   axisBtn(R.id.axis_z_plus,0,0,1); axisBtn(R.id.axis_z_minus,0,0,-1);
 
-                  findViewById(R.id.btn_up).setOnTouchListener((v,e)->{
-                      if(e.getAction()==MotionEvent.ACTION_DOWN||e.getAction()==MotionEvent.ACTION_MOVE)ren.pY+=.5f;
-                      return true;
-                  });
-                  findViewById(R.id.btn_down).setOnTouchListener((v,e)->{
-                      if(e.getAction()==MotionEvent.ACTION_DOWN||e.getAction()==MotionEvent.ACTION_MOVE){
-                          ren.pY-=.5f;
-                          if(ren.pY<1)ren.pY=1;
-                      }
-                      return true;
-                  });
-
                   shapeBtn=new Button[]{
-                      findViewById(R.id.shape_cube),
-                      findViewById(R.id.shape_wide),
-                      findViewById(R.id.shape_tall),
-                      findViewById(R.id.shape_pillar),
-                      findViewById(R.id.shape_wall),
-                      findViewById(R.id.shape_stair)
+                      findViewById(R.id.shape_square),
+                      findViewById(R.id.shape_rectangle),
+                      findViewById(R.id.shape_circle),
+                      findViewById(R.id.shape_triangle)
                   };
 
-                  findViewById(R.id.shape_cube).setOnClickListener(v->{ setShapePreset("cube",4,4,4,0); });
-                  findViewById(R.id.shape_wide).setOnClickListener(v->{ setShapePreset("wide",8,2,8,1); });
-                  findViewById(R.id.shape_tall).setOnClickListener(v->{ setShapePreset("tall",3,8,3,2); });
-                  findViewById(R.id.shape_pillar).setOnClickListener(v->{ setShapePreset("pillar",2,10,2,3); });
-                  findViewById(R.id.shape_wall).setOnClickListener(v->{ setShapePreset("wall",10,4,2,4); });
-                  findViewById(R.id.shape_stair).setOnClickListener(v->{ setShapePreset("step",6,2,4,5); });
+                  findViewById(R.id.shape_square).setOnClickListener(v->{ setShapePreset("square",4,4,4,0); });
+                  findViewById(R.id.shape_rectangle).setOnClickListener(v->{ setShapePreset("rectangle",8,4,4,1); });
+                  findViewById(R.id.shape_circle).setOnClickListener(v->{ setShapePreset("circle",4,4,4,2); });
+                  findViewById(R.id.shape_triangle).setOnClickListener(v->{ setShapePreset("triangle",4,4,4,3); });
 
                   findViewById(R.id.size_x_minus).setOnClickListener(v->{ ren.blockSX=Math.max(0.5f, ren.blockSX-0.5f); updSizeInfo(); });
                   findViewById(R.id.size_x_plus).setOnClickListener(v->{ ren.blockSX+=0.5f; updSizeInfo(); });
@@ -1583,15 +1607,30 @@ jobs:
                       distBtn[i].setOnClickListener(v->{ ren.placeDist=dists[idx]; updBtnGrp(distBtn,idx); });
                   }
 
+                  gridBtn=new Button[]{findViewById(R.id.grid_1),findViewById(R.id.grid_2),findViewById(R.id.grid_4)};
+                  findViewById(R.id.grid_1).setOnClickListener(v->{ ren.gridSize=1f; updBtnGrp(gridBtn,0); });
+                  findViewById(R.id.grid_2).setOnClickListener(v->{ ren.gridSize=2f; updBtnGrp(gridBtn,1); });
+                  findViewById(R.id.grid_4).setOnClickListener(v->{ ren.gridSize=4f; updBtnGrp(gridBtn,2); });
+
                   colorBtn=new View[]{
                       findViewById(R.id.color_red),
                       findViewById(R.id.color_green),
                       findViewById(R.id.color_blue),
                       findViewById(R.id.color_yellow),
-                      findViewById(R.id.color_white)
+                      findViewById(R.id.color_white),
+                      findViewById(R.id.color_black)
                   };
-                  float[][] colors={{1f,.2f,.2f},{.2f,1f,.2f},{.2f,.5f,1f},{1f,1f,.2f},{1f,1f,1f}};
-                  for(int i=0;i<5;i++){
+
+                  float[][] colors={
+                      {1f,.2f,.2f},
+                      {.2f,1f,.2f},
+                      {.2f,.5f,1f},
+                      {1f,1f,.2f},
+                      {1f,1f,1f},
+                      {0f,0f,0f}
+                  };
+
+                  for(int i=0;i<colors.length;i++){
                       final int idx=i;
                       colorBtn[i].setOnClickListener(v->{
                           ren.blockR=colors[idx][0];
@@ -1685,7 +1724,7 @@ jobs:
               private void axisBtn(int id,float dx,float dy,float dz){
                   findViewById(id).setOnTouchListener((v,e)->{
                       if(e.getAction()==MotionEvent.ACTION_DOWN||e.getAction()==MotionEvent.ACTION_MOVE)
-                          ren.moveSelected(dx*.5f,dy*.5f,dz*.5f);
+                          ren.moveSelected(dx*ren.gridSize,dy*ren.gridSize,dz*ren.gridSize);
                       return true;
                   });
               }
