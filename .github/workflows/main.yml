@@ -1,4 +1,4 @@
-name: Enjoer_6.1_Full_Native_Power
+name: Enjoer_6.1_Full_Native_Hybrid
 on: [push, workflow_dispatch]
 
 jobs:
@@ -22,62 +22,62 @@ jobs:
           mkdir -p app/src/main/res/values
           mkdir -p app/src/main/res/drawable
 
-          # --- КРИТИЧЕСКИЙ С++ СЛОЙ (NDK) ---
-          # Здесь вся математика, которую мы забрали у Java
+          # --- КОРНЕВАЯ КОНФИГУРАЦИЯ ---
+          echo "include ':app'" > settings.gradle
+          echo "android.useAndroidX=true" > gradle.properties
+          echo "android.enableJetifier=true" >> gradle.properties
+          
+          cat <<EOF > build.gradle
+          buildscript {
+              repositories { google(); mavenCentral() }
+              dependencies { classpath 'com.android.tools.build:gradle:8.2.2' }
+          }
+          allprojects { repositories { google(); mavenCentral() } }
+          EOF
+
+          # --- NDK C++ ENGINE (Физика и Коллизии) ---
           cat <<'CPPSOURCE' > app/src/main/cpp/native-lib.cpp
           #include <jni.h>
           #include <vector>
           #include <cmath>
           #include <algorithm>
 
-          struct Block {
-              float x, y, z, sx, sy, sz;
-              float minX() { return x - sx/2.0f; }
-              float maxX() { return x + sx/2.0f; }
-              float minY() { return y - sy/2.0f; }
-              float maxY() { return y + sy/2.0f; }
-              float minZ() { return z - sz/2.0f; }
-              float maxZ() { return z + sz/2.0f; }
-          };
-
-          std::vector<Block> blocks;
+          struct Block { float x, y, z, sx, sy, sz; };
+          std::vector<Block> worldBlocks;
 
           extern "C" JNIEXPORT void JNICALL
           Java_com_enjoer_game_GameRenderer_syncBlocks(JNIEnv* env, jobject thiz, jfloatArray data) {
               jfloat* items = env->GetFloatArrayElements(data, 0);
               jsize len = env->GetArrayLength(data);
-              blocks.clear();
-              for(int i=0; i<len; i+=6) {
-                  blocks.push_back({items[i], items[i+1], items[i+2], items[i+3], items[i+4], items[i+5]});
-              }
+              worldBlocks.clear();
+              for(int i=0; i<len; i+=6) worldBlocks.push_back({items[i],items[i+1],items[i+2],items[i+3],items[i+4],items[i+5]});
               env->ReleaseFloatArrayElements(data, items, 0);
           }
 
           extern "C" JNIEXPORT jfloatArray JNICALL
-          Java_com_enjoer_game_GameRenderer_computePhysics(JNIEnv* env, jobject thiz, 
+          Java_com_enjoer_game_GameRenderer_nativeUpdate(JNIEnv* env, jobject thiz, 
               jfloat pX, jfloat pY, jfloat pZ, jfloat vY, jfloat mX, jfloat mZ, jfloat radP, jfloat hP) {
               
-              float nX = pX + mX;
-              float nY = pY + vY;
-              float nZ = pZ + mZ;
-              float fY = nY - hP; // Floor check height
+              float nX = pX + mX, nY = pY + vY, nZ = pZ + mZ;
+              float fY = nY - hP; 
+              if (fY < 0.0f) nY = hP;
 
-              if (fY < 0.0f) { nY = hP; } 
+              for (auto& b : worldBlocks) {
+                  float bMinX = b.x - b.sx/2, bMaxX = b.x + b.sx/2;
+                  float bMinY = b.y - b.sy/2, bMaxY = b.y + b.sy/2;
+                  float bMinZ = b.z - b.sz/2, bMaxZ = b.z + b.sz/2;
 
-              for (auto& b : blocks) {
-                  if (nX + radP > b.minX() && nX - radP < b.maxX() && nZ + radP > b.minZ() && nZ - radP < b.maxZ()) {
-                      if (pY - hP >= b.maxY() - 0.15f && fY < b.maxY()) {
-                          nY = b.maxY() + hP;
-                      } else if (fY < b.maxY() - 0.1f && nY > b.minY() + 0.1f) {
-                          float oX1 = (nX + radP) - b.minX();
-                          float oX2 = b.maxX() - (nX - radP);
-                          float oZ1 = (nZ + radP) - b.minZ();
-                          float oZ2 = b.maxZ() - (nZ - radP);
+                  if (nX + radP > bMinX && nX - radP < bMaxX && nZ + radP > bMinZ && nZ - radP < bMaxZ) {
+                      if (pY - hP >= bMaxY - 0.15f && fY < bMaxY) {
+                          nY = bMaxY + hP;
+                      } else if (fY < bMaxY - 0.1f && nY > bMinY + 0.1f) {
+                          float oX1 = (nX + radP) - bMinX, oX2 = bMaxX - (nX - radP);
+                          float oZ1 = (nZ + radP) - bMinZ, oZ2 = bMaxZ - (nZ - radP);
                           float minO = std::min({oX1, oX2, oZ1, oZ2});
-                          if (minO == oX1) nX = b.minX() - radP;
-                          else if (minO == oX2) nX = b.maxX() + radP;
-                          else if (minO == oZ1) nZ = b.minZ() - radP;
-                          else nZ = b.maxZ() + radP;
+                          if (minO == oX1) nX = bMinX - radP;
+                          else if (minO == oX2) nX = bMaxX + radP;
+                          else if (minO == oZ1) nZ = bMinZ - radP;
+                          else nZ = bMaxZ + radP;
                       }
                   }
               }
@@ -88,12 +88,10 @@ jobs:
           }
           CPPSOURCE
 
-          # --- JAVA RENDERER (С ГРАФИКОЙ И JNI) ---
+          # --- JAVA CORE (Renderer + UI) ---
           cat <<'RENDERER' > app/src/main/java/com/enjoer/game/GameRenderer.java
           package com.enjoer.game;
-          import android.opengl.GLES30;
-          import android.opengl.GLSurfaceView;
-          import android.opengl.Matrix;
+          import android.opengl.*;
           import java.nio.*;
           import java.util.concurrent.CopyOnWriteArrayList;
           import javax.microedition.khronos.egl.EGLConfig;
@@ -102,27 +100,27 @@ jobs:
           public class GameRenderer implements GLSurfaceView.Renderer {
               static { System.loadLibrary("enjoer_native"); }
               private native void syncBlocks(float[] data);
-              private native float[] computePhysics(float x, float y, float z, float vy, float mx, float mz, float rp, float hp);
+              private native float[] nativeUpdate(float x, float y, float z, float vy, float mx, float mz, float rp, float hp);
 
               public float pX=0, pY=6, pZ=15, rY=0, rX=0, jX=0, jY=0, vY=0;
               public CopyOnWriteArrayList<Block> blocks = new CopyOnWriteArrayList<>();
-              private final float[] proj=new float[16], view=new float[16], model=new float[16];
-              private int prog;
-              private FloatBuffer vBuf, nBuf;
-              private static final float PLAYER_HEIGHT=3.2f, PLAYER_RADIUS=0.5f;
+              private float[] proj=new float[16], view=new float[16], model=new float[16], mvp=new float[16];
+              private int prog, uMVP, uM, uC, uCam;
+              private FloatBuffer vBuf;
+              private static final float H=3.2f, R=0.5f;
 
-              // Твои шейдеры со звёздами и пост-обработкой
               private final String VS = "#version 300 es\nlayout(location=0)in vec4 aP;layout(location=1)in vec3 aN;uniform mat4 uMVP,uM;out vec3 vN,vP;void main(){vP=vec3(uM*aP);vN=normalize(mat3(uM)*aN);gl_Position=uMVP*aP;}";
-              private final String FS = "#version 300 es\nprecision highp float;in vec3 vN,vP;uniform vec3 camP;uniform vec4 uC;out vec4 fC;float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}vec3 sky(vec3 d){float t=d.y*.5+.5;vec3 b=mix(vec3(.005,.01,.03),vec3(.0,.2,.5),t);if(d.y>0.05){vec2 uv=d.xz/(d.y+.001);vec2 id=floor(uv*80.);if(hash(id)>.97){float tw=sin(hash(id)*6.28)*.3+.7;b+=vec3(1.)*smoothstep(.15,.0,length(fract(uv*80.)-.5))*tw;}}return b;}void main(){vec3 n=normalize(vN),vD=normalize(camP-vP),lD=normalize(vec3(.4,1.,.2));float diff=max(dot(n,lD),0.);vec3 col=uC.rgb*(diff+.2);fC=vec4(mix(col,sky(vD),clamp(length(camP-vP)*.006,0.,.9)),uC.a);}";
+              private final String FS = "#version 300 es\nprecision highp float;in vec3 vN,vP;uniform vec3 camP;uniform vec4 uC;out vec4 fC;float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}vec3 sky(vec3 d){float t=d.y*.5+.5;vec3 b=mix(vec3(.005,.01,.03),vec3(.0,.2,.5),t);if(d.y>0.05){vec2 uv=d.xz/(d.y+.001);vec2 id=floor(uv*80.);if(hash(id)>.97){b+=vec3(1.)*smoothstep(.15,.0,length(fract(uv*80.)-.5));}}return b;}void main(){vec3 n=normalize(vN),vD=normalize(camP-vP);float d=max(dot(n,normalize(vec3(.4,1.,.2))),0.2);fC=vec4(mix(uC.rgb*d,sky(vD),0.2),1.);}";
 
-              @Override public void onSurfaceCreated(GL10 gl, EGLConfig cfg) {
+              @Override public void onSurfaceCreated(GL10 gl, EGLConfig c) {
                   GLES30.glEnable(GLES30.GL_DEPTH_TEST);
                   prog = GLES30.glCreateProgram();
-                  int vsh = GLES30.glCreateShader(35633); GLES30.glShaderSource(vsh, VS); GLES30.glCompileShader(vsh);
-                  int fsh = GLES30.glCreateShader(35632); GLES30.glShaderSource(fsh, FS); GLES30.glCompileShader(fsh);
-                  GLES30.glAttachShader(prog, vsh); GLES30.glAttachShader(prog, fsh); GLES30.glLinkProgram(prog);
-                  float[] vc={-.5f,.5f,.5f, -.5f,-.5f,.5f, .5f,.5f,.5f, .5f,-.5f,.5f, -.5f,.5f,-.5f, -.5f,-.5f,-.5f, .5f,.5f,-.5f, .5f,-.5f,-.5f, -.5f,.5f,-.5f, -.5f,.5f,.5f, .5f,.5f,-.5f, .5f,.5f,.5f, -.5f,-.5f,-.5f, -.5f,-.5f,.5f, .5f,-.5f,-.5f, .5f,-.5f,.5f, -.5f,.5f,-.5f, -.5f,-.5f,-.5f, -.5f,.5f,.5f, -.5f,-.5f,.5f, .5f,.5f,-.5f, .5f,-.5f,-.5f, .5f,.5f,.5f, .5f,-.5f,.5f};
-                  vBuf=ByteBuffer.allocateDirect(vc.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(vc);vBuf.position(0);
+                  int v=GLES30.glCreateShader(35633); GLES30.glShaderSource(v,VS); GLES30.glCompileShader(v);
+                  int f=GLES30.glCreateShader(35632); GLES30.glShaderSource(f,FS); GLES30.glCompileShader(f);
+                  GLES30.glAttachShader(prog,v); GLES30.glAttachShader(prog,f); GLES30.glLinkProgram(prog);
+                  uMVP=GLES30.glGetUniformLocation(prog,"uMVP"); uM=GLES30.glGetUniformLocation(prog,"uM"); uC=GLES30.glGetUniformLocation(prog,"uC"); uCam=GLES30.glGetUniformLocation(prog,"camP");
+                  float[] vc={-.5f,.5f,.5f,-.5f,-.5f,.5f,.5f,.5f,.5f,.5f,-.5f,.5f, -.5f,.5f,-.5f,-.5f,-.5f,-.5f,.5f,.5f,-.5f,.5f,-.5f,-.5f};
+                  vBuf=ByteBuffer.allocateDirect(vc.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(vc); vBuf.position(0);
               }
 
               private void update() {
@@ -130,40 +128,92 @@ jobs:
                   float mX=((float)Math.sin(rad)*-jY+(float)Math.cos(rad)*jX)*s;
                   float mZ=((float)-Math.cos(rad)*-jY+(float)Math.sin(rad)*jX)*s;
                   vY-=.025f;
-
-                  float[] bData = new float[blocks.size()*6];
-                  for(int i=0; i<blocks.size(); i++){
-                      Block b=blocks.get(i); bData[i*6]=b.x; bData[i*6+1]=b.y; bData[i*6+2]=b.z;
-                      bData[i*6+3]=b.sx; bData[i*6+4]=b.sy; bData[i*6+5]=b.sz;
-                  }
-                  syncBlocks(bData);
-                  float[] nP = computePhysics(pX, pY, pZ, vY, mX, mZ, PLAYER_RADIUS, PLAYER_HEIGHT);
+                  float[] d=new float[blocks.size()*6];
+                  for(int i=0;i<blocks.size();i++){Block b=blocks.get(i);d[i*6]=b.x;d[i*6+1]=b.y;d[i*6+2]=b.z;d[i*6+3]=b.sx;d[i*6+4]=b.sy;d[i*6+5]=b.sz;}
+                  syncBlocks(d);
+                  float[] nP=nativeUpdate(pX,pY,pZ,vY,mX,mZ,R,H);
                   pX=nP[0]; pY=nP[1]; pZ=nP[2];
-                  if(pY <= PLAYER_HEIGHT) vY=0;
+                  if(pY==H) vY=0;
               }
 
               @Override public void onDrawFrame(GL10 gl) {
                   update();
                   GLES30.glClear(16640);
-                  // Отрисовка блоков (использует твой метод draw из оригинала)
-                  // ...
+                  GLES30.glUseProgram(prog);
+                  Matrix.setIdentityM(view,0); Matrix.rotateM(view,0,rX,1,0,0); Matrix.rotateM(view,0,rY,0,1,0); Matrix.translateM(view,0,-pX,-pY,-pZ);
+                  GLES30.glUniform3f(uCam,pX,pY,pZ);
+                  for(Block b:blocks){
+                      Matrix.setIdentityM(model,0); Matrix.translateM(model,0,b.x,b.y,b.z); Matrix.scaleM(model,0,b.sx,b.sy,b.sz);
+                      Matrix.multiplyMM(mvp,0,proj,0,view,0); Matrix.multiplyMM(mvp,0,mvp,0,model,0);
+                      GLES30.glUniformMatrix4fv(uMVP,1,false,mvp,0); GLES30.glUniformMatrix4fv(uM,1,false,model,0);
+                      GLES30.glUniform4f(uC,0.2f,0.6f,1.0f,1.0f);
+                      GLES30.glVertexAttribPointer(0,3,GLES30.GL_FLOAT,false,0,vBuf); GLES30.glEnableVertexAttribArray(0);
+                      GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP,0,4);
+                  }
               }
-              @Override public void onSurfaceChanged(GL10 gl,int w,int h){ GLES30.glViewport(0,0,w,h); Matrix.perspectiveM(proj,0,55,(float)w/h,.1f,500f); }
+              @Override public void onSurfaceChanged(GL10 gl,int w,int h){ GLES30.glViewport(0,0,w,h); Matrix.perspectiveM(proj,0,60,(float)w/h,0.1f,500f); }
           }
           RENDERER
 
-          # --- (ОСТАЛЬНЫЕ ФАЙЛЫ: MainActivity, Block.java, Res, Manifest — копируются из оригинала) ---
-          # [Используются твои XML макеты с кнопками EDITOR, PLAY и джойстиками]
-          # ...
+          # --- BLOCK CLASS ---
+          cat <<'BLOCK' > app/src/main/java/com/enjoer/game/Block.java
+          package com.enjoer.game;
+          public class Block {
+              public float x, y, z, sx, sy, sz;
+              public Block(float x, float y, float z, float sx, float sy, float sz) {
+                  this.x=x; this.y=y; this.z=z; this.sx=sx; this.sy=sy; this.sz=sz;
+              }
+          }
+          BLOCK
 
-          # --- CMAKE ДЛЯ СБОРКИ ---
+          # --- MAIN ACTIVITY (С кнопками) ---
+          cat <<'MAIN' > app/src/main/java/com/enjoer/game/MainActivity.java
+          package com.enjoer.game;
+          import android.os.Bundle;
+          import android.view.*;
+          import android.widget.*;
+          import androidx.appcompat.app.AppCompatActivity;
+
+          public class MainActivity extends AppCompatActivity {
+              private GameRenderer renderer;
+              private float oX, oY;
+
+              @Override protected void onCreate(Bundle b) {
+                  super.onCreate(b);
+                  FrameLayout layout = new FrameLayout(this);
+                  GLSurfaceView glView = new GLSurfaceView(this);
+                  glView.setEGLContextClientVersion(3);
+                  renderer = new GameRenderer();
+                  glView.setRenderer(renderer);
+                  layout.addView(glView);
+
+                  // Джойстик (упрощенно)
+                  Button btn = new Button(this); btn.setText("JUMP");
+                  btn.setOnClickListener(v -> { if(renderer.pY <= 3.3f) renderer.vY = 0.5f; });
+                  layout.addView(btn, new FrameLayout.LayoutParams(200, 200, Gravity.BOTTOM|Gravity.RIGHT));
+
+                  glView.setOnTouchListener((v, e) -> {
+                      if(e.getAction()==MotionEvent.ACTION_DOWN){ oX=e.getX(); oY=e.getY(); }
+                      if(e.getAction()==MotionEvent.ACTION_MOVE){
+                          renderer.rY += (e.getX()-oX)*0.2f; renderer.rX += (e.getY()-oY)*0.2f;
+                          oX=e.getX(); oY=e.getY();
+                      }
+                      return true;
+                  });
+                  setContentView(layout);
+                  renderer.blocks.add(new Block(0, 0, 0, 10, 1, 10)); // Пол
+                  renderer.blocks.add(new Block(0, 2, -5, 2, 2, 2)); // Препятствие
+              }
+          }
+          MAIN
+
+          # --- BUILD CONFIGS ---
           cat <<EOF > app/src/main/cpp/CMakeLists.txt
           cmake_minimum_required(VERSION 3.22.1)
           add_library(enjoer_native SHARED native-lib.cpp)
           target_link_libraries(enjoer_native log)
           EOF
 
-          # --- BUILD.GRADLE С ПОДДЕРЖКОЙ NDK ---
           cat <<EOF > app/build.gradle
           plugins { id 'com.android.application' }
           android {
@@ -180,7 +230,23 @@ jobs:
           dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }
           EOF
 
+          cat <<EOF > app/src/main/AndroidManifest.xml
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application android:label="Enjoer 6.1 Native" android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+                  <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="landscape">
+                      <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
       - name: Build APK
         run: |
           gradle wrapper --gradle-version 8.5
           ./gradlew assembleDebug
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Enjoer_6.1_Final_Build
+          path: app/build/outputs/apk/debug/app-debug.apk
