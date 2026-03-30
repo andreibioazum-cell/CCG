@@ -1,4 +1,4 @@
-name: ENJOER_ULTRA_V18_HANDS_FPS
+name: ENJOER_ULTRA_V18_FIXED
 on: [push, workflow_dispatch]
 
 jobs:
@@ -24,7 +24,7 @@ jobs:
           mkdir -p app/src/main/cpp app/src/main/java/com/enjoer/game
           mkdir -p app/src/main/res/layout app/src/main/res/values app/src/main/res/drawable
 
-      - name: Write C++ Engine (Physics & Animation)
+      - name: Write C++ Engine
         run: |
           cat <<'EOF' > app/src/main/cpp/native-lib.cpp
           #include <jni.h>
@@ -41,33 +41,23 @@ jobs:
 
           extern "C" JNIEXPORT jfloatArray JNICALL
           Java_com_enjoer_game_MainActivity_tick(JNIEnv* env, jobject, jfloat jx, jfloat jy, jboolean jump, jfloat dx, jfloat dy) {
-              // Вращение камеры (чувствительность снижена)
               e.ry += dx * 0.15f;
               e.rx = std::max(-85.0f, std::min(85.0f, e.rx + dy * 0.15f));
-
-              // Гравитация и прыжок
               if (jump && e.grounded) { e.vy = 0.22f; e.grounded = false; }
               e.vy -= 0.012f;
               e.y += e.vy;
               if (e.y <= 1.0f) { e.y = 1.0f; e.vy = 0; e.grounded = true; }
-
-              // Расчет анимации рук (Bobbing)
               float moveLen = sqrt(jx*jx + jy*jy);
               if (moveLen > 0.1f && e.grounded) {
                   e.walkTime += 0.18f;
                   e.handBobX = sin(e.walkTime * 0.5f) * 0.04f;
                   e.handBobY = abs(cos(e.walkTime)) * 0.025f;
               } else {
-                  e.walkTime *= 0.5f;
-                  e.handBobX *= 0.8f;
-                  e.handBobY *= 0.8f;
+                  e.walkTime *= 0.5f; e.handBobX *= 0.8f; e.handBobY *= 0.8f;
               }
-
-              // Плавное передвижение
               float rad = e.ry * M_PI / 180.0f;
               e.x += (sin(rad) * jy + cos(rad) * jx) * 0.08f;
               e.z += (-cos(rad) * jy + sin(rad) * jx) * 0.08f;
-
               float data[8] = {e.x, e.y, e.z, e.rx, e.ry, e.handBobX, e.handBobY, e.vy};
               jfloatArray res = env->NewFloatArray(8);
               env->SetFloatArrayRegion(res, 0, 8, data);
@@ -81,7 +71,7 @@ jobs:
           find_library(log-lib log)
           target_link_libraries(enjoer_v18 \${log-lib})" > app/src/main/cpp/CMakeLists.txt
 
-      - name: Write GL Renderer (World + FPS Hands)
+      - name: Write Renderer
         run: |
           cat <<'EOF' > app/src/main/java/com/enjoer/game/GameRenderer.java
           package com.enjoer.game;
@@ -98,7 +88,7 @@ jobs:
               @Override public void onSurfaceCreated(GL10 gl, EGLConfig cfg) {
                   GLES30.glEnable(GLES30.GL_DEPTH_TEST);
                   String vs="#version 300 es\nlayout(location=0)in vec4 aP;uniform mat4 uM;out vec3 vP;void main(){vP=aP.xyz;gl_Position=uM*aP;}";
-                  String fs="#version 300 es\nprecision highp float;in vec3 vP;uniform vec4 uC;void main(){gl_FragColor=vec4(uC.rgb*(0.8+vP.y*0.2),1.0);}";
+                  String fs="#version 300 es\nprecision highp float;in vec3 vP;uniform vec4 uC;out vec4 fC;void main(){fC=vec4(uC.rgb*(0.8+vP.y*0.2),1.0);}";
                   int vsh=GLES30.glCreateShader(35633); GLES30.glShaderSource(vsh,vs); GLES30.glCompileShader(vsh);
                   int fsh=GLES30.glCreateShader(35632); GLES30.glShaderSource(fsh,fs); GLES30.glCompileShader(fsh);
                   prg=GLES30.glCreateProgram(); GLES30.glAttachShader(prg,vsh); GLES30.glAttachShader(prg,fsh); GLES30.glLinkProgram(prg);
@@ -116,33 +106,20 @@ jobs:
                   GLES30.glUseProgram(prg);
                   int uM=GLES30.glGetUniformLocation(prg,"uM"), uC=GLES30.glGetUniformLocation(prg,"uC");
                   GLES30.glVertexAttribPointer(0,3,GLES30.GL_FLOAT,false,0,vB); GLES30.glEnableVertexAttribArray(0);
-
                   Matrix.setIdentityM(view,0); Matrix.rotateM(view,0,rX,1,0,0); Matrix.rotateM(view,0,rY,0,1,0); Matrix.translateM(view,0,-pX,-pY,-pZ);
-                  // Отрисовка пола (шум через тайлинг)
                   for(int x=-4;x<=4;x++) for(int z=-4;z<=4;z++) {
-                      Matrix.setIdentityM(mod,0); Matrix.translateM(mod,0,x,0,z);
-                      draw(uM,uC,mod,0.1f,0.1f,0.2f);
+                      Matrix.setIdentityM(mod,0); Matrix.translateM(mod,0,x,0,z); draw(uM,uC,mod,0.1f,0.1f,0.2f);
                   }
-                  // Платформы
-                  for(int i=0;i<8;i++) {
-                      Matrix.setIdentityM(mod,0); Matrix.translateM(mod,0,0,i*0.6f,-4-i*2.5f);
-                      draw(uM,uC,mod,0,0.5f,1f);
-                  }
-
-                  // Отрисовка РУК (Поверх всего)
                   GLES30.glClear(GLES30.GL_DEPTH_BUFFER_BIT);
                   Matrix.setIdentityM(view,0);
-                  // Левая
                   Matrix.setIdentityM(mod,0); Matrix.translateM(mod,0,-0.45f+bX, -0.4f+bY-(vY*0.15f), -0.7f);
                   Matrix.scaleM(mod,0,0.12f,0.12f,0.4f); draw(uM,uC,mod,0.8f,0.6f,0.5f);
-                  // Правая
                   Matrix.setIdentityM(mod,0); Matrix.translateM(mod,0,0.45f-bX, -0.4f+bY-(vY*0.15f), -0.7f);
                   Matrix.scaleM(mod,0,0.12f,0.12f,0.4f); draw(uM,uC,mod,0.8f,0.6f,0.5f);
               }
               private void draw(int uM, int uC, float[] m, float r, float g, float b){
                   float[] mvp=new float[16]; Matrix.multiplyMM(mvp,0,proj,0,view,0); Matrix.multiplyMM(mvp,0,mvp,0,m,0);
-                  GLES30.glUniformMatrix4fv(uM,1,false,mvp,0); GLES30.glUniform4f(uC,r,g,b,1);
-                  GLES30.glDrawArrays(GLES30.GL_TRIANGLES,0,36);
+                  GLES30.glUniformMatrix4fv(uM,1,false,mvp,0); GLES30.glUniform4f(uC,r,g,b,1); GLES30.glDrawArrays(GLES30.GL_TRIANGLES,0,36);
               }
           }
           EOF
@@ -155,7 +132,7 @@ jobs:
           </shape>
           EOF
           cat <<'EOF' > app/src/main/res/layout/activity_main.xml
-          <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000">
+          <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent">
               <android.opengl.GLSurfaceView android:id="@+id/gv" android:layout_width="match_parent" android:layout_height="match_parent"/>
               <RelativeLayout android:layout_width="match_parent" android:layout_height="match_parent">
                   <FrameLayout android:id="@+id/pad" android:layout_width="120dp" android:layout_height="120dp" android:layout_alignParentBottom="true" android:layout_margin="30dp" android:background="@drawable/btn_neon">
@@ -217,7 +194,7 @@ jobs:
           }
           EOF
 
-      - name: Final Build
+      - name: Configure Gradle & Manifest
         run: |
           cat <<'EOF' > app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.enjoer.game">
@@ -226,15 +203,44 @@ jobs:
           <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
           </activity></application></manifest>
           EOF
+          
+          # Настройка корневого build.gradle (ИСПРАВЛЕНО)
+          cat <<'EOF' > build.gradle
+          buildscript {
+              repositories { google(); mavenCentral() }
+              dependencies { classpath 'com.android.tools.build:gradle:8.2.2' }
+          }
+          allprojects {
+              repositories { google(); mavenCentral() }
+          }
+          EOF
+          
           echo "include ':app'" > settings.gradle
           echo "android.useAndroidX=true" > gradle.properties
-          echo "plugins { id 'com.android.application' }
-          android { namespace 'com.enjoer.game'; compileSdk 34; defaultConfig { applicationId 'com.enjoer.game'; minSdk 24; targetSdk 34; externalNativeBuild { cmake { path 'src/main/cpp/CMakeLists.txt' } } } }" > app/build.gradle
+          
+          # Настройка app/build.gradle (ИСПРАВЛЕНО)
+          cat <<'EOF' > app/build.gradle
+          apply plugin: 'com.android.application'
+          android {
+              namespace 'com.enjoer.game'
+              compileSdk 34
+              defaultConfig {
+                  applicationId 'com.enjoer.game'
+                  minSdk 24
+                  targetSdk 34
+                  externalNativeBuild { cmake { path 'src/main/cpp/CMakeLists.txt' } }
+              }
+          }
+          dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }
+          EOF
+
+      - name: Build APK
+        run: |
           gradle wrapper --gradle-version 8.5
           ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Enjoer_V18_Hands
+          name: Enjoer_V18_Fixed
           path: app/build/outputs/apk/debug/app-debug.apk
