@@ -317,7 +317,7 @@ jobs:
               public float x, y, z, sx, sy, sz, r, g, b;
               public boolean isTrigger, hidden, noCollision;
               public String scriptCode;
-              public int shapeType; // 0=cube, 1=sphere, 2=cylinder, 3=pyramid
+              public int shapeType;
               public boolean triggered;
               
               public Block(float x, float y, float z, float sx, float sy, float sz, float r, float g, float b) {
@@ -356,6 +356,7 @@ jobs:
               private int prog;
               private FloatBuffer vBuf, nBuf;
               public float blockR=0.8f, blockG=0.3f, blockB=0.3f, blockSX=4, blockSY=4, blockSZ=4, placeDist=6f;
+              public int currentShapeType = 0;
               public CopyOnWriteArrayList<Block> blocks = new CopyOnWriteArrayList<>();
               public int selectedIndex = -1;
               public float screenW=1, screenH=1;
@@ -388,7 +389,6 @@ jobs:
                   float vz=(float)(-Math.cos(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
                   float nx=pX+vx*placeDist, ny=pY+vy*placeDist, nz=pZ+vz*placeDist;
                   
-                  // Grid snapping
                   nx = Math.round(nx / GRID_SIZE) * GRID_SIZE;
                   nz = Math.round(nz / GRID_SIZE) * GRID_SIZE;
                   
@@ -417,8 +417,6 @@ jobs:
                   newBlock.shapeType = currentShapeType;
                   blocks.add(newBlock);
               }
-              
-              private int currentShapeType = 0;
 
               public void deleteSelected() { if(selectedIndex>=0 && selectedIndex<blocks.size()) { blocks.remove(selectedIndex); selectedIndex=-1; } }
               
@@ -662,7 +660,6 @@ jobs:
               private ActivityResultLauncher<Intent> saveLauncher,loadLauncher;
               private Handler handler = new Handler(Looper.getMainLooper());
               private int pendingMode = 0;
-              private boolean showingSelectMsg = false;
 
               @SuppressLint("ClickableViewAccessibility")
               @Override protected void onCreate(Bundle savedInstanceState) {
@@ -898,7 +895,7 @@ jobs:
 
                   shapeBtn=new Button[]{findViewById(R.id.shape_cube),findViewById(R.id.shape_sphere),findViewById(R.id.shape_cylinder),findViewById(R.id.shape_pyramid)};
                   int[] shapeTypes={0,1,2,3};
-                  for(int i=0;i<shapeBtn.length;i++){final int idx=i;shapeBtn[i].setOnClickListener(v->{ren.currentShapeType=shapeTypes[idx];updBtnGrp(shapeBtn,idx);});}
+                  for(int i=0;i<shapeBtn.length;i++){final int idx=i;final int type=shapeTypes[i];shapeBtn[i].setOnClickListener(v->{ren.currentShapeType=type;updBtnGrp(shapeBtn,idx);});}
 
                   sizeBtn=new Button[]{findViewById(R.id.size_s),findViewById(R.id.size_m),findViewById(R.id.size_l)};
                   float[] sizes={.5f,1f,2f};
