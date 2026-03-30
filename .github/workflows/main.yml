@@ -172,6 +172,7 @@ jobs:
           import android.os.Bundle;
           import android.view.*;
           import android.widget.*;
+          import android.opengl.GLSurfaceView;
           import androidx.appcompat.app.AppCompatActivity;
 
           public class MainActivity extends AppCompatActivity {
