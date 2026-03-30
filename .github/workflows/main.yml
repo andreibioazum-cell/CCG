@@ -313,4 +313,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Enjoer_6.1_Stars_Build
-          path: app/build/outputs/apk/debug/app-debug.apkk
+          path: app/build/outputs/apk/debug/app-debug.apk
