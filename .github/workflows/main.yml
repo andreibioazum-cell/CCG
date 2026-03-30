@@ -1,4 +1,4 @@
-name: VOXEL_VULKAN_ULTRA
+name: VULKAN_VOXEL_ULTRA_V1
 on: [push, workflow_dispatch]
 
 jobs:
@@ -8,35 +8,58 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
       - name: Setup NDK
         uses: nttld/setup-ndk@v1
         with:
           ndk-version: r26b
 
-      - name: Create Project Structure
+      - name: Clean and Create Project Structure
         run: |
+          # Полная очистка перед созданием
+          rm -rf app
           mkdir -p app/src/main/cpp
           mkdir -p app/src/main/java/com/enjoer/vulkan
+          mkdir -p app/src/main/res/values
           mkdir -p app/src/main/res/layout
-          mkdir -p app/src/main/AndroidManifest.xml
 
-      - name: Write C++ Vulkan Engine
+      - name: Write Android Manifest
+        run: |
+          cat <<'EOF' > app/src/main/AndroidManifest.xml
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.enjoer.vulkan">
+              <application 
+                  android:label="VulkanCraft" 
+                  android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+                  <activity android:name=".MainActivity" 
+                      android:exported="true" 
+                      android:screenOrientation="landscape">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+      - name: Write C++ Engine (Vulkan Core)
         run: |
           cat <<'EOF' > app/src/main/cpp/native-lib.cpp
           #include <jni.h>
-          #include <android/log.h>
+          #include <string>
           #include <vulkan/vulkan.h>
-          #include <vector>
 
-          // Код инициализации Vulkan (упрощенная версия для примера)
-          // В реальности Vulkan требует ~1000 строк для треугольника, 
-          // здесь мы создаем мост для вызова из Java.
-          
           extern "C" JNIEXPORT jstring JNICALL
-          Java_com_enjoer_vulkan_MainActivity_getVulkanStatus(JNIEnv* env, jobject) {
+          Java_com_enjoer_vulkan_MainActivity_getVulkanStatus(JNIEnv* env, jobject /* this */) {
               uint32_t extensionCount = 0;
               vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-              return env->NewStringUTF("Vulkan Ultra Engine Ready. Extensions found.");
+              std::string result = "Vulkan Ultra Engine: Active\nExtensions: " + std::to_string(extensionCount);
+              return env->NewStringUTF(result.c_str());
           }
           EOF
 
@@ -49,32 +72,47 @@ jobs:
           target_link_libraries(voxelvulkan ${vulkan-lib} ${log-lib})
           EOF
 
-      - name: Write Java Wrapper
+      - name: Write Java Code
         run: |
           cat <<'EOF' > app/src/main/java/com/enjoer/vulkan/MainActivity.java
           package com.enjoer.vulkan;
           import android.os.Bundle;
           import android.widget.TextView;
+          import android.view.Gravity;
+          import android.graphics.Color;
           import androidx.appcompat.app.AppCompatActivity;
 
           public class MainActivity extends AppCompatActivity {
               static { System.loadLibrary("voxelvulkan"); }
-              public native string getVulkanStatus();
+              public native String getVulkanStatus();
 
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
                   TextView tv = new TextView(this);
-                  tv.setText(getVulkanStatus() + "\nГрафика: Vulkan RT Enabled\nНагрузка: Max");
-                  tv.setTextSize(24);
+                  tv.setText(getVulkanStatus() + "\n\nGraphics Mode: Ultra (No Optimization)");
+                  tv.setTextColor(Color.CYAN);
+                  tv.setTextSize(22);
+                  tv.setGravity(Gravity.CENTER);
+                  tv.setBackgroundColor(Color.BLACK);
                   setContentView(tv);
-                  // Здесь будет запускаться VulkanSurfaceView
               }
           }
           EOF
 
-      - name: Android Config
+      - name: Build Scripts and Config
         run: |
+          echo "include ':app'" > settings.gradle
+          echo "android.useAndroidX=true" > gradle.properties
+          
+          cat <<'EOF' > build.gradle
+          buildscript {
+              repositories { google(); mavenCentral() }
+              dependencies { classpath 'com.android.tools.build:gradle:8.2.2' }
+          }
+          allprojects { repositories { google(); mavenCentral() } }
+          EOF
+
           cat <<'EOF' > app/build.gradle
           plugins { id 'com.android.application' }
           android {
@@ -84,36 +122,37 @@ jobs:
                   applicationId "com.enjoer.vulkan"
                   minSdk 24
                   targetSdk 34
-                  externalNativeBuild { cmake { cppFlags "-std=c++17" } }
+                  versionCode 1
+                  versionName "1.0"
+                  externalNativeBuild {
+                      cmake {
+                          cppFlags "-std=c++17"
+                          arguments "-DANDROID_STL=c++_shared"
+                      }
+                  }
               }
-              externalNativeBuild { cmake { path "src/main/cpp/CMakeLists.txt" } }
+              externalNativeBuild {
+                  cmake {
+                      path "src/main/cpp/CMakeLists.txt"
+                      version "3.22.1"
+                  }
+              }
+          }
+          dependencies {
+              implementation 'androidx.appcompat:appcompat:1.6.1'
           }
           EOF
 
-          cat <<'EOF' > app/src/main/AndroidManifest.xml
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.enjoer.vulkan">
-              <application android:label="VulkanCraft">
-                  <activity android:name=".MainActivity" android:exported="true">
-                      <intent-filter>
-                          <action android:name="android.intent.action.MAIN" />
-                          <category android:name="android.intent.category.LAUNCHER" />
-                      </intent-filter>
-                  </activity>
-              </application>
-          </manifest>
-          EOF
-
-          echo "include ':app'" > settings.gradle
-          echo "buildscript { repositories { google(); mavenCentral() }; dependencies { classpath 'com.android.tools.build:gradle:8.2.2' } }" > build.gradle
-          echo "allprojects { repositories { google(); mavenCentral() } }" >> build.gradle
+          mkdir -p app/src/main/res/values
+          echo "<resources><style name='Theme.AppCompat.Light.NoActionBar' parent='Theme.AppCompat.Light'><item name='windowNoTitle'>true</item><item name='windowActionBar'>false</item></style></resources>" > app/src/main/res/values/styles.xml
 
       - name: Build APK
         run: |
           gradle wrapper --gradle-version 8.5
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon
 
-      - name: Upload
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Vulkan_Voxel_Build
+          name: Vulkan_Voxel_Ultra
           path: app/build/outputs/apk/debug/app-debug.apk
