@@ -56,6 +56,12 @@ jobs:
           </shape>
           EOF
 
+          cat <<EOF > app/src/main/res/drawable/btn_yellow.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+            <corners android:radius="12dp"/><solid android:color="#FFAA44"/>
+          </shape>
+          EOF
+
           cat <<EOF > app/src/main/res/drawable/joy_base.xml
           <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
             <solid android:color="#CC101820"/><stroke android:width="2dp" android:color="#00BFFF"/>
@@ -77,6 +83,14 @@ jobs:
           cat <<EOF > app/src/main/res/drawable/color_btn.xml
           <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
             <solid android:color="#FFF"/><stroke android:width="2dp" android:color="#00BFFF"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/crosshair.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+            <solid android:color="#00BFFF"/>
+            <stroke android:width="1dp" android:color="#FFFFFF"/>
+            <size android:width="8dp" android:height="8dp"/>
           </shape>
           EOF
 
@@ -104,6 +118,8 @@ jobs:
                       android:layout_alignParentRight="true" android:layout_alignParentBottom="true" 
                       android:layout_marginRight="40dp" android:layout_marginBottom="40dp" 
                       android:text="▲" android:textSize="28sp" android:background="@drawable/btn_blue" android:textColor="#FFF"/>
+                  <View android:id="@+id/game_crosshair" android:layout_width="8dp" android:layout_height="8dp"
+                      android:layout_centerInParent="true" android:background="@drawable/crosshair"/>
               </RelativeLayout>
 
               <RelativeLayout android:id="@+id/engine_ui" android:layout_width="match_parent" 
@@ -119,7 +135,7 @@ jobs:
                       <Button android:id="@+id/btn_play_level" android:layout_width="50dp" android:layout_height="50dp" 
                           android:text="▶" android:textSize="20sp" android:background="@drawable/btn_green" android:textColor="#000" android:layout_marginLeft="10dp"/>
                       <Button android:id="@+id/btn_script" android:layout_width="60dp" android:layout_height="50dp" 
-                          android:text="SCRIPT" android:textSize="12sp" android:background="@drawable/btn_blue" android:textColor="#00BFFF" android:layout_marginLeft="10dp"/>
+                          android:text="SCRIPT" android:textSize="12sp" android:background="@drawable/btn_yellow" android:textColor="#000" android:layout_marginLeft="10dp"/>
                   </LinearLayout>
                   <FrameLayout android:id="@+id/engine_joy_base" android:layout_width="120dp" android:layout_height="120dp"
                       android:layout_alignParentBottom="true" android:layout_alignParentLeft="true" 
@@ -185,6 +201,10 @@ jobs:
                               android:text="DELETE" android:background="@drawable/btn_red" android:textColor="#FF4444" android:layout_marginTop="8dp"/>
                           <Button android:id="@+id/btn_deselect" android:layout_width="match_parent" android:layout_height="36dp" 
                               android:text="DESELECT" android:background="@drawable/btn_blue" android:textColor="#00BFFF" android:layout_marginTop="8dp"/>
+                          <Button android:id="@+id/btn_hide" android:layout_width="match_parent" android:layout_height="36dp" 
+                              android:text="HIDE" android:background="@drawable/btn_blue" android:textColor="#00BFFF" android:layout_marginTop="8dp"/>
+                          <Button android:id="@+id/btn_teleport" android:layout_width="match_parent" android:layout_height="36dp" 
+                              android:text="TELEPORT" android:background="@drawable/btn_blue" android:textColor="#00BFFF" android:layout_marginTop="8dp"/>
                       </LinearLayout>
                   </ScrollView>
                   <LinearLayout android:id="@+id/axis_panel" android:layout_width="wrap_content" android:layout_height="wrap_content" 
@@ -203,8 +223,8 @@ jobs:
                       <Button android:id="@+id/axis_z_plus" android:layout_width="44dp" android:layout_height="44dp" 
                           android:text="Z+" android:background="@drawable/btn_blue" android:textColor="#4488FF" android:textSize="12sp" android:layout_marginLeft="4dp"/>
                   </LinearLayout>
-                  <View android:id="@+id/crosshair" android:layout_width="6dp" android:layout_height="6dp" 
-                      android:layout_centerInParent="true" android:background="#00BFFF"/>
+                  <View android:id="@+id/crosshair" android:layout_width="8dp" android:layout_height="8dp" 
+                      android:layout_centerInParent="true" android:background="@drawable/crosshair"/>
               </RelativeLayout>
 
               <RelativeLayout android:id="@+id/playtest_ui" android:layout_width="match_parent" 
@@ -222,6 +242,8 @@ jobs:
                       android:layout_alignParentRight="true" android:layout_alignParentBottom="true" 
                       android:layout_marginRight="40dp" android:layout_marginBottom="40dp" 
                       android:text="▲" android:textSize="28sp" android:background="@drawable/btn_blue" android:textColor="#FFF"/>
+                  <View android:id="@+id/playtest_crosshair" android:layout_width="8dp" android:layout_height="8dp"
+                      android:layout_centerInParent="true" android:background="@drawable/crosshair"/>
               </RelativeLayout>
 
               <LinearLayout android:id="@+id/menu_ui" android:layout_width="match_parent" android:layout_height="match_parent"
@@ -237,6 +259,22 @@ jobs:
                   <Button android:id="@+id/btn_load_file" android:layout_width="240dp" android:layout_height="60dp" 
                       android:text="IMPORT .JSON" android:textSize="16sp" android:textColor="#00BFFF" android:background="@drawable/btn_blue"/>
               </LinearLayout>
+              
+              <LinearLayout android:id="@+id/script_editor" android:layout_width="match_parent" android:layout_height="match_parent"
+                  android:orientation="vertical" android:background="#CC000000" android:visibility="gone" android:padding="20dp">
+                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" 
+                      android:text="SCRIPT EDITOR" android:textColor="#00BFFF" android:textSize="24sp" android:textStyle="bold"/>
+                  <EditText android:id="@+id/script_code" android:layout_width="match_parent" android:layout_height="0dp"
+                      android:layout_weight="1" android:gravity="top" android:padding="10dp"
+                      android:background="#FF222222" android:textColor="#FFFFFF" android:textSize="12sp"
+                      android:fontFamily="monospace" android:inputType="textMultiLine"/>
+                  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                      <Button android:id="@+id/btn_save_script" android:layout_width="0dp" android:layout_height="50dp"
+                          android:layout_weight="1" android:text="SAVE" android:background="@drawable/btn_green" android:textColor="#000"/>
+                      <Button android:id="@+id/btn_cancel_script" android:layout_width="0dp" android:layout_height="50dp"
+                          android:layout_weight="1" android:text="CANCEL" android:background="@drawable/btn_red" android:textColor="#FFF" android:layout_marginLeft="10dp"/>
+                  </LinearLayout>
+              </LinearLayout>
           </FrameLayout>
           LAYOUT
 
@@ -244,13 +282,18 @@ jobs:
           package com.enjoer.game;
           public class Block {
               public float x, y, z, sx, sy, sz, r, g, b;
-              public boolean isTrigger;
-              public String scriptName;
+              public boolean isTrigger, hidden, noCollision;
+              public String scriptName, scriptCode;
+              public float teleportX, teleportY, teleportZ;
               
               public Block(float x, float y, float z, float sx, float sy, float sz, float r, float g, float b) {
                   this.x=x; this.y=y; this.z=z; this.sx=sx; this.sy=sy; this.sz=sz; this.r=r; this.g=g; this.b=b;
                   this.isTrigger = false;
+                  this.hidden = false;
+                  this.noCollision = false;
                   this.scriptName = null;
+                  this.scriptCode = null;
+                  this.teleportX = 0; this.teleportY = 5; this.teleportZ = 0;
               }
               
               public float minX(){return x-sx/2;} public float maxX(){return x+sx/2;}
@@ -262,58 +305,78 @@ jobs:
           cat <<'SCRIPT' > app/src/main/java/com/enjoer/game/GameScript.java
           package com.enjoer.game;
           import java.util.*;
+          import javax.script.*;
           
           public class GameScript {
               private GameRenderer renderer;
-              private Map<String, ScriptAction> scripts = new HashMap<>();
+              private ScriptEngineManager manager;
+              private ScriptEngine engine;
+              private Map<String, CompiledScript> compiledScripts = new HashMap<>();
               
-              public interface ScriptAction {
-                  void execute(GameRenderer ren, Block block);
+              public interface ScriptMessageCallback {
+                  void onMessage(String msg);
               }
               
               public GameScript(GameRenderer ren) {
                   this.renderer = ren;
-                  registerBuiltInScripts();
+                  this.manager = new ScriptEngineManager();
+                  this.engine = manager.getEngineByName("rhino");
+                  if (this.engine == null) {
+                      this.engine = manager.getEngineByName("javascript");
+                  }
+                  registerBuiltInFunctions();
               }
               
-              private void registerBuiltInScripts() {
-                  // Скрипт для прыжка
-                  scripts.put("jump_pad", (ren, block) -> {
-                      ren.vY = 0.8f;
-                  });
-                  
-                  // Скрипт для ускорения
-                  scripts.put("speed_boost", (ren, block) -> {
-                      ren.speedMultiplier = 2.0f;
-                  });
-                  
-                  // Скрипт для телепорта
-                  scripts.put("teleport_up", (ren, block) -> {
-                      ren.pY += 10;
-                  });
-                  
-                  // Скрипт для сообщения
-                  scripts.put("message", (ren, block) -> {
-                      if (ren.messageCallback != null) {
-                          ren.messageCallback.onMessage("You touched a magic block!");
-                      }
-                  });
-              }
-              
-              public void executeScript(String name, Block block) {
-                  ScriptAction action = scripts.get(name);
-                  if (action != null) {
-                      action.execute(renderer, block);
+              private void registerBuiltInFunctions() {
+                  if (engine != null) {
+                      engine.put("game", renderer);
+                      engine.put("console", new Object() {
+                          public void log(String msg) {
+                              if (renderer.messageCallback != null) {
+                                  renderer.messageCallback.onMessage(msg);
+                              }
+                          }
+                      });
                   }
               }
               
-              public void addScript(String name, ScriptAction action) {
-                  scripts.put(name, action);
+              public void executeScript(Block block) {
+                  if (block == null || block.scriptCode == null || block.scriptCode.isEmpty()) return;
+                  if (engine == null) {
+                      if (renderer.messageCallback != null) {
+                          renderer.messageCallback.onMessage("JavaScript engine not available");
+                      }
+                      return;
+                  }
+                  
+                  try {
+                      engine.put("block", block);
+                      engine.put("player", new PlayerProxy(renderer));
+                      engine.eval(block.scriptCode);
+                  } catch (ScriptException e) {
+                      if (renderer.messageCallback != null) {
+                          renderer.messageCallback.onMessage("Script error: " + e.getMessage());
+                      }
+                  }
               }
-          }
-          
-          interface ScriptMessageCallback {
-              void onMessage(String msg);
+              
+              public void executeTrigger(Block block) {
+                  if (block != null && block.isTrigger && block.scriptCode != null && !block.scriptCode.isEmpty()) {
+                      executeScript(block);
+                  }
+              }
+              
+              public class PlayerProxy {
+                  private GameRenderer ren;
+                  public PlayerProxy(GameRenderer r) { this.ren = r; }
+                  public void teleport(float x, float y, float z) { ren.pX = x; ren.pY = y; ren.pZ = z; }
+                  public void setColor(float r, float g, float b) { ren.blockR = r; ren.blockG = g; ren.blockB = b; }
+                  public void setSpeed(float mult) { ren.speedMultiplier = mult; }
+                  public void jump() { if(ren.isOnGround()) ren.vY = 0.55f; }
+                  public float getX() { return ren.pX; }
+                  public float getY() { return ren.pY; }
+                  public float getZ() { return ren.pZ; }
+              }
           }
           SCRIPT
 
@@ -332,7 +395,7 @@ jobs:
               public float pX=0, pY=6, pZ=15, rY=0, rX=0, jX=0, jY=0, vY=0;
               public boolean isEngineMode=false, isPlayingLevel=false;
               public float speedMultiplier = 1.0f;
-              public ScriptMessageCallback messageCallback;
+              public GameScript.ScriptMessageCallback messageCallback;
               private int prog;
               private FloatBuffer vBuf, nBuf;
               public float blockR=0.8f, blockG=0.3f, blockB=0.3f, blockSX=4, blockSY=4, blockSZ=4, placeDist=6f;
@@ -343,7 +406,7 @@ jobs:
               private GameScript scriptSystem;
               private Block lastTouchedTrigger = null;
 
-              public void setMessageCallback(ScriptMessageCallback cb) { messageCallback = cb; }
+              public void setMessageCallback(GameScript.ScriptMessageCallback cb) { messageCallback = cb; }
               
               public void loadBuiltInLevel() {
                   blocks.clear();
@@ -353,11 +416,11 @@ jobs:
                   blocks.add(new Block(0,1,-38, 14,2,14, 0.9f,0.9f,0.3f));
                   blocks.add(new Block(0,0.5f,-60, 18,1,18, 0.95f,0.95f,0.95f));
                   
-                  // Пример триггерного блока с скриптом
-                  Block trigger = new Block(0, 1.5f, -45, 4, 3, 4, 0.5f, 0.2f, 0.8f);
-                  trigger.isTrigger = true;
-                  trigger.scriptName = "jump_pad";
-                  blocks.add(trigger);
+                  // Пример телепорта
+                  Block teleport = new Block(0, 1.5f, -45, 4, 3, 4, 0.8f, 0.2f, 0.8f);
+                  teleport.isTrigger = true;
+                  teleport.scriptCode = "player.teleport(0, 10, -20); console.log('Teleported!');";
+                  blocks.add(teleport);
               }
 
               public void placeBlock() {
@@ -366,12 +429,10 @@ jobs:
                   float vz=(float)(-Math.cos(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
                   float nx=pX+vx*placeDist, ny=pY+vy*placeDist, nz=pZ+vz*placeDist;
                   
-                  // Исправленная привязка к земле - блок ставится точно на землю
                   float halfHeight = blockSY / 2;
                   if(ny - halfHeight < FLOOR_Y) {
                       ny = FLOOR_Y + halfHeight;
                   } else {
-                      // Проверяем коллизию с другими блоками
                       for(Block b : blocks) {
                           float bottomY = ny - halfHeight;
                           float topY = ny + halfHeight;
@@ -381,7 +442,6 @@ jobs:
                           if(Math.abs(nx - b.x) < (blockSX/2 + b.sx/2) && 
                              Math.abs(nz - b.z) < (blockSZ/2 + b.sz/2)) {
                               if(bottomY < bTop && topY > bBottom) {
-                                  // Ставим блок сверху существующего
                                   ny = bTop + halfHeight;
                               }
                           }
@@ -417,6 +477,7 @@ jobs:
                   int closest=-1; float cDist=Float.MAX_VALUE;
                   for(int i=0; i<blocks.size(); i++) {
                       Block b=blocks.get(i);
+                      if(b.hidden) continue;
                       float tmin=(b.minX()-nW[0])/dx, tmax=(b.maxX()-nW[0])/dx;
                       if(tmin>tmax){float tmp=tmin;tmin=tmax;tmax=tmp;}
                       float tymin=(b.minY()-nW[1])/dy, tymax=(b.maxY()-nW[1])/dy;
@@ -440,25 +501,24 @@ jobs:
                       "uniform mat4 uMVP,uM;out vec3 vN,vP;"+
                       "void main(){vP=vec3(uM*aP);vN=normalize(mat3(uM)*aN);gl_Position=uMVP*aP;}";
                   
-                  // Фрагментный шейдер с звёздами
                   String fs="#version 300 es\nprecision highp float;"+
                       "in vec3 vN,vP;uniform vec3 camP;uniform vec4 uC;uniform float uSel,isFloor;out vec4 fC;"+
                       "float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}"+
                       "vec3 sky(vec3 d){"+
                       "  float t=clamp(d.y*.5+.5,0.,1.);"+
                       "  vec3 base=mix(vec3(.005,.01,.03),vec3(.0,.2,.5),t);"+
-                      "  if(d.y>0.05){"+
-                      "    vec2 uv=d.xz/(d.y+.001);"+
-                      "    vec2 id=floor(uv*80.);"+
+                      "  if(d.y>-0.2){"+
+                      "    vec2 uv=d.xz/(d.y+.5);"+
+                      "    vec2 id=floor(uv*60.);"+
                       "    float star=hash(id);"+
-                      "    if(star>.97){"+
-                      "      vec2 gv=fract(uv*80.)-.5;"+
+                      "    if(star>.98){"+
+                      "      vec2 gv=fract(uv*60.)-.5;"+
                       "      float dist=length(gv);"+
                       "      float brightness=hash(id+.1);"+
                       "      float twinkle=sin(hash(id)*6.28+star*100.)*.3+.7;"+
-                      "      float s=smoothstep(.15,.0,dist)*brightness*twinkle;"+
+                      "      float s=smoothstep(.12,.0,dist)*brightness*twinkle;"+
                       "      vec3 starCol=mix(vec3(1.,.9,.8),vec3(.8,.9,1.),hash(id+.2));"+
-                      "      base+=starCol*s*1.5;"+
+                      "      base+=starCol*s*2.0;"+
                       "    }"+
                       "  }"+
                       "  return base;"+
@@ -506,18 +566,18 @@ jobs:
                   Matrix.setIdentityM(model,0);Matrix.translateM(model,0,0,-.05f,0);Matrix.scaleM(model,0,800,.1f,800);
                   GLES30.glUniform1f(uSel,0f);GLES30.glUniform1f(uFloor,1f);draw(uM,uMVP,uC,.04f,.06f,.1f,1f);
                   GLES30.glUniform1f(uFloor,0f);
-                  for(int i=0;i<blocks.size();i++){Block b=blocks.get(i);Matrix.setIdentityM(model,0);Matrix.translateM(model,0,b.x,b.y,b.z);Matrix.scaleM(model,0,b.sx,b.sy,b.sz);GLES30.glUniform1f(uSel,(i==selectedIndex&&isEngineMode&&!isPlayingLevel)?1f:0f);draw(uM,uMVP,uC,b.r,b.g,b.b,1f);}
+                  for(int i=0;i<blocks.size();i++){Block b=blocks.get(i);if(b.hidden && !isEngineMode) continue;Matrix.setIdentityM(model,0);Matrix.translateM(model,0,b.x,b.y,b.z);Matrix.scaleM(model,0,b.sx,b.sy,b.sz);GLES30.glUniform1f(uSel,(i==selectedIndex&&isEngineMode&&!isPlayingLevel)?1f:0f);float alpha = b.hidden ? 0.3f : 1f;draw(uM,uMVP,uC,b.r,b.g,b.b,alpha);}
                   if(isEngineMode&&!isPlayingLevel&&selectedIndex<0){float px=pX+vx*placeDist,py=pY+vy*placeDist,pz=pZ+vz*placeDist;float halfHeight=blockSY/2;if(py-halfHeight<FLOOR_Y)py=FLOOR_Y+halfHeight;Matrix.setIdentityM(model,0);Matrix.translateM(model,0,px,py,pz);Matrix.scaleM(model,0,blockSX,blockSY,blockSZ);GLES30.glEnable(GLES30.GL_BLEND);GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA,GLES30.GL_ONE_MINUS_SRC_ALPHA);GLES30.glUniform1f(uSel,0f);draw(uM,uMVP,uC,blockR,blockG,blockB,.4f);GLES30.glDisable(GLES30.GL_BLEND);}
               }
               
               private void checkTriggers() {
                   for(Block b : blocks) {
-                      if(b.isTrigger && b.scriptName != null) {
+                      if(b.isTrigger && b.scriptCode != null && !b.hidden) {
                           if(pX + PLAYER_RADIUS > b.minX() && pX - PLAYER_RADIUS < b.maxX() &&
                              pZ + PLAYER_RADIUS > b.minZ() && pZ - PLAYER_RADIUS < b.maxZ() &&
                              pY - PLAYER_HEIGHT < b.maxY() && pY > b.minY()) {
                               if(lastTouchedTrigger != b) {
-                                  scriptSystem.executeScript(b.scriptName, b);
+                                  scriptSystem.executeScript(b);
                                   lastTouchedTrigger = b;
                               }
                               return;
@@ -532,10 +592,10 @@ jobs:
                   float s=.35f * speedMultiplier;
                   float rad=(float)Math.toRadians(rY),pitch=(float)Math.toRadians(rX);
                   if(isEngineMode&&!isPlayingLevel){float fx=(float)Math.sin(rad),fz=(float)-Math.cos(rad),fy=(float)Math.sin(pitch);pX+=(fx*-jY+(float)Math.cos(rad)*jX)*s;pZ+=(fz*-jY+(float)Math.sin(rad)*jX)*s;pY+=(fy*-jY)*s;if(pY<1)pY=1;}
-                  else{float mX=((float)Math.sin(rad)*-jY+(float)Math.cos(rad)*jX)*s,mZ=((float)-Math.cos(rad)*-jY+(float)Math.sin(rad)*jX)*s;vY-=.025f;float nX=pX+mX,nY=pY+vY,nZ=pZ+mZ,fY=nY-PLAYER_HEIGHT,hY=nY;if(fY<FLOOR_Y){nY=FLOOR_Y+PLAYER_HEIGHT;vY=0;}for(Block b:blocks){if(nX+PLAYER_RADIUS>b.minX()&&nX-PLAYER_RADIUS<b.maxX()&&nZ+PLAYER_RADIUS>b.minZ()&&nZ-PLAYER_RADIUS<b.maxZ()){if(pY-PLAYER_HEIGHT>=b.maxY()-.15f&&fY<b.maxY()){nY=b.maxY()+PLAYER_HEIGHT;vY=0;}else if(pY<b.minY()&&hY>b.minY()){nY=b.minY();vY=0;}else if(fY<b.maxY()-.1f&&hY>b.minY()+.1f){float oX1=(nX+PLAYER_RADIUS)-b.minX(),oX2=b.maxX()-(nX-PLAYER_RADIUS),oZ1=(nZ+PLAYER_RADIUS)-b.minZ(),oZ2=b.maxZ()-(nZ-PLAYER_RADIUS),minO=Math.min(Math.min(oX1,oX2),Math.min(oZ1,oZ2));if(minO==oX1)nX=b.minX()-PLAYER_RADIUS;else if(minO==oX2)nX=b.maxX()+PLAYER_RADIUS;else if(minO==oZ1)nZ=b.minZ()-PLAYER_RADIUS;else nZ=b.maxZ()+PLAYER_RADIUS;}}}pX=nX;pY=nY;pZ=nZ;}
+                  else{float mX=((float)Math.sin(rad)*-jY+(float)Math.cos(rad)*jX)*s,mZ=((float)-Math.cos(rad)*-jY+(float)Math.sin(rad)*jX)*s;vY-=.025f;float nX=pX+mX,nY=pY+vY,nZ=pZ+mZ,fY=nY-PLAYER_HEIGHT,hY=nY;if(fY<FLOOR_Y){nY=FLOOR_Y+PLAYER_HEIGHT;vY=0;}for(Block b:blocks){if(b.noCollision) continue;if(nX+PLAYER_RADIUS>b.minX()&&nX-PLAYER_RADIUS<b.maxX()&&nZ+PLAYER_RADIUS>b.minZ()&&nZ-PLAYER_RADIUS<b.maxZ()){if(pY-PLAYER_HEIGHT>=b.maxY()-.15f&&fY<b.maxY()){nY=b.maxY()+PLAYER_HEIGHT;vY=0;}else if(pY<b.minY()&&hY>b.minY()){nY=b.minY();vY=0;}else if(fY<b.maxY()-.1f&&hY>b.minY()+.1f){float oX1=(nX+PLAYER_RADIUS)-b.minX(),oX2=b.maxX()-(nX-PLAYER_RADIUS),oZ1=(nZ+PLAYER_RADIUS)-b.minZ(),oZ2=b.maxZ()-(nZ-PLAYER_RADIUS),minO=Math.min(Math.min(oX1,oX2),Math.min(oZ1,oZ2));if(minO==oX1)nX=b.minX()-PLAYER_RADIUS;else if(minO==oX2)nX=b.maxX()+PLAYER_RADIUS;else if(minO==oZ1)nZ=b.minZ()-PLAYER_RADIUS;else nZ=b.maxZ()+PLAYER_RADIUS;}}}pX=nX;pY=nY;pZ=nZ;}
               }
 
-              public boolean isOnGround(){if(pY-PLAYER_HEIGHT<=FLOOR_Y+.1f)return true;for(Block b:blocks)if(pX+PLAYER_RADIUS>b.minX()&&pX-PLAYER_RADIUS<b.maxX()&&pZ+PLAYER_RADIUS>b.minZ()&&pZ-PLAYER_RADIUS<b.maxZ()&&Math.abs((pY-PLAYER_HEIGHT)-b.maxY())<.15f)return true;return false;}
+              public boolean isOnGround(){if(pY-PLAYER_HEIGHT<=FLOOR_Y+.1f)return true;for(Block b:blocks)if(!b.noCollision && pX+PLAYER_RADIUS>b.minX()&&pX-PLAYER_RADIUS<b.maxX()&&pZ+PLAYER_RADIUS>b.minZ()&&pZ-PLAYER_RADIUS<b.maxZ()&&Math.abs((pY-PLAYER_HEIGHT)-b.maxY())<.15f)return true;return false;}
               private void draw(int uM,int uMVP,int uC,float r,float g,float b,float a){GLES30.glUniformMatrix4fv(uM,1,false,model,0);float[] res=new float[16];Matrix.multiplyMM(res,0,proj,0,view,0);Matrix.multiplyMM(res,0,res,0,model,0);GLES30.glUniformMatrix4fv(uMVP,1,false,res,0);GLES30.glUniform4f(uC,r,g,b,a);for(int i=0;i<6;i++)GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP,i*4,4);}
               private int mkProg(String v,String f){int p=GLES30.glCreateProgram();GLES30.glAttachShader(p,mkSh(35633,v));GLES30.glAttachShader(p,mkSh(35632,f));GLES30.glLinkProgram(p);return p;}
               private int mkSh(int t,String s){int sh=GLES30.glCreateShader(t);GLES30.glShaderSource(sh,s);GLES30.glCompileShader(sh);return sh;}
@@ -548,13 +608,14 @@ jobs:
           import android.content.Intent;
           import android.content.pm.ActivityInfo;
           import android.graphics.drawable.GradientDrawable;
-          import android.net.Uri;
           import android.os.Bundle;
           import android.os.Handler;
           import android.os.Looper;
           import android.view.MotionEvent;
           import android.view.View;
           import android.widget.Button;
+          import android.widget.EditText;
+          import android.widget.LinearLayout;
           import android.widget.Toast;
           import androidx.activity.result.ActivityResultLauncher;
           import androidx.activity.result.contract.ActivityResultContracts;
@@ -568,7 +629,8 @@ jobs:
               private float lx,ly;
               private Button[] shapeBtn,sizeBtn,distBtn;
               private View[] colorBtn;
-              private View axisPanel,menuUI,gameUI,engineUI,playtestUI;
+              private View axisPanel,menuUI,gameUI,engineUI,playtestUI,scriptEditor;
+              private EditText scriptCode;
               private ActivityResultLauncher<Intent> saveLauncher,loadLauncher;
               private Handler handler = new Handler(Looper.getMainLooper());
               private int pendingMode = 0;
@@ -589,7 +651,9 @@ jobs:
                   gameUI=findViewById(R.id.game_ui);
                   engineUI=findViewById(R.id.engine_ui);
                   playtestUI=findViewById(R.id.playtest_ui);
+                  scriptEditor=findViewById(R.id.script_editor);
                   axisPanel=findViewById(R.id.axis_panel);
+                  scriptCode=findViewById(R.id.script_code);
 
                   if(savedInstanceState != null) {
                       int mode = savedInstanceState.getInt("mode", 0);
@@ -612,14 +676,14 @@ jobs:
                   saveLauncher=registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),res->{
                       if(res.getResultCode()==RESULT_OK&&res.getData()!=null){
                           try{OutputStream out=getContentResolver().openOutputStream(res.getData().getData());
-                          JSONArray arr=new JSONArray();for(Block b:ren.blocks){JSONObject o=new JSONObject();o.put("x",b.x);o.put("y",b.y);o.put("z",b.z);o.put("sx",b.sx);o.put("sy",b.sy);o.put("sz",b.sz);o.put("r",b.r);o.put("g",b.g);o.put("b",b.b);o.put("isTrigger",b.isTrigger);if(b.scriptName!=null)o.put("script",b.scriptName);arr.put(o);}
+                          JSONArray arr=new JSONArray();for(Block b:ren.blocks){JSONObject o=new JSONObject();o.put("x",b.x);o.put("y",b.y);o.put("z",b.z);o.put("sx",b.sx);o.put("sy",b.sy);o.put("sz",b.sz);o.put("r",b.r);o.put("g",b.g);o.put("b",b.b);o.put("isTrigger",b.isTrigger);o.put("hidden",b.hidden);o.put("noCollision",b.noCollision);if(b.scriptCode!=null)o.put("scriptCode",b.scriptCode);arr.put(o);}
                           JSONObject root=new JSONObject();root.put("blocks",arr);out.write(root.toString().getBytes());out.close();Toast.makeText(this,"Exported!",Toast.LENGTH_SHORT).show();}catch(Exception e){Toast.makeText(this,"Error",Toast.LENGTH_SHORT).show();}}});
 
                   loadLauncher=registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),res->{
                       if(res.getResultCode()==RESULT_OK&&res.getData()!=null){
                           try{InputStream in=getContentResolver().openInputStream(res.getData().getData());BufferedReader rd=new BufferedReader(new InputStreamReader(in));StringBuilder sb=new StringBuilder();String ln;while((ln=rd.readLine())!=null)sb.append(ln);in.close();
                           JSONObject root=new JSONObject(sb.toString());JSONArray arr=root.getJSONArray("blocks");ren.blocks.clear();
-                          for(int i=0;i<arr.length();i++){JSONObject o=arr.getJSONObject(i);Block b=new Block((float)o.getDouble("x"),(float)o.getDouble("y"),(float)o.getDouble("z"),(float)o.getDouble("sx"),(float)o.getDouble("sy"),(float)o.getDouble("sz"),(float)o.getDouble("r"),(float)o.getDouble("g"),(float)o.getDouble("b"));if(o.has("isTrigger"))b.isTrigger=o.getBoolean("isTrigger");if(o.has("script"))b.scriptName=o.getString("script");ren.blocks.add(b);}
+                          for(int i=0;i<arr.length();i++){JSONObject o=arr.getJSONObject(i);Block b=new Block((float)o.getDouble("x"),(float)o.getDouble("y"),(float)o.getDouble("z"),(float)o.getDouble("sx"),(float)o.getDouble("sy"),(float)o.getDouble("sz"),(float)o.getDouble("r"),(float)o.getDouble("g"),(float)o.getDouble("b"));if(o.has("isTrigger"))b.isTrigger=o.getBoolean("isTrigger");if(o.has("hidden"))b.hidden=o.getBoolean("hidden");if(o.has("noCollision"))b.noCollision=o.getBoolean("noCollision");if(o.has("scriptCode"))b.scriptCode=o.getString("scriptCode");ren.blocks.add(b);}
                           pendingMode = 1;
                           ren.isEngineMode=false;ren.isPlayingLevel=false;resetP();
                           menuUI.setVisibility(View.GONE);gameUI.setVisibility(View.VISIBLE);
@@ -665,8 +729,44 @@ jobs:
                   findViewById(R.id.btn_script).setOnClickListener(v->{
                       if(ren.selectedIndex >= 0) {
                           Block b = ren.blocks.get(ren.selectedIndex);
-                          b.isTrigger = !b.isTrigger;
-                          Toast.makeText(this, "Trigger: " + b.isTrigger, Toast.LENGTH_SHORT).show();
+                          scriptCode.setText(b.scriptCode != null ? b.scriptCode : "// Write your script here\n// Available: player.teleport(x,y,z), player.setColor(r,g,b)\n// player.setSpeed(mult), player.jump(), console.log(msg)\n\nplayer.teleport(0, 10, 0);\nconsole.log('Hello!');");
+                          scriptEditor.setVisibility(View.VISIBLE);
+                      } else {
+                          Toast.makeText(this, "Select a block first", Toast.LENGTH_SHORT).show();
+                      }
+                  });
+                  
+                  findViewById(R.id.btn_save_script).setOnClickListener(v->{
+                      if(ren.selectedIndex >= 0) {
+                          Block b = ren.blocks.get(ren.selectedIndex);
+                          b.scriptCode = scriptCode.getText().toString();
+                          b.isTrigger = true;
+                          scriptEditor.setVisibility(View.GONE);
+                          Toast.makeText(this, "Script saved!", Toast.LENGTH_SHORT).show();
+                      }
+                  });
+                  
+                  findViewById(R.id.btn_cancel_script).setOnClickListener(v->{
+                      scriptEditor.setVisibility(View.GONE);
+                  });
+                  
+                  findViewById(R.id.btn_hide).setOnClickListener(v->{
+                      if(ren.selectedIndex >= 0) {
+                          Block b = ren.blocks.get(ren.selectedIndex);
+                          b.hidden = !b.hidden;
+                          Toast.makeText(this, "Hidden: " + b.hidden, Toast.LENGTH_SHORT).show();
+                      } else {
+                          Toast.makeText(this, "Select a block first", Toast.LENGTH_SHORT).show();
+                      }
+                  });
+                  
+                  findViewById(R.id.btn_teleport).setOnClickListener(v->{
+                      if(ren.selectedIndex >= 0) {
+                          Block b = ren.blocks.get(ren.selectedIndex);
+                          if(b.scriptCode == null) b.scriptCode = "";
+                          b.scriptCode += "\nplayer.teleport(" + ren.pX + ", " + (ren.pY+2) + ", " + ren.pZ + ");\nconsole.log('Teleport to player position');";
+                          b.isTrigger = true;
+                          Toast.makeText(this, "Teleport added to block", Toast.LENGTH_SHORT).show();
                       } else {
                           Toast.makeText(this, "Select a block first", Toast.LENGTH_SHORT).show();
                       }
@@ -826,7 +926,10 @@ jobs:
                   targetSdk 34
               }
           }
-          dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }
+          dependencies { 
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+              implementation 'org.mozilla:rhino:1.7.14'
+          }
           EOF
 
       - name: Build APK
