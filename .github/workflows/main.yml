@@ -1,4 +1,4 @@
-name: ENJOER_ULTRA_V16_NATIVE
+name: ENJOER_ULTRA_V18_HANDS_FPS
 on: [push, workflow_dispatch]
 
 jobs:
@@ -8,7 +8,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Environment
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           java-version: '17'
@@ -19,83 +19,69 @@ jobs:
         with:
           ndk-version: r26b
 
-      - name: Create Structure
+      - name: Init Folders
         run: |
-          rm -rf app
-          mkdir -p app/src/main/cpp
-          mkdir -p app/src/main/java/com/enjoer/game
-          mkdir -p app/src/main/res/layout
-          mkdir -p app/src/main/res/values
-          mkdir -p app/src/main/res/drawable
+          mkdir -p app/src/main/cpp app/src/main/java/com/enjoer/game
+          mkdir -p app/src/main/res/layout app/src/main/res/values app/src/main/res/drawable
 
-      - name: Write C++ Native Engine (Stars & Physics)
+      - name: Write C++ Engine (Physics & Animation)
         run: |
           cat <<'EOF' > app/src/main/cpp/native-lib.cpp
           #include <jni.h>
           #include <vector>
           #include <cmath>
-          #include <random>
+          #include <algorithm>
 
-          struct Star { float x, y, z; };
-          struct Player { 
-              float x = 0, y = 1.0, z = 10;
-              float rx = 0, ry = 0;
-              float vy = 0;
-          } p;
+          struct Engine {
+              float x=0, y=1, z=5, rx=0, ry=0, vy=0;
+              float walkTime = 0;
+              float handBobX = 0, handBobY = 0;
+              bool grounded = true;
+          } e;
 
-          std::vector<Star> stars;
+          extern "C" JNIEXPORT jfloatArray JNICALL
+          Java_com_enjoer_game_MainActivity_tick(JNIEnv* env, jobject, jfloat jx, jfloat jy, jboolean jump, jfloat dx, jfloat dy) {
+              // Вращение камеры (чувствительность снижена)
+              e.ry += dx * 0.15f;
+              e.rx = std::max(-85.0f, std::min(85.0f, e.rx + dy * 0.15f));
 
-          extern "C" JNIEXPORT void JNICALL
-          Java_com_enjoer_game_MainActivity_initEngine(JNIEnv*, jobject) {
-              stars.clear();
-              std::mt19937 gen(1337);
-              // Звёзды теперь только ДАЛЕКО (минимум 100 метров от игрока)
-              std::uniform_real_distribution<float> dDist(150.0f, 400.0f);
-              std::uniform_real_distribution<float> aDist(0.0f, 6.28f);
-              for(int i=0; i<800; i++) {
-                  float r = dDist(gen);
-                  float phi = aDist(gen);
-                  float theta = aDist(gen);
-                  stars.push_back({r*sin(phi)*cos(theta), r*sin(phi)*sin(theta) + 50.0f, r*cos(phi)});
+              // Гравитация и прыжок
+              if (jump && e.grounded) { e.vy = 0.22f; e.grounded = false; }
+              e.vy -= 0.012f;
+              e.y += e.vy;
+              if (e.y <= 1.0f) { e.y = 1.0f; e.vy = 0; e.grounded = true; }
+
+              // Расчет анимации рук (Bobbing)
+              float moveLen = sqrt(jx*jx + jy*jy);
+              if (moveLen > 0.1f && e.grounded) {
+                  e.walkTime += 0.18f;
+                  e.handBobX = sin(e.walkTime * 0.5f) * 0.04f;
+                  e.handBobY = abs(cos(e.walkTime)) * 0.025f;
+              } else {
+                  e.walkTime *= 0.5f;
+                  e.handBobX *= 0.8f;
+                  e.handBobY *= 0.8f;
               }
-          }
 
-          extern "C" JNIEXPORT jfloatArray JNICALL
-          Java_com_enjoer_game_MainActivity_update(JNIEnv* env, jobject, jfloat jx, jfloat jy, jboolean jump, jfloat dx, jfloat dy) {
-              p.ry += dx * 0.4f;
-              p.rx = std::max(-85.0f, std::min(85.0f, p.rx + dy * 0.4f));
+              // Плавное передвижение
+              float rad = e.ry * M_PI / 180.0f;
+              e.x += (sin(rad) * jy + cos(rad) * jx) * 0.08f;
+              e.z += (-cos(rad) * jy + sin(rad) * jx) * 0.08f;
 
-              if (jump && p.y <= 1.05f) p.vy = 0.35f;
-              p.vy -= 0.015f;
-              p.y += p.vy;
-              if (p.y < 1.0f) { p.y = 1.0f; p.vy = 0; }
-
-              float s = 0.18f;
-              float rad = p.ry * M_PI / 180.0f;
-              p.x += (sin(rad) * jy + cos(rad) * jx) * s;
-              p.z += (-cos(rad) * jy + sin(rad) * jx) * s;
-
-              float data[5] = {p.x, p.y, p.z, p.rx, p.ry};
-              jfloatArray res = env->NewFloatArray(5);
-              env->SetFloatArrayRegion(res, 0, 5, data);
-              return res;
-          }
-
-          extern "C" JNIEXPORT jfloatArray JNICALL
-          Java_com_enjoer_game_MainActivity_getStars(JNIEnv* env, jobject) {
-              jfloatArray res = env->NewFloatArray(stars.size() * 3);
-              env->SetFloatArrayRegion(res, 0, stars.size() * 3, (float*)stars.data());
+              float data[8] = {e.x, e.y, e.z, e.rx, e.ry, e.handBobX, e.handBobY, e.vy};
+              jfloatArray res = env->NewFloatArray(8);
+              env->SetFloatArrayRegion(res, 0, 8, data);
               return res;
           }
           EOF
 
           echo "cmake_minimum_required(VERSION 3.22.1)
-          project(enjoer_engine)
-          add_library(enjoer_engine SHARED native-lib.cpp)
+          project(enjoer_v18)
+          add_library(enjoer_v18 SHARED native-lib.cpp)
           find_library(log-lib log)
-          target_link_libraries(enjoer_engine \${log-lib})" > app/src/main/cpp/CMakeLists.txt
+          target_link_libraries(enjoer_v18 \${log-lib})" > app/src/main/cpp/CMakeLists.txt
 
-      - name: Write Advanced Renderer (Floor & Sky)
+      - name: Write GL Renderer (World + FPS Hands)
         run: |
           cat <<'EOF' > app/src/main/java/com/enjoer/game/GameRenderer.java
           package com.enjoer.game;
@@ -105,21 +91,17 @@ jobs:
           import javax.microedition.khronos.opengles.GL10;
 
           public class GameRenderer implements GLSurfaceView.Renderer {
-              private int prg, sPrg; private FloatBuffer vB, sB;
+              private int prg; private FloatBuffer vB;
               private float[] proj=new float[16], view=new float[16], mod=new float[16];
-              public float pX, pY, pZ, rX, rY, starsData[];
+              public float pX, pY, pZ, rX, rY, bX, bY, vY;
 
               @Override public void onSurfaceCreated(GL10 gl, EGLConfig cfg) {
                   GLES30.glEnable(GLES30.GL_DEPTH_TEST);
-                  // Шейдер для блоков и ПОЛА (с сеткой)
                   String vs="#version 300 es\nlayout(location=0)in vec4 aP;uniform mat4 uM;out vec3 vP;void main(){vP=aP.xyz;gl_Position=uM*aP;}";
-                  String fs="#version 300 es\nprecision highp float;in vec3 vP;uniform vec4 uC;uniform int isFloor;out vec4 fC;void main(){" +
-                            "if(isFloor==1){float g=(mod(floor(vP.x)+floor(vP.z),2.0)==0.0)?0.2:0.3; fC=vec4(g,g,g+0.1,1.0);}" +
-                            "else{fC=vec4(uC.rgb*(0.8+vP.y*0.2),1.0);}}";
-                  prg = build(vs, fs);
-                  String svs="#version 300 es\nlayout(location=0)in vec3 aP;uniform mat4 uM;void main(){gl_Position=uM*vec4(aP,1.0);gl_PointSize=3.0;}";
-                  String sfs="#version 300 es\nprecision highp float;out vec4 fC;void main(){fC=vec4(1.0,1.0,1.0,1.0);}";
-                  sPrg = build(svs, sfs);
+                  String fs="#version 300 es\nprecision highp float;in vec3 vP;uniform vec4 uC;void main(){gl_FragColor=vec4(uC.rgb*(0.8+vP.y*0.2),1.0);}";
+                  int vsh=GLES30.glCreateShader(35633); GLES30.glShaderSource(vsh,vs); GLES30.glCompileShader(vsh);
+                  int fsh=GLES30.glCreateShader(35632); GLES30.glShaderSource(fsh,fs); GLES30.glCompileShader(fsh);
+                  prg=GLES30.glCreateProgram(); GLES30.glAttachShader(prg,vsh); GLES30.glAttachShader(prg,fsh); GLES30.glLinkProgram(prg);
                   float[] v = {-0.5f,0.5f,0.5f, -0.5f,-0.5f,0.5f, 0.5f,0.5f,0.5f, 0.5f,0.5f,0.5f, -0.5f,-0.5f,0.5f, 0.5f,-0.5f,0.5f,
                                -0.5f,0.5f,-0.5f, 0.5f,0.5f,-0.5f, -0.5f,-0.5f,-0.5f, 0.5f,0.5f,-0.5f, 0.5f,-0.5f,-0.5f, -0.5f,-0.5f,-0.5f,
                                -0.5f,0.5f,-0.5f, -0.5f,0.5f,0.5f, 0.5f,0.5f,-0.5f, 0.5f,0.5f,-0.5f, -0.5f,0.5f,0.5f, 0.5f,0.5f,0.5f,
@@ -127,48 +109,62 @@ jobs:
                                -0.5f,0.5f,-0.5f, -0.5f,-0.5f,-0.5f, -0.5f,0.5f,0.5f, -0.5f,0.5f,0.5f, -0.5f,-0.5f,-0.5f, -0.5f,-0.5f,0.5f,
                                 0.5f,0.5f,-0.5f, 0.5f,0.5f,0.5f, 0.5f,-0.5f,-0.5f, 0.5f,0.5f,0.5f, 0.5f,-0.5f,0.5f, 0.5f,-0.5f,-0.5f};
                   vB=ByteBuffer.allocateDirect(v.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(v); vB.position(0);
-                  sB=ByteBuffer.allocateDirect(starsData.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(starsData); sB.position(0);
               }
-              private int build(String v, String f){
-                  int vs=GLES30.glCreateShader(35633); GLES30.glShaderSource(vs,v); GLES30.glCompileShader(vs);
-                  int fs=GLES30.glCreateShader(35632); GLES30.glShaderSource(fs,f); GLES30.glCompileShader(fs);
-                  int p=GLES30.glCreateProgram(); GLES30.glAttachShader(p,vs); GLES30.glAttachShader(p,fs); GLES30.glLinkProgram(p); return p;
-              }
-              @Override public void onSurfaceChanged(GL10 gl,int w,int h){ GLES30.glViewport(0,0,w,h); Matrix.perspectiveM(proj,0,75,(float)w/h,0.1f,1500f); }
+              @Override public void onSurfaceChanged(GL10 gl,int w,int h){ GLES30.glViewport(0,0,w,h); Matrix.perspectiveM(proj,0,75,(float)w/h,0.01f,100f); }
               @Override public void onDrawFrame(GL10 gl) {
-                  GLES30.glClearColor(0.01f, 0.01f, 0.05f, 1.0f); GLES30.glClear(16640);
-                  Matrix.setIdentityM(view,0); Matrix.rotateM(view,0,rX,1,0,0); Matrix.rotateM(view,0,rY,0,1,0); Matrix.translateM(view,0,-pX,-pY,-pZ);
-                  float[] mvp=new float[16]; Matrix.multiplyMM(mvp,0,proj,0,view,0);
-                  
-                  // Звёзды (Дальний план)
-                  GLES30.glUseProgram(sPrg); GLES30.glUniformMatrix4fv(GLES30.glGetUniformLocation(sPrg,"uM"),1,false,mvp,0);
-                  GLES30.glVertexAttribPointer(0,3,GLES30.GL_FLOAT,false,0,sB); GLES30.glEnableVertexAttribArray(0);
-                  GLES30.glDrawArrays(GLES30.GL_POINTS,0,starsData.length/3);
-
-                  // Пол и Блоки
-                  GLES30.glUseProgram(prg); int uM=GLES30.glGetUniformLocation(prg,"uM"), uC=GLES30.glGetUniformLocation(prg,"uC"), uF=GLES30.glGetUniformLocation(prg,"isFloor");
+                  GLES30.glClearColor(0, 0, 0, 1); GLES30.glClear(16640);
+                  GLES30.glUseProgram(prg);
+                  int uM=GLES30.glGetUniformLocation(prg,"uM"), uC=GLES30.glGetUniformLocation(prg,"uC");
                   GLES30.glVertexAttribPointer(0,3,GLES30.GL_FLOAT,false,0,vB); GLES30.glEnableVertexAttribArray(0);
-                  
-                  // Отрисовка пола (Огромный квадрат с шахматкой)
-                  GLES30.glUniform1i(uF, 1); Matrix.setIdentityM(mod,0); Matrix.translateM(mod,0,pX,0,pZ); Matrix.scaleM(mod,0,100,0.1f,100);
-                  float[] fM=new float[16]; Matrix.multiplyMM(fM,0,mvp,0,mod,0); GLES30.glUniformMatrix4fv(uM,1,false,fM,0);
-                  GLES30.glDrawArrays(GLES30.GL_TRIANGLES,0,36);
 
-                  // Отрисовка вокселей
-                  GLES30.glUniform1i(uF, 0);
-                  for(int x=-5;x<5;x++) for(int z=-5;z<5;z++){
-                      float h = (float)Math.floor(Math.sin(x*0.5)*Math.cos(z*0.5)*2)+1.5f;
-                      Matrix.setIdentityM(mod,0); Matrix.translateM(mod,0,x,h,z);
-                      float[] bM=new float[16]; Matrix.multiplyMM(bM,0,mvp,0,mod,0);
-                      GLES30.glUniformMatrix4fv(uM,1,false,bM,0); GLES30.glUniform4f(uC,0.1f,0.6f,1.0f,1);
-                      GLES30.glDrawArrays(GLES30.GL_TRIANGLES,0,36);
+                  Matrix.setIdentityM(view,0); Matrix.rotateM(view,0,rX,1,0,0); Matrix.rotateM(view,0,rY,0,1,0); Matrix.translateM(view,0,-pX,-pY,-pZ);
+                  // Отрисовка пола (шум через тайлинг)
+                  for(int x=-4;x<=4;x++) for(int z=-4;z<=4;z++) {
+                      Matrix.setIdentityM(mod,0); Matrix.translateM(mod,0,x,0,z);
+                      draw(uM,uC,mod,0.1f,0.1f,0.2f);
                   }
+                  // Платформы
+                  for(int i=0;i<8;i++) {
+                      Matrix.setIdentityM(mod,0); Matrix.translateM(mod,0,0,i*0.6f,-4-i*2.5f);
+                      draw(uM,uC,mod,0,0.5f,1f);
+                  }
+
+                  // Отрисовка РУК (Поверх всего)
+                  GLES30.glClear(GLES30.GL_DEPTH_BUFFER_BIT);
+                  Matrix.setIdentityM(view,0);
+                  // Левая
+                  Matrix.setIdentityM(mod,0); Matrix.translateM(mod,0,-0.45f+bX, -0.4f+bY-(vY*0.15f), -0.7f);
+                  Matrix.scaleM(mod,0,0.12f,0.12f,0.4f); draw(uM,uC,mod,0.8f,0.6f,0.5f);
+                  // Правая
+                  Matrix.setIdentityM(mod,0); Matrix.translateM(mod,0,0.45f-bX, -0.4f+bY-(vY*0.15f), -0.7f);
+                  Matrix.scaleM(mod,0,0.12f,0.12f,0.4f); draw(uM,uC,mod,0.8f,0.6f,0.5f);
+              }
+              private void draw(int uM, int uC, float[] m, float r, float g, float b){
+                  float[] mvp=new float[16]; Matrix.multiplyMM(mvp,0,proj,0,view,0); Matrix.multiplyMM(mvp,0,mvp,0,m,0);
+                  GLES30.glUniformMatrix4fv(uM,1,false,mvp,0); GLES30.glUniform4f(uC,r,g,b,1);
+                  GLES30.glDrawArrays(GLES30.GL_TRIANGLES,0,36);
               }
           }
           EOF
 
-      - name: Write UI with Menu
+      - name: Write Activity & UI
         run: |
+          cat <<'EOF' > app/src/main/res/drawable/btn_neon.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android">
+            <solid android:color="#000"/><corners android:radius="15dp"/><stroke android:width="2dp" android:color="#00BFFF"/>
+          </shape>
+          EOF
+          cat <<'EOF' > app/src/main/res/layout/activity_main.xml
+          <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000">
+              <android.opengl.GLSurfaceView android:id="@+id/gv" android:layout_width="match_parent" android:layout_height="match_parent"/>
+              <RelativeLayout android:layout_width="match_parent" android:layout_height="match_parent">
+                  <FrameLayout android:id="@+id/pad" android:layout_width="120dp" android:layout_height="120dp" android:layout_alignParentBottom="true" android:layout_margin="30dp" android:background="@drawable/btn_neon">
+                      <View android:id="@+id/stk" android:layout_width="45dp" android:layout_height="45dp" android:layout_gravity="center" android:background="@drawable/btn_neon" android:backgroundTint="#8800BFFF"/>
+                  </FrameLayout>
+                  <Button android:id="@+id/btn_j" android:layout_width="80dp" android:layout_height="80dp" android:text="UP" android:textColor="#00BFFF" android:layout_alignParentBottom="true" android:layout_alignParentRight="true" android:layout_margin="30dp" android:background="@drawable/btn_neon"/>
+              </RelativeLayout>
+          </FrameLayout>
+          EOF
           cat <<'EOF' > app/src/main/java/com/enjoer/game/MainActivity.java
           package com.enjoer.game;
           import android.os.*;
@@ -178,113 +174,67 @@ jobs:
           import androidx.appcompat.app.AppCompatActivity;
 
           public class MainActivity extends AppCompatActivity {
-              static { System.loadLibrary("enjoer_engine"); }
-              public native void initEngine();
-              public native float[] update(float jx, float jy, boolean jump, float dx, float dy);
-              public native float[] getStars();
-
-              private GameRenderer ren;
-              private boolean jumpReq=false;
-              private float jX=0, jY=0, dx=0, dy=0, lx, ly;
-              private int mId=-1, lId=-1;
+              static { System.loadLibrary("enjoer_v18"); }
+              public native float[] tick(float jx, float jy, boolean jump, float dx, float dy);
+              private GameRenderer ren; private float jX, jY, dX, dY, lx, ly;
+              private int mId=-1, lId=-1; private boolean jump=false;
 
               @Override protected void onCreate(Bundle b) {
                   super.onCreate(b);
                   setContentView(R.layout.activity_main);
-                  initEngine();
                   GLSurfaceView gv = findViewById(R.id.gv);
                   gv.setEGLContextClientVersion(3);
-                  ren = new GameRenderer(); ren.starsData = getStars();
-                  gv.setRenderer(ren);
-
-                  // Обработка управления
+                  ren = new GameRenderer(); gv.setRenderer(ren);
                   gv.setOnTouchListener((v, e) -> {
                       int a=e.getActionMasked(), i=e.getActionIndex(), id=e.getPointerId(i);
-                      if(a==0 || a==5) {
-                          if(e.getX(i) < v.getWidth()/2) mId=id;
-                          else { lId=id; lx=e.getX(i); ly=e.getY(i); }
+                      if(a==0||a==5) {
+                          if(e.getX(i)<v.getWidth()/2) mId=id; else { lId=id; lx=e.getX(i); ly=e.getY(i); }
                       } else if(a==2) {
-                          dx=0; dy=0;
                           for(int j=0; j<e.getPointerCount(); j++) {
-                              if(e.getPointerId(j)==mId) {
-                                  float tx=e.getX(j)-230, ty=e.getY(j)-(v.getHeight()-230);
-                                  float d=(float)Math.sqrt(tx*tx+ty*ty); if(d>100){tx*=100/d; ty*=100/d;}
-                                  jX=tx/100; jY=-ty/100;
-                                  findViewById(R.id.stick).setTranslationX(tx); findViewById(R.id.stick).setTranslationY(ty);
-                              } else if(e.getPointerId(j)==lId) {
-                                  dx=e.getX(j)-lx; dy=e.getY(j)-ly; lx=e.getX(j); ly=e.getY(j);
-                              }
+                              int pId=e.getPointerId(j);
+                              if(pId==mId) {
+                                  float tx=e.getX(j)-200, ty=e.getY(j)-(v.getHeight()-200);
+                                  float d=(float)Math.sqrt(tx*tx+ty*ty); if(d>55){tx*=55/d; ty*=55/d;}
+                                  jX=tx/55; jY=-ty/55; findViewById(R.id.stk).setTranslationX(tx); findViewById(R.id.stk).setTranslationY(ty);
+                              } else if(pId==lId) { dX=e.getX(j)-lx; dY=e.getY(j)-ly; lx=e.getX(j); ly=e.getY(j); }
                           }
-                      } else if(a==1 || a==6) {
-                          if(id==mId){ mId=-1; jX=0; jY=0; findViewById(R.id.stick).setTranslationX(0); findViewById(R.id.stick).setTranslationY(0); }
+                      } else if(a==1||a==6) {
+                          if(id==mId){ mId=-1; jX=0; jY=0; findViewById(R.id.stk).setTranslationX(0); findViewById(R.id.stk).setTranslationY(0); }
                           else if(id==lId) lId=-1;
                       }
                       return true;
                   });
-
-                  findViewById(R.id.btn_j).setOnClickListener(v -> jumpReq=true);
-                  
-                  // Кнопка Меню
-                  final View menu = findViewById(R.id.menu_panel);
-                  findViewById(R.id.btn_menu).setOnClickListener(v -> menu.setVisibility(menu.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE));
-
+                  findViewById(R.id.btn_j).setOnClickListener(v -> jump=true);
                   final Handler h = new Handler(Looper.getMainLooper());
                   h.post(new Runnable(){public void run(){
-                      float[] s = update(jX, jY, jumpReq, dx, dy);
-                      jumpReq=false; dx=0; dy=0;
+                      float[] s = tick(jX, jY, jump, dX, dY);
+                      jump=false; dX=0; dY=0;
                       ren.pX=s[0]; ren.pY=s[1]; ren.pZ=s[2]; ren.rX=s[3]; ren.rY=s[4];
+                      ren.bX=s[5]; ren.bY=s[6]; ren.vY=s[7];
                       h.postDelayed(this, 16);
                   }});
               }
           }
           EOF
 
-      - name: Layout & Styles (Menu Included)
-        run: |
-          cat <<'EOF' > app/src/main/res/layout/activity_main.xml
-          <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent">
-              <android.opengl.GLSurfaceView android:id="@+id/gv" android:layout_width="match_parent" android:layout_height="match_parent"/>
-              <RelativeLayout android:layout_width="match_parent" android:layout_height="match_parent">
-                  <FrameLayout android:id="@+id/base" android:layout_width="160dp" android:layout_height="160dp" android:layout_alignParentBottom="true" android:layout_margin="30dp" android:background="@drawable/c">
-                      <View android:id="@+id/stick" android:layout_width="60dp" android:layout_height="60dp" android:layout_gravity="center" android:background="@drawable/cf"/>
-                  </FrameLayout>
-                  <Button android:id="@+id/btn_j" android:layout_width="90dp" android:layout_height="90dp" android:text="JUMP" android:layout_alignParentBottom="true" android:layout_alignParentRight="true" android:layout_margin="30dp" android:backgroundTint="#8800BFFF"/>
-                  <Button android:id="@+id/btn_menu" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="MENU" android:layout_margin="20dp" android:backgroundTint="#AA121212"/>
-                  <LinearLayout android:id="@+id/menu_panel" android:layout_width="250dp" android:layout_height="match_parent" android:background="#CC000000" android:orientation="vertical" android:padding="20dp" android:visibility="gone" android:layout_centerInParent="true">
-                      <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="ENJOER V16 SETTINGS" android:textColor="#FFF" android:textSize="18sp" android:gravity="center" android:layout_marginBottom="20dp"/>
-                      <Button android:layout_width="match_parent" android:layout_height="wrap_content" android:text="RESUME" android:id="@+id/btn_close" android:layout_marginBottom="10dp"/>
-                      <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Sensitivity: 100%" android:textColor="#AAA"/>
-                      <SeekBar android:layout_width="match_parent" android:layout_height="wrap_content" android:progress="50"/>
-                  </LinearLayout>
-              </RelativeLayout>
-          </FrameLayout>
-          EOF
-          echo "<shape xmlns:android='http://schemas.android.com/apk/res/android' android:shape='oval'><solid android:color='#11FFFFFF'/><stroke android:width='2dp' android:color='#FFF'/></shape>" > app/src/main/res/drawable/c.xml
-          echo "<shape xmlns:android='http://schemas.android.com/apk/res/android' android:shape='oval'><solid android:color='#AAFFFFFF'/></shape>" > app/src/main/res/drawable/cf.xml
-          echo "<resources><style name='T' parent='Theme.AppCompat.Light.NoActionBar'><item name='android:windowFullscreen'>true</item></style></resources>" > app/src/main/res/values/styles.xml
-
-      - name: Build
+      - name: Final Build
         run: |
           cat <<'EOF' > app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.enjoer.game">
-          <application android:label="Enjoer_V16_Fixed" android:theme="@style/T">
-          <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="landscape" android:configChanges="orientation|screenSize">
+          <application android:label="EnjoerV18" android:theme="@style/Theme.AppCompat.NoActionBar">
+          <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="landscape">
           <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
           </activity></application></manifest>
           EOF
           echo "include ':app'" > settings.gradle
           echo "android.useAndroidX=true" > gradle.properties
-          echo "buildscript { repositories { google(); mavenCentral() }; dependencies { classpath 'com.android.tools.build:gradle:8.2.2' } }
-          allprojects { repositories { google(); mavenCentral() } }" > build.gradle
           echo "plugins { id 'com.android.application' }
-          android { namespace 'com.enjoer.game'; compileSdk 34; defaultConfig { applicationId 'com.enjoer.game'; minSdk 24; targetSdk 34; externalNativeBuild { cmake { cppFlags '-std=c++17' } } }
-          externalNativeBuild { cmake { path 'src/main/cpp/CMakeLists.txt' } } }
-          dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }" > app/build.gradle
+          android { namespace 'com.enjoer.game'; compileSdk 34; defaultConfig { applicationId 'com.enjoer.game'; minSdk 24; targetSdk 34; externalNativeBuild { cmake { path 'src/main/cpp/CMakeLists.txt' } } } }" > app/build.gradle
           gradle wrapper --gradle-version 8.5
           ./gradlew assembleDebug
 
-      - name: Upload
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Enjoer_V16_Fixed_World
+          name: Enjoer_V18_Hands
           path: app/build/outputs/apk/debug/app-debug.apk
