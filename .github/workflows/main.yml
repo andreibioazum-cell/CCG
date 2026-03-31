@@ -1030,6 +1030,7 @@ jobs:
               public float screenW=1, screenH=1;
               public EventHost eventHost;
               private static final float FLOOR_Y=0f, PLAYER_HEIGHT=3.2f, PLAYER_RADIUS=0.5f;
+              private static final float CAM_DISTANCE=12f, CAM_HEIGHT=6f;
 
               public Block getSelectedBlock(){
                   if(selectedIndex>=0 && selectedIndex<blocks.size()) return blocks.get(selectedIndex);
@@ -1281,14 +1282,22 @@ jobs:
                   GLES30.glClearColor(.01f,.015f,.03f,1f);
                   GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT|GLES30.GL_DEPTH_BUFFER_BIT);
 
-                  float vx=(float)(Math.sin(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
-                  float vy=(float)Math.sin(Math.toRadians(rX));
-                  float vz=(float)(-Math.cos(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
-                  Matrix.setLookAtM(view,0,pX,pY,pZ,pX+vx,pY+vy,pZ+vz,0,1,0);
+                  // 3rd person camera in play mode
+                  if(!isEngineMode && !isPlayingLevel){
+                      float camX = pX - (float)Math.sin(Math.toRadians(rY)) * CAM_DISTANCE;
+                      float camZ = pZ + (float)Math.cos(Math.toRadians(rY)) * CAM_DISTANCE;
+                      float camY = pY + CAM_HEIGHT;
+                      Matrix.setLookAtM(view,0,camX,camY,camZ,pX,pY,pZ,0,1,0);
+                  } else {
+                      float vx=(float)(Math.sin(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
+                      float vy=(float)Math.sin(Math.toRadians(rX));
+                      float vz=(float)(-Math.cos(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
+                      Matrix.setLookAtM(view,0,pX,pY,pZ,pX+vx,pY+vy,pZ+vz,0,1,0);
+                  }
                   Matrix.multiplyMM(vp,0,proj,0,view,0);
 
                   drawSky();
-                  drawWorld(vx,vy,vz);
+                  drawWorld();
               }
 
               private void drawSky(){
@@ -1304,7 +1313,7 @@ jobs:
                   GLES30.glDepthMask(true);
               }
 
-              private void drawWorld(float vx,float vy,float vz){
+              private void drawWorld(){
                   GLES30.glUseProgram(prog);
                   int uMVP=GLES30.glGetUniformLocation(prog,"uMVP"),uM=GLES30.glGetUniformLocation(prog,"uM"),uC=GLES30.glGetUniformLocation(prog,"uC");
                   int uSel=GLES30.glGetUniformLocation(prog,"uSel"),uFloor=GLES30.glGetUniformLocation(prog,"isFloor"),uShape=GLES30.glGetUniformLocation(prog,"uShape");
@@ -1328,7 +1337,7 @@ jobs:
                       Matrix.setIdentityM(model,0);
                       Matrix.translateM(model,0,b.x,b.y,b.z);
                       Matrix.scaleM(model,0,b.sx,b.sy,b.sz);
-                      GLES30.glUniform1f(uSel,(i==selectedIndex&&isEngineMode&&!isPlayingLevel)?1f:0f);
+                      GLES30.glUniform1f(uSel,(i==selectedIndex&&isEngineMode)?1f:0f);
                       String shape = b.shape == null ? "square" : b.shape;
                       switch(shape){
                           case "rectangle": uShapeVal=1; break;
@@ -1340,7 +1349,10 @@ jobs:
                       draw(uM,uMVP,uC,b.r,b.g,b.b,1f);
                   }
 
-                  if(isEngineMode&&!isPlayingLevel&&selectedIndex<0){
+                  if(isEngineMode && selectedIndex<0){
+                      float vx=(float)(Math.sin(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
+                      float vy=(float)Math.sin(Math.toRadians(rX));
+                      float vz=(float)(-Math.cos(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
                       float px=pX+vx*placeDist,py=pY+vy*placeDist,pz=pZ+vz*placeDist;
                       px=snap(px); py=snap(py); pz=snap(pz);
                       if(py-blockSY/2f<FLOOR_Y)py=FLOOR_Y+blockSY/2f;
@@ -1365,12 +1377,9 @@ jobs:
 
               private void update(){
                   float s=.35f,rad=(float)Math.toRadians(rY),pitch=(float)Math.toRadians(rX);
-                  if(isEngineMode&&!isPlayingLevel){
-                      float fx=(float)Math.sin(rad),fz=(float)-Math.cos(rad),fy=(float)Math.sin(pitch);
-                      pX+=(fx*-jY+(float)Math.cos(rad)*jX)*s;
-                      pZ+=(fz*-jY+(float)Math.sin(rad)*jX)*s;
-                      pY+=(fy*-jY)*s;
-                  } else {
+                  
+                  if(!isEngineMode && !isPlayingLevel){
+                      // 3rd person player movement
                       float mX=((float)Math.sin(rad)*-jY+(float)Math.cos(rad)*jX)*s;
                       float mZ=((float)-Math.cos(rad)*-jY+(float)Math.sin(rad)*jX)*s;
                       vY-=.025f;
@@ -1406,6 +1415,12 @@ jobs:
                           }
                       }
                       pX=nX;pY=nY;pZ=nZ;
+                  } else if(isEngineMode){
+                      // Free camera in editor
+                      float fx=(float)Math.sin(rad),fz=(float)-Math.cos(rad),fy=(float)Math.sin(pitch);
+                      pX+=(fx*-jY+(float)Math.cos(rad)*jX)*s;
+                      pZ+=(fz*-jY+(float)Math.sin(rad)*jX)*s;
+                      pY+=(fy*-jY)*s;
                   }
               }
 
@@ -1728,13 +1743,13 @@ jobs:
 
                   findViewById(R.id.shape_square).setOnClickListener(v->{ setShapePreset("square",4,4,4,0); });
                   findViewById(R.id.shape_rectangle).setOnClickListener(v->{ setShapePreset("rectangle",8,4,4,1); });
-                  findViewById(R.id.shape_circle).setOnClickListener(v->{ setShapePreset("circle",4,4,4,2); });
-                  findViewById(R.id.shape_triangle).setOnClickListener(v->{ setShapePreset("triangle",4,4,4,3); });
+                  findViewById(R.id.shape_circle).setOnClickListener(v->{ setShapePreset("circle",4,0.1f,4,2); });
+                  findViewById(R.id.shape_triangle).setOnClickListener(v->{ setShapePreset("triangle",4,0.1f,4,3); });
 
                   findViewById(R.id.size_x_minus).setOnClickListener(v->{ ren.blockSX=Math.max(0.5f, ren.blockSX-0.5f); updSizeInfo(); });
                   findViewById(R.id.size_x_plus).setOnClickListener(v->{ ren.blockSX+=0.5f; updSizeInfo(); });
-                  findViewById(R.id.size_y_minus).setOnClickListener(v->{ ren.blockSY=Math.max(0.5f, ren.blockSY-0.5f); updSizeInfo(); });
-                  findViewById(R.id.size_y_plus).setOnClickListener(v->{ ren.blockSY+=0.5f; updSizeInfo(); });
+                  findViewById(R.id.size_y_minus).setOnClickListener(v->{ ren.blockSY=Math.max(0.1f, ren.blockSY-0.1f); updSizeInfo(); });
+                  findViewById(R.id.size_y_plus).setOnClickListener(v->{ ren.blockSY+=0.1f; updSizeInfo(); });
                   findViewById(R.id.size_z_minus).setOnClickListener(v->{ ren.blockSZ=Math.max(0.5f, ren.blockSZ-0.5f); updSizeInfo(); });
                   findViewById(R.id.size_z_plus).setOnClickListener(v->{ ren.blockSZ+=0.5f; updSizeInfo(); });
 
