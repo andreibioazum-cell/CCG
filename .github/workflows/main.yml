@@ -22,10 +22,10 @@ jobs:
 
           cat <<'EOF' > gradle.properties
           org.gradle.jvmargs=-Xmx2G
-          minecraft_version=1.21.11
-          yarn_mappings=1.21.11+build.1
+          minecraft_version=1.21.1
+          yarn_mappings=1.21.1+build.3
           loader_version=0.15.11
-          fabric_version=0.96.0+1.21.11
+          fabric_version=0.96.0+1.21.1
           mod_version=1.0.0
           maven_group=com.enjoer
           archives_base_name=enjoer-commands
@@ -47,7 +47,7 @@ jobs:
 
           cat <<'EOF' > build.gradle
           plugins {
-              id 'fabric-loom' version '1.7-SNAPSHOT'
+              id 'fabric-loom' version '1.6-SNAPSHOT'
               id 'maven-publish'
           }
 
@@ -143,7 +143,7 @@ jobs:
 
               @Override
               public void onInitialize() {
-                  LOGGER.info("Simple Commands Mod initialized for Minecraft 1.21.11");
+                  LOGGER.info("Simple Commands Mod initialized for Minecraft 1.21.1");
                   
                   registerGiveCommand();
                   registerGodCommand();
@@ -371,10 +371,10 @@ jobs:
 
       - name: Build Mod
         run: |
-          ./gradlew build
+          ./gradlew build --stacktrace
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Simple_Commands_1.21.11
+          name: Simple_Commands_1.21.1
           path: build/libs/*.jar
