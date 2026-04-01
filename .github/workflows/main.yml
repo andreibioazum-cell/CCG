@@ -85,7 +85,7 @@ jobs:
 
           cat <<EOF > app/src/main/res/drawable/color_btn.xml
           <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
-            <solid android:color="#FFF"/>
+            <solid android:color="#FFFFFF"/>
             <stroke android:width="2dp" android:color="#00BFFF"/>
           </shape>
           EOF
@@ -239,11 +239,11 @@ jobs:
                           android:layout_marginLeft="8dp"/>
 
                       <Button
-                          android:id="@+id/btn_play_mode"
-                          android:layout_width="90dp"
+                          android:id="@+id/btn_play_level"
+                          android:layout_width="50dp"
                           android:layout_height="50dp"
-                          android:text="Play"
-                          android:textSize="14sp"
+                          android:text="▶"
+                          android:textSize="20sp"
                           android:background="@drawable/btn_green"
                           android:textColor="#000"
                           android:layout_marginLeft="10dp"/>
@@ -669,6 +669,68 @@ jobs:
                       android:background="@drawable/crosshair"/>
               </RelativeLayout>
 
+              <RelativeLayout
+                  android:id="@+id/playtest_ui"
+                  android:layout_width="match_parent"
+                  android:layout_height="match_parent"
+                  android:visibility="gone">
+
+                  <View
+                      android:id="@+id/playtest_look_zone"
+                      android:layout_width="match_parent"
+                      android:layout_height="match_parent"/>
+
+                  <Button
+                      android:id="@+id/btn_stop_playtest"
+                      android:layout_width="50dp"
+                      android:layout_height="50dp"
+                      android:layout_margin="10dp"
+                      android:text="■"
+                      android:textSize="20sp"
+                      android:background="@drawable/btn_red"
+                      android:textColor="#FFF"/>
+
+                  <FrameLayout
+                      android:id="@+id/playtest_joy_base"
+                      android:layout_width="140dp"
+                      android:layout_height="140dp"
+                      android:layout_alignParentBottom="true"
+                      android:layout_alignParentLeft="true"
+                      android:layout_marginLeft="40dp"
+                      android:layout_marginBottom="40dp"
+                      android:background="@drawable/joy_base"/>
+
+                  <View
+                      android:id="@+id/playtest_joy_stick"
+                      android:layout_width="60dp"
+                      android:layout_height="60dp"
+                      android:layout_alignLeft="@id/playtest_joy_base"
+                      android:layout_alignTop="@id/playtest_joy_base"
+                      android:layout_marginLeft="40dp"
+                      android:layout_marginTop="40dp"
+                      android:background="@drawable/joy_stick"/>
+
+                  <Button
+                      android:id="@+id/btn_playtest_jump"
+                      android:layout_width="90dp"
+                      android:layout_height="90dp"
+                      android:layout_alignParentRight="true"
+                      android:layout_alignParentBottom="true"
+                      android:layout_marginRight="40dp"
+                      android:layout_marginBottom="40dp"
+                      android:text="▲"
+                      android:textSize="28sp"
+                      android:background="@drawable/btn_blue"
+                      android:textColor="#FFF"/>
+
+                  <View
+                      android:id="@+id/crosshair_playtest"
+                      android:layout_width="22dp"
+                      android:layout_height="22dp"
+                      android:layout_centerInParent="true"
+                      android:background="@drawable/crosshair"/>
+              </RelativeLayout>
+
               <LinearLayout
                   android:id="@+id/menu_ui"
                   android:layout_width="match_parent"
@@ -734,8 +796,8 @@ jobs:
               public String shape = "square";
 
               public String onStartScript = "";
-              public String onCollisionScript = "";
               public String onTouchScript = "";
+              public String onTapScript = "";
               public boolean started = false;
               public boolean touchingPlayer = false;
 
@@ -954,176 +1016,157 @@ jobs:
                   void runBlockScript(Block block, String script);
               }
 
-              private final float[] proj=new float[16], view=new float[16], model=new float[16], vp=new float[16];
-              public float pX=0, pY=6, pZ=15, rY=0, rX=0, jX=0, jY=0, vY=0;
-              public boolean isEngineMode=false, isPlayingLevel=false;
-              public boolean gridEnabled=true;
+              private final float[] proj = new float[16], view = new float[16], model = new float[16], vp = new float[16];
+              public float pX = 0, pY = 6, pZ = 15, rY = 0, rX = 0, jX = 0, jY = 0, vY = 0;
+              public boolean isEngineMode = false, isPlayingLevel = false;
+              public boolean gridEnabled = true;
+
               private int prog, skyProg;
               private FloatBuffer vBuf, nBuf, skyBuf;
-              public float blockR=0.8f, blockG=0.3f, blockB=0.3f, blockSX=4, blockSY=4, blockSZ=4, placeDist=6f;
-              public String blockShape="square";
+
+              public float blockR = 0.8f, blockG = 0.3f, blockB = 0.3f, blockSX = 4, blockSY = 4, blockSZ = 4, placeDist = 6f;
+              public String blockShape = "square";
               public final float gridSize = 2f;
+
               public CopyOnWriteArrayList<Block> blocks = new CopyOnWriteArrayList<>();
               public int selectedIndex = -1;
-              public float screenW=1, screenH=1;
+              public float screenW = 1, screenH = 1;
               public EventHost eventHost;
-              private static final float FLOOR_Y=0f, PLAYER_HEIGHT=3.2f, PLAYER_RADIUS=0.5f;
-              private static final float CAM_DISTANCE=12f, CAM_HEIGHT=6f;
-              
-              // Player animation
-              public boolean playerVisible = false;
-              public float playerAnimTime = 0f;
-              public boolean playerWalking = false;
 
-              public Block getSelectedBlock(){
-                  if(selectedIndex>=0 && selectedIndex<blocks.size()) return blocks.get(selectedIndex);
+              private static final float FLOOR_Y = 0f, PLAYER_HEIGHT = 3.2f, PLAYER_RADIUS = 0.5f;
+
+              public float playerYaw = 0f;
+              private float animTime = 0f;
+              private float walkAnim = 0f;
+              private boolean moving = false;
+
+              public Block getSelectedBlock() {
+                  if (selectedIndex >= 0 && selectedIndex < blocks.size()) return blocks.get(selectedIndex);
                   return null;
               }
 
-              private float snap(float v){
-                  if(!gridEnabled) return v;
+              private float snap(float v) {
+                  if (!gridEnabled) return v;
                   return Math.round(v / gridSize) * gridSize;
               }
 
               public void loadBuiltInLevel() {
                   blocks.clear();
-                  Block b1 = new Block(0,2,-10, 6,4,6, 0.9f,0.2f,0.2f);
-                  b1.shape="square";
+                  Block b1 = new Block(0, 2, -10, 6, 4, 6, 0.9f, 0.2f, 0.2f);
+                  b1.shape = "square";
                   blocks.add(b1);
               }
 
-              public void runStartScripts(){
-                  for(Block b: blocks){
-                      if(!b.started){
+              public void runStartScripts() {
+                  for (Block b : blocks) {
+                      if (!b.started) {
                           b.started = true;
-                          if(eventHost != null && b.onStartScript != null && b.onStartScript.contains("game.start")){
+                          if (eventHost != null && b.onStartScript != null && !b.onStartScript.trim().isEmpty()) {
                               eventHost.runBlockScript(b, b.onStartScript);
                           }
                       }
                   }
               }
 
-              public void handleCollisionScript(Block block){
-                  if(block != null && eventHost != null && block.onCollisionScript != null && block.onCollisionScript.contains("player.collision")){
-                      eventHost.runBlockScript(block, block.onCollisionScript);
-                  }
-              }
-
-              public void handleTouchScript(Block block){
-                  if(block != null && eventHost != null && block.onTouchScript != null && block.onTouchScript.contains("player.touch")){
-                      eventHost.runBlockScript(block, block.onTouchScript);
+              public void handleTapBlock(int index) {
+                  if (index >= 0 && index < blocks.size()) {
+                      Block b = blocks.get(index);
+                      if (eventHost != null && b.onTapScript != null && !b.onTapScript.trim().isEmpty()) {
+                          eventHost.runBlockScript(b, b.onTapScript);
+                      }
                   }
               }
 
               public void placeBlock() {
-                  float vx=(float)(Math.sin(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
-                  float vy=(float)Math.sin(Math.toRadians(rX));
-                  float vz=(float)(-Math.cos(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
-                  float nx=pX+vx*placeDist, ny=pY+vy*placeDist, nz=pZ+vz*placeDist;
-                  nx = snap(nx); ny = snap(ny); nz = snap(nz);
-                  if(ny-blockSY/2f<FLOOR_Y) ny=FLOOR_Y+blockSY/2f;
-                  Block b = new Block(nx,ny,nz, blockSX,blockSY,blockSZ, blockR,blockG,blockB);
+                  float vx = (float) (Math.sin(Math.toRadians(rY)) * Math.cos(Math.toRadians(rX)));
+                  float vy = (float) Math.sin(Math.toRadians(rX));
+                  float vz = (float) (-Math.cos(Math.toRadians(rY)) * Math.cos(Math.toRadians(rX)));
+                  float nx = pX + vx * placeDist, ny = pY + vy * placeDist, nz = pZ + vz * placeDist;
+                  nx = snap(nx);
+                  ny = snap(ny);
+                  nz = snap(nz);
+                  if (ny - blockSY / 2f < FLOOR_Y) ny = FLOOR_Y + blockSY / 2f;
+                  Block b = new Block(nx, ny, nz, blockSX, blockSY, blockSZ, blockR, blockG, blockB);
                   b.shape = blockShape;
                   blocks.add(b);
               }
 
               public void deleteSelected() {
-                  if(selectedIndex>=0 && selectedIndex<blocks.size()) {
+                  if (selectedIndex >= 0 && selectedIndex < blocks.size()) {
                       blocks.remove(selectedIndex);
-                      selectedIndex=-1;
+                      selectedIndex = -1;
                   }
               }
 
               public void toggleHideSelected() {
-                  if(selectedIndex>=0 && selectedIndex<blocks.size()) {
+                  if (selectedIndex >= 0 && selectedIndex < blocks.size()) {
                       blocks.get(selectedIndex).hidden = !blocks.get(selectedIndex).hidden;
                   }
               }
 
               public void moveSelected(float dx, float dy, float dz) {
-                  if(selectedIndex>=0 && selectedIndex<blocks.size()) {
-                      Block b=blocks.get(selectedIndex);
-                      b.x=snap(b.x+dx);
-                      b.y=snap(b.y+dy);
-                      b.z=snap(b.z+dz);
-                      if(b.y-b.sy/2f<FLOOR_Y) b.y=FLOOR_Y+b.sy/2f;
+                  if (selectedIndex >= 0 && selectedIndex < blocks.size()) {
+                      Block b = blocks.get(selectedIndex);
+                      b.x = snap(b.x + dx);
+                      b.y = snap(b.y + dy);
+                      b.z = snap(b.z + dz);
+                      if (b.y - b.sy / 2f < FLOOR_Y) b.y = FLOOR_Y + b.sy / 2f;
                   }
-              }
-
-              private boolean pointInsideShapeXZ(Block b, float x, float z){
-                  float lx = (x - b.x) / Math.max(0.0001f, b.sx * 0.5f);
-                  float lz = (z - b.z) / Math.max(0.0001f, b.sz * 0.5f);
-
-                  String shape = b.shape == null ? "square" : b.shape;
-                  switch (shape) {
-                      case "circle":
-                          return (lx*lx + lz*lz) <= 1.0f;
-
-                      case "triangle":
-                          float px = (lx + 1f) * 0.5f;
-                          float pz = (lz + 1f) * 0.5f;
-                          return pz >= 0f && pz <= 1f && px >= (0.5f - pz * 0.5f) && px <= (0.5f + pz * 0.5f);
-
-                      case "rectangle":
-                      case "square":
-                      default:
-                          return Math.abs(lx) <= 1f && Math.abs(lz) <= 1f;
-                  }
-              }
-
-              private boolean overlapsPlayerShape(Block b, float x, float z, float radius){
-                  int steps = 8;
-                  for(int i=0;i<steps;i++){
-                      float a = (float)(Math.PI * 2.0 * i / steps);
-                      float sx = x + (float)Math.cos(a) * radius;
-                      float sz = z + (float)Math.sin(a) * radius;
-                      if(pointInsideShapeXZ(b, sx, sz)) return true;
-                  }
-                  return pointInsideShapeXZ(b, x, z);
               }
 
               public int raycastBlock(float tx, float ty) {
-                  float ndcX=(2f*tx/screenW)-1f, ndcY=1f-(2f*ty/screenH);
-                  float[] invP=new float[16], invV=new float[16];
-                  Matrix.invertM(invP,0,proj,0);
-                  Matrix.invertM(invV,0,view,0);
-                  float[] n={ndcX,ndcY,-1,1}, f={ndcX,ndcY,1,1}, t=new float[4];
-                  Matrix.multiplyMV(t,0,invP,0,n,0);
-                  for(int i=0;i<4;i++) t[i]/=t[3];
-                  float[] nW=new float[4];
-                  Matrix.multiplyMV(nW,0,invV,0,t,0);
-                  Matrix.multiplyMV(t,0,invP,0,f,0);
-                  for(int i=0;i<4;i++) t[i]/=t[3];
-                  float[] fW=new float[4];
-                  Matrix.multiplyMV(fW,0,invV,0,t,0);
-                  float dx=fW[0]-nW[0], dy=fW[1]-nW[1], dz=fW[2]-nW[2];
-                  float len=(float)Math.sqrt(dx*dx+dy*dy+dz*dz);
-                  dx/=len; dy/=len; dz/=len;
-                  int closest=-1; float cDist=Float.MAX_VALUE;
+                  float ndcX = (2f * tx / screenW) - 1f, ndcY = 1f - (2f * ty / screenH);
+                  float[] invP = new float[16], invV = new float[16];
+                  Matrix.invertM(invP, 0, proj, 0);
+                  Matrix.invertM(invV, 0, view, 0);
+                  float[] n = {ndcX, ndcY, -1, 1}, f = {ndcX, ndcY, 1, 1}, t = new float[4];
+                  Matrix.multiplyMV(t, 0, invP, 0, n, 0);
+                  for (int i = 0; i < 4; i++) t[i] /= t[3];
+                  float[] nW = new float[4];
+                  Matrix.multiplyMV(nW, 0, invV, 0, t, 0);
+                  Matrix.multiplyMV(t, 0, invP, 0, f, 0);
+                  for (int i = 0; i < 4; i++) t[i] /= t[3];
+                  float[] fW = new float[4];
+                  Matrix.multiplyMV(fW, 0, invV, 0, t, 0);
+                  float dx = fW[0] - nW[0], dy = fW[1] - nW[1], dz = fW[2] - nW[2];
+                  float len = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
+                  dx /= len;
+                  dy /= len;
+                  dz /= len;
+                  int closest = -1;
+                  float cDist = Float.MAX_VALUE;
 
-                  for(int i=0; i<blocks.size(); i++) {
-                      Block b=blocks.get(i);
-                      float tmin=(b.minX()-nW[0])/(dx==0?0.0001f:dx);
-                      float tmax=(b.maxX()-nW[0])/(dx==0?0.0001f:dx);
-                      if(tmin>tmax){float tmp=tmin;tmin=tmax;tmax=tmp;}
-                      float tymin=(b.minY()-nW[1])/(dy==0?0.0001f:dy);
-                      float tymax=(b.maxY()-nW[1])/(dy==0?0.0001f:dy);
-                      if(tymin>tymax){float tmp=tymin;tymin=tymax;tymax=tmp;}
-                      if(tmin>tymax||tymin>tmax)continue;
-                      if(tymin>tmin)tmin=tymin;
-                      if(tymax<tmax)tmax=tymax;
-                      float tzmin=(b.minZ()-nW[2])/(dz==0?0.0001f:dz);
-                      float tzmax=(b.maxZ()-nW[2])/(dz==0?0.0001f:dz);
-                      if(tzmin>tzmax){float tmp=tzmin;tzmin=tzmax;tzmax=tmp;}
-                      if(tmin>tzmax||tzmin>tmax)continue;
-                      if(tzmin>tmin)tmin=tzmin;
-
-                      if(tmin>0&&tmin<cDist){
-                          float hx = nW[0] + dx * tmin;
-                          float hz = nW[2] + dz * tmin;
-                          if(pointInsideShapeXZ(b, hx, hz)){
-                              cDist=tmin;closest=i;
-                          }
+                  for (int i = 0; i < blocks.size(); i++) {
+                      Block b = blocks.get(i);
+                      float tmin = (b.minX() - nW[0]) / (dx == 0 ? 0.0001f : dx);
+                      float tmax = (b.maxX() - nW[0]) / (dx == 0 ? 0.0001f : dx);
+                      if (tmin > tmax) {
+                          float tmp = tmin;
+                          tmin = tmax;
+                          tmax = tmp;
+                      }
+                      float tymin = (b.minY() - nW[1]) / (dy == 0 ? 0.0001f : dy);
+                      float tymax = (b.maxY() - nW[1]) / (dy == 0 ? 0.0001f : dy);
+                      if (tymin > tymax) {
+                          float tmp = tymin;
+                          tymin = tymax;
+                          tymax = tmp;
+                      }
+                      if (tmin > tymax || tymin > tmax) continue;
+                      if (tymin > tmin) tmin = tymin;
+                      if (tymax < tmax) tmax = tymax;
+                      float tzmin = (b.minZ() - nW[2]) / (dz == 0 ? 0.0001f : dz);
+                      float tzmax = (b.maxZ() - nW[2]) / (dz == 0 ? 0.0001f : dz);
+                      if (tzmin > tzmax) {
+                          float tmp = tzmin;
+                          tzmin = tzmax;
+                          tzmax = tmp;
+                      }
+                      if (tmin > tzmax || tzmin > tmax) continue;
+                      if (tzmin > tmin) tmin = tzmin;
+                      if (tmin > 0 && tmin < cDist) {
+                          cDist = tmin;
+                          closest = i;
                       }
                   }
                   return closest;
@@ -1134,314 +1177,320 @@ jobs:
                   GLES30.glEnable(GLES30.GL_DEPTH_TEST);
                   GLES30.glDepthFunc(GLES30.GL_LEQUAL);
 
-                  String vs="#version 300 es\n"+
-                      "layout(location=0)in vec4 aP;layout(location=1)in vec3 aN;"+
-                      "uniform mat4 uMVP,uM;out vec3 vN,vP,vL;"+
-                      "void main(){vP=vec3(uM*aP);vN=normalize(mat3(uM)*aN);vL=aP.xyz;gl_Position=uMVP*aP;}";
+                  String vs = "#version 300 es\n" +
+                          "layout(location=0)in vec4 aP;layout(location=1)in vec3 aN;" +
+                          "uniform mat4 uMVP,uM;out vec3 vN,vP;" +
+                          "void main(){vP=vec3(uM*aP);vN=normalize(mat3(uM)*aN);gl_Position=uMVP*aP;}";
 
-                  String fs="#version 300 es\nprecision highp float;"+
-                      "in vec3 vN,vP,vL;uniform vec3 camP;uniform vec4 uC;uniform float uSel,isFloor;uniform int uShape;uniform float uTime;uniform float uIsPlayer;out vec4 fC;"+
-                      "bool insideShape(){"+
-                      "if(uShape==2){return dot(vL.xz, vL.xz) <= 0.25;}"+
-                      "if(uShape==3){float px=(vL.x+0.5);float pz=(vL.z+0.5);return pz>=0.0 && pz<=1.0 && px>=(0.5-pz*0.5) && px<=(0.5+pz*0.5);}"+
-                      "return true;}"+
-                      "void main(){"+
-                      "if(!insideShape() && isFloor<0.5) discard;"+
-                      "vec3 n=normalize(vN),vD=normalize(camP-vP),lD=normalize(vec3(.4,1.,.2));"+
-                      "float diff=max(dot(n,lD),0.),ao=clamp(vP.y*.08+.6,.3,1.);"+
-                      "vec3 h=normalize(lD+vD);float spec=pow(max(dot(n,h),0.),48.)*.6;"+
-                      "vec3 col=uC.rgb;if(uIsPlayer>0.5){float walk=sin(uTime*15.0)*0.05*step(0.01,abs(jX)+abs(jY));col=vec3(0.2,0.8,1.0)+walk;}"+
-                      "if(uSel>.5)col+=vec3(0.,.5,.8);"+
-                      "vec3 amb=vec3(.05,.08,.13)*ao;vec3 fin=col*(diff*vec3(1.,.97,.92)+amb)+spec;"+
-                      "if(isFloor>.5){vec2 g=fract(vP.xz*.2);float ln=step(.97,g.x)+step(.97,g.y);fin=mix(fin,vec3(0.,.4,.8),clamp(ln,0.,1.)*.45);}"+
-                      "float dist=length(camP-vP),fog=1.-exp(-dist*.006);"+
-                      "vec3 fogCol=vec3(.02,.06,.14);"+
-                      "vec3 c=mix(fin,fogCol,clamp(fog,0.,.82));"+
-                      "c=(c*(2.51*c+.03))/(c*(2.43*c+.59)+.14);"+
-                      "fC=vec4(c,uC.a);"+
-                      "}";
+                  String fs = "#version 300 es\nprecision highp float;" +
+                          "in vec3 vN,vP;uniform vec3 camP;uniform vec4 uC;uniform float uSel,isFloor;out vec4 fC;" +
+                          "void main(){" +
+                          "vec3 n=normalize(vN),vD=normalize(camP-vP),lD=normalize(vec3(.4,1.,.2));" +
+                          "float diff=max(dot(n,lD),0.),ao=clamp(vP.y*.08+.6,.3,1.);" +
+                          "vec3 h=normalize(lD+vD);float spec=pow(max(dot(n,h),0.),48.)*.6;" +
+                          "vec3 col=uC.rgb;if(uSel>.5)col+=vec3(0.,.5,.8);" +
+                          "vec3 amb=vec3(.05,.08,.13)*ao;vec3 fin=col*(diff*vec3(1.,.97,.92)+amb)+spec;" +
+                          "if(isFloor>.5){vec2 g=fract(vP.xz*.2);float ln=step(.97,g.x)+step(.97,g.y);fin=mix(fin,vec3(0.,.4,.8),clamp(ln,0.,1.)*.45);}" +
+                          "float dist=length(camP-vP),fog=1.-exp(-dist*.006);" +
+                          "vec3 fogCol=vec3(.02,.06,.14);" +
+                          "vec3 c=mix(fin,fogCol,clamp(fog,0.,.82));" +
+                          "c=(c*(2.51*c+.03))/(c*(2.43*c+.59)+.14);" +
+                          "fC=vec4(c,uC.a);}";
 
-                  String skyVs="#version 300 es\n"+
-                      "layout(location=0) in vec3 aP;out vec3 vDir;uniform mat4 uInvVP;"+
-                      "void main(){vec4 p = vec4(aP,1.0);vec4 w = uInvVP * p;vDir = normalize(w.xyz / w.w);gl_Position = p;}";
+                  String skyVs = "#version 300 es\n" +
+                          "layout(location=0) in vec3 aP;out vec3 vDir;uniform mat4 uInvVP;" +
+                          "void main(){vec4 p = vec4(aP,1.0);vec4 w = uInvVP * p;vDir = normalize(w.xyz / w.w);gl_Position = p;}";
 
-                  String skyFs="#version 300 es\nprecision highp float;"+
-                      "in vec3 vDir; out vec4 fC;"+
-                      "float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123);}"+
-                      "void main(){"+
-                      "vec3 d=normalize(vDir);"+
-                      "float t=clamp(d.y*0.5+0.5,0.0,1.0);"+
-                      "vec3 col=mix(vec3(0.003,0.006,0.016), vec3(0.04,0.16,0.34), t);"+
-                      "float horizonFade = smoothstep(-0.15, 0.08, d.y);"+
-                      "vec2 uv = normalize(d.xz) * (acos(clamp(d.y,-1.0,1.0)) / 3.14159);"+
-                      "uv *= 260.0;"+
-                      "vec2 id = floor(uv);"+
-                      "vec2 gv = fract(uv) - 0.5;"+
-                      "float rnd = hash(id);"+
-                      "float star = step(0.996, rnd);"+
-                      "float dist = length(gv);"+
-                      "float tw = 0.7 + 0.3*sin(rnd*500.0);"+
-                      "float s = smoothstep(0.16, 0.0, dist) * star * tw * 3.2;"+
-                      "float glow = smoothstep(0.45, 0.0, dist) * star * 1.0;"+
-                      "vec3 scol = mix(vec3(1.0,0.95,0.85), vec3(0.8,0.9,1.0), hash(id+4.3));"+
-                      "col += (s + glow) * scol * horizonFade;"+
-                      "fC=vec4(col,1.0);"+
-                      "}";
+                  String skyFs = "#version 300 es\nprecision highp float;" +
+                          "in vec3 vDir; out vec4 fC;" +
+                          "float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123);}" +
+                          "void main(){" +
+                          "vec3 d=normalize(vDir);" +
+                          "float t=clamp(d.y*0.5+0.5,0.0,1.0);" +
+                          "vec3 col=mix(vec3(0.005,0.008,0.02), vec3(0.03,0.16,0.36), t);" +
+                          "if(d.y>0.15){" +
+                          "vec2 uv=d.xz/(d.y+0.25);uv*=120.0;vec2 id=floor(uv);vec2 gv=fract(uv)-0.5;" +
+                          "float rnd=hash(id);float star=step(0.992,rnd);float dist=length(gv);" +
+                          "float tw=0.65+0.35*sin(rnd*500.0);" +
+                          "float s=smoothstep(0.16,0.0,dist)*star*tw*2.8;" +
+                          "float glow=smoothstep(0.42,0.0,dist)*star*0.9;" +
+                          "vec3 scol=mix(vec3(1.0,0.95,0.85),vec3(0.8,0.9,1.0),hash(id+4.3));" +
+                          "col += scol*(s+glow);}fC=vec4(col,1.0);}";
 
-                  prog=mkProg(vs,fs);
-                  skyProg=mkProg(skyVs,skyFs);
+                  prog = mkProg(vs, fs);
+                  skyProg = mkProg(skyVs, skyFs);
 
-                  float[] vc={
-                      -.5f,.5f,.5f, -.5f,-.5f,.5f, .5f,.5f,.5f, .5f,-.5f,.5f,
-                      -.5f,.5f,-.5f, -.5f,-.5f,-.5f, .5f,.5f,-.5f, .5f,-.5f,-.5f,
-                      -.5f,.5f,-.5f, -.5f,.5f,.5f, .5f,.5f,-.5f, .5f,.5f,.5f,
-                      -.5f,-.5f,-.5f, -.5f,-.5f,.5f, .5f,-.5f,-.5f, .5f,-.5f,.5f,
-                      -.5f,.5f,-.5f, -.5f,-.5f,-.5f, -.5f,.5f,.5f, -.5f,-.5f,.5f,
-                      .5f,.5f,-.5f, .5f,-.5f,-.5f, .5f,.5f,.5f, .5f,-.5f,.5f
+                  float[] vc = {
+                          -.5f, .5f, .5f, -.5f, -.5f, .5f, .5f, .5f, .5f, .5f, -.5f, .5f,
+                          -.5f, .5f, -.5f, -.5f, -.5f, -.5f, .5f, .5f, -.5f, .5f, -.5f, -.5f,
+                          -.5f, .5f, -.5f, -.5f, .5f, .5f, .5f, .5f, -.5f, .5f, .5f, .5f,
+                          -.5f, -.5f, -.5f, -.5f, -.5f, .5f, .5f, -.5f, -.5f, .5f, -.5f, .5f,
+                          -.5f, .5f, -.5f, -.5f, -.5f, -.5f, -.5f, .5f, .5f, -.5f, -.5f, .5f,
+                          .5f, .5f, -.5f, .5f, -.5f, -.5f, .5f, .5f, .5f, .5f, -.5f, .5f
                   };
-                  float[] nc={
-                      0,0,1, 0,0,1, 0,0,1, 0,0,1,
-                      0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1,
-                      0,1,0, 0,1,0, 0,1,0, 0,1,0,
-                      0,-1,0, 0,-1,0, 0,-1,0, 0,-1,0,
-                      -1,0,0, -1,0,0, -1,0,0, -1,0,0,
-                      1,0,0, 1,0,0, 1,0,0, 1,0,0
+                  float[] nc = {
+                          0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1,
+                          0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1,
+                          0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0,
+                          0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0,
+                          -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0,
+                          1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0
                   };
-                  float[] skyQuad={-1f,-1f,1f, 1f,-1f,1f, -1f,1f,1f, 1f,1f,1f};
+                  float[] skyQuad = {-1f, -1f, 1f, 1f, -1f, 1f, -1f, 1f, 1f, 1f, 1f, 1f};
 
-                  vBuf=ByteBuffer.allocateDirect(vc.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(vc);vBuf.position(0);
-                  nBuf=ByteBuffer.allocateDirect(nc.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(nc);nBuf.position(0);
-                  skyBuf=ByteBuffer.allocateDirect(skyQuad.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(skyQuad);skyBuf.position(0);
+                  vBuf = ByteBuffer.allocateDirect(vc.length * 4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(vc);
+                  vBuf.position(0);
+                  nBuf = ByteBuffer.allocateDirect(nc.length * 4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(nc);
+                  nBuf.position(0);
+                  skyBuf = ByteBuffer.allocateDirect(skyQuad.length * 4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(skyQuad);
+                  skyBuf.position(0);
 
                   loadBuiltInLevel();
               }
 
               @Override
-              public void onSurfaceChanged(GL10 gl,int w,int h){
-                  GLES30.glViewport(0,0,w,h);
-                  Matrix.perspectiveM(proj,0,55,(float)w/h,.1f,500f);
-                  screenW=w;screenH=h;
+              public void onSurfaceChanged(GL10 gl, int w, int h) {
+                  GLES30.glViewport(0, 0, w, h);
+                  Matrix.perspectiveM(proj, 0, 55, (float) w / h, .1f, 500f);
+                  screenW = w;
+                  screenH = h;
               }
 
               @Override
               public void onDrawFrame(GL10 gl) {
                   update();
-                  GLES30.glClearColor(.01f,.015f,.03f,1f);
-                  GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT|GLES30.GL_DEPTH_BUFFER_BIT);
+                  GLES30.glClearColor(.01f, .015f, .03f, 1f);
+                  GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
 
-                  // Camera setup
-                  if(!isEngineMode){
-                      // 3rd person camera
-                      float camX = pX - (float)Math.sin(Math.toRadians(rY)) * CAM_DISTANCE;
-                      float camZ = pZ + (float)Math.cos(Math.toRadians(rY)) * CAM_DISTANCE;
-                      float camY = pY + CAM_HEIGHT;
-                      Matrix.setLookAtM(view,0,camX,camY,camZ,pX,pY,pZ,0,1,0);
-                      playerVisible = true;
-                      playerAnimTime += 0.016f;
-                  } else {
-                      // Free camera in editor
-                      float vx=(float)(Math.sin(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
-                      float vy=(float)Math.sin(Math.toRadians(rX));
-                      float vz=(float)(-Math.cos(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
-                      Matrix.setLookAtM(view,0,pX,pY,pZ,pX+vx,pY+vy,pZ+vz,0,1,0);
-                      playerVisible = false;
-                  }
-                  Matrix.multiplyMM(vp,0,proj,0,view,0);
+                  float lookX = (float) (Math.sin(Math.toRadians(rY)) * Math.cos(Math.toRadians(rX)));
+                  float lookY = (float) Math.sin(Math.toRadians(rX));
+                  float lookZ = (float) (-Math.cos(Math.toRadians(rY)) * Math.cos(Math.toRadians(rX)));
+
+                  float camDist = 10f;
+                  float camHeight = 4f;
+
+                  float camX = pX - lookX * camDist;
+                  float camY = pY + camHeight - lookY * 2f;
+                  float camZ = pZ - lookZ * camDist;
+
+                  Matrix.setLookAtM(view, 0, camX, camY, camZ, pX, pY + 1.5f, pZ, 0, 1, 0);
+                  Matrix.multiplyMM(vp, 0, proj, 0, view, 0);
 
                   drawSky();
-                  drawWorld();
+                  drawWorld(lookX, lookY, lookZ);
+
+                  if (!isEngineMode || isPlayingLevel) {
+                      drawPlayer();
+                  }
               }
 
-              private void drawSky(){
+              private void drawSky() {
                   GLES30.glDepthMask(false);
                   GLES30.glUseProgram(skyProg);
                   float[] invVP = new float[16];
-                  Matrix.invertM(invVP,0,vp,0);
-                  int uInvVP = GLES30.glGetUniformLocation(skyProg,"uInvVP");
-                  GLES30.glUniformMatrix4fv(uInvVP,1,false,invVP,0);
-                  GLES30.glVertexAttribPointer(0,3,GLES30.GL_FLOAT,false,0,skyBuf);
+                  Matrix.invertM(invVP, 0, vp, 0);
+                  int uInvVP = GLES30.glGetUniformLocation(skyProg, "uInvVP");
+                  GLES30.glUniformMatrix4fv(uInvVP, 1, false, invVP, 0);
+                  GLES30.glVertexAttribPointer(0, 3, GLES30.GL_FLOAT, false, 0, skyBuf);
                   GLES30.glEnableVertexAttribArray(0);
-                  GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP,0,4);
+                  GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4);
                   GLES30.glDepthMask(true);
               }
 
-              private void drawWorld(){
+              private void drawWorld(float vx, float vy, float vz) {
                   GLES30.glUseProgram(prog);
-                  int uMVP=GLES30.glGetUniformLocation(prog,"uMVP"),uM=GLES30.glGetUniformLocation(prog,"uM"),uC=GLES30.glGetUniformLocation(prog,"uC");
-                  int uSel=GLES30.glGetUniformLocation(prog,"uSel"),uFloor=GLES30.glGetUniformLocation(prog,"isFloor"),uShape=GLES30.glGetUniformLocation(prog,"uShape");
-                  int uTime=GLES30.glGetUniformLocation(prog,"uTime"),uIsPlayer=GLES30.glGetUniformLocation(prog,"uIsPlayer");
-                  GLES30.glUniform3f(GLES30.glGetUniformLocation(prog,"camP"),pX,pY,pZ);
-                  GLES30.glUniform1f(uTime,playerAnimTime);
-                  GLES30.glUniform1f(uIsPlayer,0f);
-                  GLES30.glVertexAttribPointer(0,3,GLES30.GL_FLOAT,false,0,vBuf);GLES30.glEnableVertexAttribArray(0);
-                  GLES30.glVertexAttribPointer(1,3,GLES30.GL_FLOAT,false,0,nBuf);GLES30.glEnableVertexAttribArray(1);
+                  int uMVP = GLES30.glGetUniformLocation(prog, "uMVP"), uM = GLES30.glGetUniformLocation(prog, "uM"), uC = GLES30.glGetUniformLocation(prog, "uC");
+                  int uSel = GLES30.glGetUniformLocation(prog, "uSel"), uFloor = GLES30.glGetUniformLocation(prog, "isFloor");
+                  GLES30.glUniform3f(GLES30.glGetUniformLocation(prog, "camP"), pX, pY, pZ);
+                  GLES30.glVertexAttribPointer(0, 3, GLES30.GL_FLOAT, false, 0, vBuf);
+                  GLES30.glEnableVertexAttribArray(0);
+                  GLES30.glVertexAttribPointer(1, 3, GLES30.GL_FLOAT, false, 0, nBuf);
+                  GLES30.glEnableVertexAttribArray(1);
 
-                  // Floor
-                  Matrix.setIdentityM(model,0);
-                  Matrix.translateM(model,0,0,-.05f,0);
-                  Matrix.scaleM(model,0,800,.1f,800);
-                  GLES30.glUniform1f(uSel,0f);
-                  GLES30.glUniform1f(uFloor,1f);
-                  GLES30.glUniform1i(uShape,0);
-                  draw(uM,uMVP,uC,.05f,.07f,.11f,1f);
+                  Matrix.setIdentityM(model, 0);
+                  Matrix.translateM(model, 0, 0, -.05f, 0);
+                  Matrix.scaleM(model, 0, 800, .1f, 800);
+                  GLES30.glUniform1f(uSel, 0f);
+                  GLES30.glUniform1f(uFloor, 1f);
+                  draw(uM, uMVP, uC, .05f, .07f, .11f, 1f);
 
-                  // Blocks
-                  GLES30.glUniform1f(uFloor,0f);
-                  int uShapeVal = 0;
-                  for(int i=0;i<blocks.size();i++){
-                      Block b=blocks.get(i);
-                      if(b.hidden) continue;
-                      Matrix.setIdentityM(model,0);
-                      Matrix.translateM(model,0,b.x,b.y,b.z);
-                      Matrix.scaleM(model,0,b.sx,b.sy,b.sz);
-                      GLES30.glUniform1f(uSel,(i==selectedIndex&&isEngineMode)?1f:0f);
-                      String shape = b.shape == null ? "square" : b.shape;
-                      switch(shape){
-                          case "rectangle": uShapeVal=1; break;
-                          case "circle": uShapeVal=2; break;
-                          case "triangle": uShapeVal=3; break;
-                          default: uShapeVal=0; break;
-                      }
-                      GLES30.glUniform1i(uShape,uShapeVal);
-                      draw(uM,uMVP,uC,b.r,b.g,b.b,1f);
-                      
-                      // Run collision script if touching player
-                      if(!isEngineMode && !b.touchingPlayer){
-                          boolean broadXZ = pX+PLAYER_RADIUS>b.minX()&&pX-PLAYER_RADIUS<b.maxX()&&pZ+PLAYER_RADIUS>b.minZ()&&pZ-PLAYER_RADIUS<b.maxZ();
-                          boolean overlapXZ = broadXZ && overlapsPlayerShape(b, pX, pZ, PLAYER_RADIUS);
-                          if(overlapXZ && Math.abs((pY-PLAYER_HEIGHT)-b.maxY())<.2f){
-                              b.touchingPlayer = true;
-                              handleCollisionScript(b);
-                          } else if(!overlapXZ){
-                              b.touchingPlayer = false;
-                          }
-                      }
+                  GLES30.glUniform1f(uFloor, 0f);
+                  for (int i = 0; i < blocks.size(); i++) {
+                      Block b = blocks.get(i);
+                      if (b.hidden) continue;
+                      Matrix.setIdentityM(model, 0);
+                      Matrix.translateM(model, 0, b.x, b.y, b.z);
+                      Matrix.scaleM(model, 0, b.sx, b.sy, b.sz);
+                      GLES30.glUniform1f(uSel, (i == selectedIndex && isEngineMode && !isPlayingLevel) ? 1f : 0f);
+                      draw(uM, uMVP, uC, b.r, b.g, b.b, 1f);
                   }
 
-                  // Player model
-                  if(playerVisible){
-                      Matrix.setIdentityM(model,0);
-                      Matrix.translateM(model,0,pX,pY-PLAYER_HEIGHT/2f,pZ);
-                      float walkBob = (float)Math.sin(playerAnimTime*15f)*0.1f*Math.min(1f, Math.abs(jX)+Math.abs(jY));
-                      Matrix.scaleM(model,0,PLAYER_RADIUS*2f,PLAYER_HEIGHT+walkBob,PLAYER_RADIUS*2f);
-                      GLES30.glUniform1f(uSel,0f);
-                      GLES30.glUniform1f(uFloor,0f);
-                      GLES30.glUniform1i(uShape,0);
-                      GLES30.glUniform1f(uIsPlayer,1f);
-                      GLES30.glUniform1f(uTime,playerAnimTime);
-                      draw(uM,uMVP,uC,0.2f,0.8f,1.0f,1f);
-                      GLES30.glUniform1f(uIsPlayer,0f);
-                  }
-
-                  // Placement preview
-                  if(isEngineMode && selectedIndex<0){
-                      float vx=(float)(Math.sin(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
-                      float vy=(float)Math.sin(Math.toRadians(rX));
-                      float vz=(float)(-Math.cos(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
-                      float px=pX+vx*placeDist,py=pY+vy*placeDist,pz=pZ+vz*placeDist;
-                      px=snap(px); py=snap(py); pz=snap(pz);
-                      if(py-blockSY/2f<FLOOR_Y)py=FLOOR_Y+blockSY/2f;
-                      Matrix.setIdentityM(model,0);
-                      Matrix.translateM(model,0,px,py,pz);
-                      Matrix.scaleM(model,0,blockSX,blockSY,blockSZ);
+                  if (isEngineMode && !isPlayingLevel && selectedIndex < 0) {
+                      float px = pX + vx * placeDist, py = pY + vy * placeDist, pz = pZ + vz * placeDist;
+                      px = snap(px);
+                      py = snap(py);
+                      pz = snap(pz);
+                      if (py - blockSY / 2f < FLOOR_Y) py = FLOOR_Y + blockSY / 2f;
+                      Matrix.setIdentityM(model, 0);
+                      Matrix.translateM(model, 0, px, py, pz);
+                      Matrix.scaleM(model, 0, blockSX, blockSY, blockSZ);
                       GLES30.glEnable(GLES30.GL_BLEND);
-                      GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA,GLES30.GL_ONE_MINUS_SRC_ALPHA);
-                      GLES30.glUniform1f(uSel,0f);
-                      String shape = blockShape == null ? "square" : blockShape;
-                      switch(shape){
-                          case "rectangle": uShapeVal=1; break;
-                          case "circle": uShapeVal=2; break;
-                          case "triangle": uShapeVal=3; break;
-                          default: uShapeVal=0; break;
-                      }
-                      GLES30.glUniform1i(uShape,uShapeVal);
-                      draw(uM,uMVP,uC,blockR,blockG,blockB,.4f);
+                      GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
+                      GLES30.glUniform1f(uSel, 0f);
+                      draw(uM, uMVP, uC, blockR, blockG, blockB, .4f);
                       GLES30.glDisable(GLES30.GL_BLEND);
                   }
               }
 
-              private void update(){
-                  float s=.35f,rad=(float)Math.toRadians(rY),pitch=(float)Math.toRadians(rX);
-                  
-                  if(!isEngineMode){
-                      // Player movement in play mode
-                      float mX=((float)Math.sin(rad)*-jY+(float)Math.cos(rad)*jX)*s;
-                      float mZ=((float)-Math.cos(rad)*-jY+(float)Math.sin(rad)*jX)*s;
-                      vY-=.025f;
-                      float nX=pX+mX,nY=pY+vY,nZ=pZ+mZ,fY=nY-PLAYER_HEIGHT,hY=nY;
-                      if(fY<FLOOR_Y){nY=FLOOR_Y+PLAYER_HEIGHT;vY=0;}
-                      
-                      playerWalking = Math.abs(mX) + Math.abs(mZ) > 0.01f;
-                      
-                      for(Block b:blocks){
-                          boolean broadXZ = nX+PLAYER_RADIUS>b.minX()&&nX-PLAYER_RADIUS<b.maxX()&&nZ+PLAYER_RADIUS>b.minZ()&&nZ-PLAYER_RADIUS<b.maxZ();
-                          boolean overlapXZ = broadXZ && overlapsPlayerShape(b, nX, nZ, PLAYER_RADIUS);
-                          boolean overlapY = fY<b.maxY()-.1f&&hY>b.minY()+.1f;
-                          boolean touching = overlapXZ && (overlapY || Math.abs((nY-PLAYER_HEIGHT)-b.maxY())<.2f);
+              private void drawPlayer() {
+                  GLES30.glUseProgram(prog);
+                  int uMVP = GLES30.glGetUniformLocation(prog, "uMVP"), uM = GLES30.glGetUniformLocation(prog, "uM"), uC = GLES30.glGetUniformLocation(prog, "uC");
+                  int uSel = GLES30.glGetUniformLocation(prog, "uSel"), uFloor = GLES30.glGetUniformLocation(prog, "isFloor");
 
-                          if(touching && !b.touchingPlayer){
+                  GLES30.glUniform3f(GLES30.glGetUniformLocation(prog, "camP"), pX, pY, pZ);
+                  GLES30.glVertexAttribPointer(0, 3, GLES30.GL_FLOAT, false, 0, vBuf);
+                  GLES30.glEnableVertexAttribArray(0);
+                  GLES30.glVertexAttribPointer(1, 3, GLES30.GL_FLOAT, false, 0, nBuf);
+                  GLES30.glEnableVertexAttribArray(1);
+
+                  GLES30.glUniform1f(uSel, 0f);
+                  GLES30.glUniform1f(uFloor, 0f);
+
+                  float baseY = pY - PLAYER_HEIGHT + 0.1f;
+
+                  float armSwing = moving ? (float) Math.sin(walkAnim) * 35f : 0f;
+                  float legSwing = moving ? (float) Math.sin(walkAnim) * 35f : 0f;
+
+                  if (!isOnGround()) {
+                      armSwing = -30f;
+                      legSwing = 20f;
+                  }
+
+                  drawPart(uM, uMVP, uC, pX, baseY + 4.6f, pZ, 1.2f, 1.2f, 1.2f, playerYaw, 0, 0, 1f, 0.9f, 0.7f, 1f);
+                  drawPart(uM, uMVP, uC, pX, baseY + 3.0f, pZ, 1.8f, 2.2f, 1.0f, playerYaw, 0, 0, 0.1f, 0.4f, 1f, 1f);
+
+                  drawPart(uM, uMVP, uC, pX - 1.4f, baseY + 3.1f, pZ, 0.7f, 2.0f, 0.7f, playerYaw, 0, armSwing, 1f, 0.9f, 0.7f, 1f);
+                  drawPart(uM, uMVP, uC, pX + 1.4f, baseY + 3.1f, pZ, 0.7f, 2.0f, 0.7f, playerYaw, 0, -armSwing, 1f, 0.9f, 0.7f, 1f);
+
+                  drawPart(uM, uMVP, uC, pX - 0.5f, baseY + 1.0f, pZ, 0.8f, 2.0f, 0.8f, playerYaw, 0, -legSwing, 0.15f, 0.15f, 0.2f, 1f);
+                  drawPart(uM, uMVP, uC, pX + 0.5f, baseY + 1.0f, pZ, 0.8f, 2.0f, 0.8f, playerYaw, 0, legSwing, 0.15f, 0.15f, 0.2f, 1f);
+              }
+
+              private void drawPart(int uM, int uMVP, int uC,
+                                    float x, float y, float z,
+                                    float sx, float sy, float sz,
+                                    float rotY, float rotZ, float rotX,
+                                    float r, float g, float b, float a) {
+                  Matrix.setIdentityM(model, 0);
+                  Matrix.translateM(model, 0, x, y, z);
+                  Matrix.rotateM(model, 0, rotY, 0, 1, 0);
+                  Matrix.rotateM(model, 0, rotZ, 0, 0, 1);
+                  Matrix.rotateM(model, 0, rotX, 1, 0, 0);
+                  Matrix.scaleM(model, 0, sx, sy, sz);
+                  draw(uM, uMVP, uC, r, g, b, a);
+              }
+
+              private void update() {
+                  float s = .35f, rad = (float) Math.toRadians(rY), pitch = (float) Math.toRadians(rX);
+
+                  if (isEngineMode && !isPlayingLevel) {
+                      float fx = (float) Math.sin(rad), fz = (float) -Math.cos(rad), fy = (float) Math.sin(pitch);
+                      pX += (fx * -jY + (float) Math.cos(rad) * jX) * s;
+                      pZ += (fz * -jY + (float) Math.sin(rad) * jX) * s;
+                      pY += (fy * -jY) * s;
+                  } else {
+                      float mX = ((float) Math.sin(rad) * -jY + (float) Math.cos(rad) * jX) * s;
+                      float mZ = ((float) -Math.cos(rad) * -jY + (float) Math.sin(rad) * jX) * s;
+
+                      moving = Math.abs(jX) > 0.05f || Math.abs(jY) > 0.05f;
+                      if (moving) {
+                          playerYaw = (float) Math.toDegrees(Math.atan2(mX, -mZ));
+                          walkAnim += 0.22f;
+                      }
+
+                      animTime += 0.05f;
+                      vY -= .025f;
+
+                      float nX = pX + mX, nY = pY + vY, nZ = pZ + mZ, fY = nY - PLAYER_HEIGHT, hY = nY;
+                      if (fY < FLOOR_Y) {
+                          nY = FLOOR_Y + PLAYER_HEIGHT;
+                          vY = 0;
+                      }
+
+                      for (Block b : blocks) {
+                          boolean overlapXZ = nX + PLAYER_RADIUS > b.minX() && nX - PLAYER_RADIUS < b.maxX() &&
+                                  nZ + PLAYER_RADIUS > b.minZ() && nZ - PLAYER_RADIUS < b.maxZ();
+                          boolean overlapY = fY < b.maxY() - .1f && hY > b.minY() + .1f;
+                          boolean touching = overlapXZ && (overlapY || Math.abs((nY - PLAYER_HEIGHT) - b.maxY()) < .2f);
+
+                          if (touching && !b.touchingPlayer) {
                               b.touchingPlayer = true;
-                              handleCollisionScript(b);
-                          } else if(!touching){
+                              if (eventHost != null && b.onTouchScript != null && !b.onTouchScript.trim().isEmpty()) {
+                                  eventHost.runBlockScript(b, b.onTouchScript);
+                              }
+                          } else if (!touching) {
                               b.touchingPlayer = false;
                           }
 
-                          if(overlapXZ){
-                              if(pY-PLAYER_HEIGHT>=b.maxY()-.15f&&fY<b.maxY()){
-                                  nY=b.maxY()+PLAYER_HEIGHT;vY=0;
-                              }else if(pY<b.minY()&&hY>b.minY()){
-                                  nY=b.minY();vY=0;
-                              }else if(overlapY){
-                                  float oX1=(nX+PLAYER_RADIUS)-b.minX(),oX2=b.maxX()-(nX-PLAYER_RADIUS),oZ1=(nZ+PLAYER_RADIUS)-b.minZ(),oZ2=b.maxZ()-(nZ-PLAYER_RADIUS),minO=Math.min(Math.min(oX1,oX2),Math.min(oZ1,oZ2));
-                                  if(minO==oX1)nX=b.minX()-PLAYER_RADIUS;
-                                  else if(minO==oX2)nX=b.maxX()+PLAYER_RADIUS;
-                                  else if(minO==oZ1)nZ=b.minZ()-PLAYER_RADIUS;
-                                  else nZ=b.maxZ()+PLAYER_RADIUS;
+                          if (overlapXZ) {
+                              if (pY - PLAYER_HEIGHT >= b.maxY() - .15f && fY < b.maxY()) {
+                                  nY = b.maxY() + PLAYER_HEIGHT;
+                                  vY = 0;
+                              } else if (pY < b.minY() && hY > b.minY()) {
+                                  nY = b.minY();
+                                  vY = 0;
+                              } else if (overlapY) {
+                                  float oX1 = (nX + PLAYER_RADIUS) - b.minX();
+                                  float oX2 = b.maxX() - (nX - PLAYER_RADIUS);
+                                  float oZ1 = (nZ + PLAYER_RADIUS) - b.minZ();
+                                  float oZ2 = b.maxZ() - (nZ - PLAYER_RADIUS);
+                                  float minO = Math.min(Math.min(oX1, oX2), Math.min(oZ1, oZ2));
+                                  if (minO == oX1) nX = b.minX() - PLAYER_RADIUS;
+                                  else if (minO == oX2) nX = b.maxX() + PLAYER_RADIUS;
+                                  else if (minO == oZ1) nZ = b.minZ() - PLAYER_RADIUS;
+                                  else nZ = b.maxZ() + PLAYER_RADIUS;
                               }
                           }
                       }
-                      pX=nX;pY=nY;pZ=nZ;
-                  } else {
-                      // Free camera in editor
-                      float fx=(float)Math.sin(rad),fz=(float)-Math.cos(rad),fy=(float)Math.sin(pitch);
-                      pX+=(fx*-jY+(float)Math.cos(rad)*jX)*s;
-                      pZ+=(fz*-jY+(float)Math.sin(rad)*jX)*s;
-                      pY+=(fy*-jY)*s;
-                      playerWalking = false;
+
+                      pX = nX;
+                      pY = nY;
+                      pZ = nZ;
                   }
               }
 
-              public boolean isOnGround(){
-                  if(pY-PLAYER_HEIGHT<=FLOOR_Y+.1f)return true;
-                  for(Block b:blocks){
-                      boolean broadXZ = pX+PLAYER_RADIUS>b.minX()&&pX-PLAYER_RADIUS<b.maxX()&&pZ+PLAYER_RADIUS>b.minZ()&&pZ-PLAYER_RADIUS<b.maxZ();
-                      boolean overlapXZ = broadXZ && overlapsPlayerShape(b, pX, pZ, PLAYER_RADIUS);
-                      if(overlapXZ && Math.abs((pY-PLAYER_HEIGHT)-b.maxY())<.15f) return true;
+              public boolean isOnGround() {
+                  if (pY - PLAYER_HEIGHT <= FLOOR_Y + .1f) return true;
+                  for (Block b : blocks) {
+                      if (pX + PLAYER_RADIUS > b.minX() && pX - PLAYER_RADIUS < b.maxX() &&
+                              pZ + PLAYER_RADIUS > b.minZ() && pZ - PLAYER_RADIUS < b.maxZ() &&
+                              Math.abs((pY - PLAYER_HEIGHT) - b.maxY()) < .15f)
+                          return true;
                   }
                   return false;
               }
 
-              private void draw(int uM,int uMVP,int uC,float r,float g,float b,float a){
-                  GLES30.glUniformMatrix4fv(uM,1,false,model,0);
-                  float[] res=new float[16];
-                  Matrix.multiplyMM(res,0,proj,0,view,0);
-                  Matrix.multiplyMM(res,0,res,0,model,0);
-                  GLES30.glUniformMatrix4fv(uMVP,1,false,res,0);
-                  GLES30.glUniform4f(uC,r,g,b,a);
-                  for(int i=0;i<6;i++) GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP,i*4,4);
+              private void draw(int uM, int uMVP, int uC, float r, float g, float b, float a) {
+                  GLES30.glUniformMatrix4fv(uM, 1, false, model, 0);
+                  float[] res = new float[16];
+                  Matrix.multiplyMM(res, 0, proj, 0, view, 0);
+                  Matrix.multiplyMM(res, 0, res, 0, model, 0);
+                  GLES30.glUniformMatrix4fv(uMVP, 1, false, res, 0);
+                  GLES30.glUniform4f(uC, r, g, b, a);
+                  for (int i = 0; i < 6; i++) GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, i * 4, 4);
               }
 
-              private int mkProg(String v,String f){
-                  int p=GLES30.glCreateProgram();
-                  GLES30.glAttachShader(p,mkSh(35633,v));
-                  GLES30.glAttachShader(p,mkSh(35632,f));
+              private int mkProg(String v, String f) {
+                  int p = GLES30.glCreateProgram();
+                  GLES30.glAttachShader(p, mkSh(35633, v));
+                  GLES30.glAttachShader(p, mkSh(35632, f));
                   GLES30.glLinkProgram(p);
                   return p;
               }
 
-              private int mkSh(int t,String s){
-                  int sh=GLES30.glCreateShader(t);
-                  GLES30.glShaderSource(sh,s);
+              private int mkSh(int t, String s) {
+                  int sh = GLES30.glCreateShader(t);
+                  GLES30.glShaderSource(sh, s);
                   GLES30.glCompileShader(sh);
                   return sh;
               }
@@ -1479,8 +1528,8 @@ jobs:
               private float lx,ly;
               private Button[] shapeBtn,distBtn;
               private View[] colorBtn;
-              private View axisPanel,menuUI,gameUI,engineUI;
-              private Button btnDeselect, btnHide, btnDelete, btnEvents, btnGrid, btnPlayMode;
+              private View axisPanel,menuUI,gameUI,engineUI,playtestUI;
+              private Button btnDeselect, btnHide, btnDelete, btnEvents, btnGrid;
               private TextView txtSizeInfo;
               private ActivityResultLauncher<Intent> saveLauncher,loadLauncher;
               private Handler handler = new Handler(Looper.getMainLooper());
@@ -1526,13 +1575,13 @@ jobs:
                   menuUI=findViewById(R.id.menu_ui);
                   gameUI=findViewById(R.id.game_ui);
                   engineUI=findViewById(R.id.engine_ui);
+                  playtestUI=findViewById(R.id.playtest_ui);
                   axisPanel=findViewById(R.id.axis_panel);
                   btnDeselect=findViewById(R.id.btn_deselect);
                   btnHide=findViewById(R.id.btn_hide);
                   btnDelete=findViewById(R.id.btn_delete);
                   btnEvents=findViewById(R.id.btn_block_events);
                   btnGrid=findViewById(R.id.btn_grid);
-                  btnPlayMode=findViewById(R.id.btn_play_mode);
                   txtSizeInfo=findViewById(R.id.txt_size_info);
 
                   saveLauncher=registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),res->{
@@ -1548,8 +1597,8 @@ jobs:
                                   o.put("hidden",b.hidden);
                                   o.put("shape",b.shape);
                                   o.put("onStartScript", b.onStartScript);
-                                  o.put("onCollisionScript", b.onCollisionScript);
                                   o.put("onTouchScript", b.onTouchScript);
+                                  o.put("onTapScript", b.onTapScript);
                                   arr.put(o);
                               }
                               JSONObject root=new JSONObject();
@@ -1593,8 +1642,8 @@ jobs:
                                   b.hidden = o.optBoolean("hidden", false);
                                   b.shape = o.optString("shape", "square");
                                   b.onStartScript = o.optString("onStartScript", "");
-                                  b.onCollisionScript = o.optString("onCollisionScript", "");
                                   b.onTouchScript = o.optString("onTouchScript", "");
+                                  b.onTapScript = o.optString("onTapScript", "");
                                   ren.blocks.add(b);
                               }
                               ren.gridEnabled = root.optBoolean("gridEnabled", true);
@@ -1624,6 +1673,7 @@ jobs:
                       menuUI.setVisibility(View.GONE);
                       gameUI.setVisibility(View.VISIBLE);
                       engineUI.setVisibility(View.GONE);
+                      playtestUI.setVisibility(View.GONE);
                       ren.runStartScripts();
                       handler.postDelayed(() -> setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE), 50);
                   });
@@ -1638,6 +1688,7 @@ jobs:
                       menuUI.setVisibility(View.GONE);
                       gameUI.setVisibility(View.GONE);
                       engineUI.setVisibility(View.VISIBLE);
+                      playtestUI.setVisibility(View.GONE);
                       updAxis();
                       updSizeInfo();
                       updGridButton();
@@ -1654,22 +1705,30 @@ jobs:
                   View.OnClickListener back=v->{
                       pendingMode = 0;
                       ren.isPlayingLevel=false;
-                      ren.isEngineMode=true;
                       gameUI.setVisibility(View.GONE);
                       engineUI.setVisibility(View.GONE);
+                      playtestUI.setVisibility(View.GONE);
                       menuUI.setVisibility(View.VISIBLE);
                       setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
                   };
                   findViewById(R.id.btn_menu).setOnClickListener(back);
                   findViewById(R.id.btn_engine_menu).setOnClickListener(back);
 
-                  // Play mode toggle in editor
-                  btnPlayMode.setOnClickListener(v->{
-                      ren.isEngineMode = !ren.isEngineMode;
-                      btnPlayMode.setText(ren.isEngineMode ? "Play" : "Editor");
-                      btnPlayMode.setBackgroundResource(ren.isEngineMode ? R.drawable.btn_green : R.drawable.btn_blue_filled);
-                      btnPlayMode.setTextColor(ren.isEngineMode ? 0xFF000000 : 0xFF00BFFF);
-                      if(!ren.isEngineMode) ren.runStartScripts();
+                  findViewById(R.id.btn_play_level).setOnClickListener(v->{
+                      ren.isPlayingLevel=true;
+                      resetP();
+                      ren.selectedIndex=-1;
+                      engineUI.setVisibility(View.GONE);
+                      playtestUI.setVisibility(View.VISIBLE);
+                      ren.runStartScripts();
+                  });
+
+                  findViewById(R.id.btn_stop_playtest).setOnClickListener(v->{
+                      ren.isPlayingLevel=false;
+                      ren.pX=0;ren.pY=20;ren.pZ=35;
+                      playtestUI.setVisibility(View.GONE);
+                      engineUI.setVisibility(View.VISIBLE);
+                      updAxis();
                   });
 
                   findViewById(R.id.btn_save).setOnClickListener(v->{
@@ -1688,10 +1747,11 @@ jobs:
                   });
 
                   findViewById(R.id.btn_jump).setOnTouchListener((v,e)->{
-                      if(e.getAction()==MotionEvent.ACTION_DOWN&&ren.isOnGround()){
-                          ren.vY=.55f;
-                          ren.playerAnimTime = 0; // Reset jump anim
-                      }
+                      if(e.getAction()==MotionEvent.ACTION_DOWN&&ren.isOnGround())ren.vY=.55f;
+                      return true;
+                  });
+                  findViewById(R.id.btn_playtest_jump).setOnTouchListener((v,e)->{
+                      if(e.getAction()==MotionEvent.ACTION_DOWN&&ren.isOnGround())ren.vY=.55f;
                       return true;
                   });
 
@@ -1719,13 +1779,13 @@ jobs:
 
                   findViewById(R.id.shape_square).setOnClickListener(v->{ setShapePreset("square",4,4,4,0); });
                   findViewById(R.id.shape_rectangle).setOnClickListener(v->{ setShapePreset("rectangle",8,4,4,1); });
-                  findViewById(R.id.shape_circle).setOnClickListener(v->{ setShapePreset("circle",4,0.1f,4,2); });
-                  findViewById(R.id.shape_triangle).setOnClickListener(v->{ setShapePreset("triangle",4,0.1f,4,3); });
+                  findViewById(R.id.shape_circle).setOnClickListener(v->{ setShapePreset("circle",4,4,4,2); });
+                  findViewById(R.id.shape_triangle).setOnClickListener(v->{ setShapePreset("triangle",4,4,4,3); });
 
                   findViewById(R.id.size_x_minus).setOnClickListener(v->{ ren.blockSX=Math.max(0.5f, ren.blockSX-0.5f); updSizeInfo(); });
                   findViewById(R.id.size_x_plus).setOnClickListener(v->{ ren.blockSX+=0.5f; updSizeInfo(); });
-                  findViewById(R.id.size_y_minus).setOnClickListener(v->{ ren.blockSY=Math.max(0.1f, ren.blockSY-0.1f); updSizeInfo(); });
-                  findViewById(R.id.size_y_plus).setOnClickListener(v->{ ren.blockSY+=0.1f; updSizeInfo(); });
+                  findViewById(R.id.size_y_minus).setOnClickListener(v->{ ren.blockSY=Math.max(0.5f, ren.blockSY-0.5f); updSizeInfo(); });
+                  findViewById(R.id.size_y_plus).setOnClickListener(v->{ ren.blockSY+=0.5f; updSizeInfo(); });
                   findViewById(R.id.size_z_minus).setOnClickListener(v->{ ren.blockSZ=Math.max(0.5f, ren.blockSZ-0.5f); updSizeInfo(); });
                   findViewById(R.id.size_z_plus).setOnClickListener(v->{ ren.blockSZ+=0.5f; updSizeInfo(); });
 
@@ -1770,9 +1830,34 @@ jobs:
 
                   setupJoy(findViewById(R.id.joy_base),findViewById(R.id.joy_stick));
                   setupJoy(findViewById(R.id.engine_joy_base),findViewById(R.id.engine_joy_stick));
+                  setupJoy(findViewById(R.id.playtest_joy_base),findViewById(R.id.playtest_joy_stick));
                   setupLook(findViewById(R.id.look_zone));
-                  setupLook(findViewById(R.id.engine_touch_zone));
-                  setupCameraVertical(findViewById(R.id.engine_touch_zone));
+                  setupLook(findViewById(R.id.playtest_look_zone));
+
+                  findViewById(R.id.engine_touch_zone).setOnTouchListener((v,e)->{
+                      if(e.getAction()==MotionEvent.ACTION_DOWN){
+                          lx=e.getX();ly=e.getY();
+                      } else if(e.getAction()==MotionEvent.ACTION_UP){
+                          if(Math.abs(e.getX()-lx)<25&&Math.abs(e.getY()-ly)<25){
+                              int hit = ren.raycastBlock(e.getX(),e.getY());
+                              ren.selectedIndex = hit;
+                              if(hit>=0){
+                                  Block b = ren.blocks.get(hit);
+                                  ren.blockR=b.r; ren.blockG=b.g; ren.blockB=b.b;
+                                  ren.blockSX=b.sx; ren.blockSY=b.sy; ren.blockSZ=b.sz;
+                                  ren.blockShape=b.shape;
+                                  ren.handleTapBlock(hit);
+                                  updSizeInfo();
+                              }
+                              updAxis();
+                          }
+                      } else if(e.getAction()==MotionEvent.ACTION_MOVE){
+                          ren.rY+=(e.getX()-lx)*.2f;
+                          ren.rX=Math.max(-85,Math.min(85,ren.rX-(e.getY()-ly)*.2f));
+                          lx=e.getX();ly=e.getY();
+                      }
+                      return true;
+                  });
 
                   updSizeInfo();
                   updAxis();
@@ -1789,7 +1874,6 @@ jobs:
                   EditText input = new EditText(this);
                   input.setMinLines(10);
                   input.setText(
-                      "// Events: game.start; player.collision; player.touch\n" +
                       "phone.toast(\"Hello\")\n" +
                       "player.teleport(0, 8, 10)\n" +
                       "player.jump\n"
@@ -1823,12 +1907,12 @@ jobs:
                   int pad = (int)(12 * getResources().getDisplayMetrics().density);
                   root.setPadding(pad,pad,pad,pad);
 
-                  TextView t1 = new TextView(this); t1.setText("On Start (game.start;)");
+                  TextView t1 = new TextView(this); t1.setText("On Start");
                   EditText e1 = new EditText(this); e1.setMinLines(4); e1.setText(b.onStartScript);
-                  TextView t2 = new TextView(this); t2.setText("On Collision (player.collision;)");
-                  EditText e2 = new EditText(this); e2.setMinLines(4); e2.setText(b.onCollisionScript);
-                  TextView t3 = new TextView(this); t3.setText("On Touch (player.touch;)");
-                  EditText e3 = new EditText(this); e3.setMinLines(4); e3.setText(b.onTouchScript);
+                  TextView t2 = new TextView(this); t2.setText("On Player Touch");
+                  EditText e2 = new EditText(this); e2.setMinLines(4); e2.setText(b.onTouchScript);
+                  TextView t3 = new TextView(this); t3.setText("On Block Tap");
+                  EditText e3 = new EditText(this); e3.setMinLines(4); e3.setText(b.onTapScript);
 
                   root.addView(t1); root.addView(e1);
                   root.addView(t2); root.addView(e2);
@@ -1839,8 +1923,8 @@ jobs:
                       .setView(root)
                       .setPositiveButton("Save", (d,w)->{
                           b.onStartScript = e1.getText().toString();
-                          b.onCollisionScript = e2.getText().toString();
-                          b.onTouchScript = e3.getText().toString();
+                          b.onTouchScript = e2.getText().toString();
+                          b.onTapScript = e3.getText().toString();
                           Toast.makeText(this,"Events saved",Toast.LENGTH_SHORT).show();
                       })
                       .setNegativeButton("Close", null)
@@ -1924,25 +2008,6 @@ jobs:
                       if(e.getAction()==MotionEvent.ACTION_DOWN){
                           lx=e.getX();ly=e.getY();
                       }else if(e.getAction()==MotionEvent.ACTION_MOVE){
-                          ren.rY+=(e.getX()-lx)*.25f;
-                          ren.rX=Math.max(-85,Math.min(85,ren.rX-(e.getY()-ly)*.25f));
-                          lx=e.getX();ly=e.getY();
-                      }
-                      return true;
-                  });
-              }
-
-              private void setupCameraVertical(View z){
-                  z.setOnTouchListener((v,e)->{
-                      if(e.getAction()==MotionEvent.ACTION_DOWN){
-                          lx=e.getX();ly=e.getY();
-                      }else if(e.getAction()==MotionEvent.ACTION_MOVE){
-                          float dy = e.getY() - ly;
-                          if(Math.abs(dy) > 10){
-                              ren.pY += dy > 0 ? -0.5f : 0.5f;
-                              if(ren.pY < 1) ren.pY = 1;
-                              ly = e.getY();
-                          }
                           ren.rY+=(e.getX()-lx)*.25f;
                           ren.rX=Math.max(-85,Math.min(85,ren.rX-(e.getY()-ly)*.25f));
                           lx=e.getX();ly=e.getY();
