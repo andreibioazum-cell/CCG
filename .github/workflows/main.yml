@@ -1,232 +1,399 @@
-name: Simple_Commands_1.21.1
-on: [push, workflow_dispatch]
+name: Build Fabric Mod 1.21.11
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          distribution: temurin
+          java-version: '21'
 
-      - name: Download Fabric Example Mod
+      - name: Create Fabric mod project files
+        shell: bash
         run: |
-          # Скачиваем официальный Fabric пример
-          wget https://github.com/FabricMC/fabric-example-mod/archive/refs/heads/1.21.zip
-          unzip 1.21.zip
-          cp -r fabric-example-mod-1.21/* .
-          rm -rf fabric-example-mod-1.21
+          mkdir -p src/main/java/com/example/givemod
+          mkdir -p src/main/resources
 
-      - name: Create Command Files
-        run: |
-          # Создаем наши команды
-          cat <<'EOF' > src/main/java/com/example/commands/SimpleCommands.java
-          package com.example.commands;
-
-          import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
-          import net.minecraft.server.command.CommandManager;
-          import net.minecraft.server.network.ServerPlayerEntity;
-          import net.minecraft.item.ItemStack;
-          import net.minecraft.item.Items;
-          import net.minecraft.util.Identifier;
-          import net.minecraft.registry.Registries;
-          import net.minecraft.text.Text;
-          import net.minecraft.world.GameMode;
-          import com.mojang.brigadier.arguments.StringArgumentType;
-          import com.mojang.brigadier.arguments.IntegerArgumentType;
-
-          public class SimpleCommands {
-              
-              public static void register() {
-                  // /givem command
-                  CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
-                      dispatcher.register(CommandManager.literal("givem")
-                          .then(CommandManager.argument("item", StringArgumentType.word())
-                              .executes(context -> {
-                                  ServerPlayerEntity player = context.getSource().getPlayer();
-                                  String itemName = StringArgumentType.getString(context, "item");
-                                  
-                                  ItemStack itemStack = getItemByName(itemName);
-                                  if (itemStack.isEmpty()) {
-                                      player.sendMessage(Text.literal("§cItem not found: " + itemName), false);
-                                      return 0;
-                                  }
-                                  
-                                  itemStack.setCount(64);
-                                  player.getInventory().offerOrDrop(itemStack);
-                                  player.sendMessage(Text.literal("§aGave you §e" + itemName + " §ax64"), false);
-                                  
-                                  for (ServerPlayerEntity online : player.getServer().getPlayerManager().getPlayerList()) {
-                                      if (online != player) {
-                                          online.sendMessage(Text.literal("§7" + player.getName().getString() + " §agot §e" + itemName + " §ax64"), false);
-                                      }
-                                  }
-                                  return 1;
-                              })
-                              .then(CommandManager.argument("amount", IntegerArgumentType.integer(1, 64))
-                                  .executes(context -> {
-                                      ServerPlayerEntity player = context.getSource().getPlayer();
-                                      String itemName = StringArgumentType.getString(context, "item");
-                                      int amount = IntegerArgumentType.getInteger(context, "amount");
-                                      
-                                      ItemStack itemStack = getItemByName(itemName);
-                                      if (itemStack.isEmpty()) {
-                                          player.sendMessage(Text.literal("§cItem not found: " + itemName), false);
-                                          return 0;
-                                      }
-                                      
-                                      itemStack.setCount(amount);
-                                      player.getInventory().offerOrDrop(itemStack);
-                                      player.sendMessage(Text.literal("§aGave you §e" + itemName + " §ax" + amount), false);
-                                      
-                                      for (ServerPlayerEntity online : player.getServer().getPlayerManager().getPlayerList()) {
-                                          if (online != player) {
-                                              online.sendMessage(Text.literal("§7" + player.getName().getString() + " §agot §e" + itemName + " §ax" + amount), false);
-                                          }
-                                      }
-                                      return 1;
-                                  })
-                              )
-                          )
-                      );
-                  });
-                  
-                  // /godm command
-                  CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
-                      dispatcher.register(CommandManager.literal("godm")
-                          .executes(context -> {
-                              ServerPlayerEntity player = context.getSource().getPlayer();
-                              
-                              if (player.isInvulnerable()) {
-                                  player.setInvulnerable(false);
-                                  player.sendMessage(Text.literal("§cGod mode disabled"), false);
-                              } else {
-                                  player.setInvulnerable(true);
-                                  player.setHealth(player.getMaxHealth());
-                                  player.getHungerManager().setFoodLevel(20);
-                                  player.getHungerManager().setSaturationLevel(20);
-                                  player.clearStatusEffects();
-                                  player.sendMessage(Text.literal("§aGod mode enabled!"), false);
-                              }
-                              return 1;
-                          })
-                      );
-                  });
-                  
-                  // /fly command
-                  CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
-                      dispatcher.register(CommandManager.literal("fly")
-                          .executes(context -> {
-                              ServerPlayerEntity player = context.getSource().getPlayer();
-                              
-                              if (player.getAbilities().allowFlying) {
-                                  player.getAbilities().allowFlying = false;
-                                  player.getAbilities().flying = false;
-                                  player.sendMessage(Text.literal("§cFlight disabled"), false);
-                              } else {
-                                  player.getAbilities().allowFlying = true;
-                                  player.getAbilities().flying = true;
-                                  player.sendMessage(Text.literal("§aFlight enabled!"), false);
-                              }
-                              player.sendAbilitiesUpdate();
-                              return 1;
-                          })
-                      );
-                  });
-                  
-                  // /crm command
-                  CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
-                      dispatcher.register(CommandManager.literal("crm")
-                          .executes(context -> {
-                              ServerPlayerEntity player = context.getSource().getPlayer();
-                              GameMode currentMode = player.interactionManager.getGameMode();
-                              
-                              if (currentMode == GameMode.CREATIVE) {
-                                  player.changeGameMode(GameMode.SURVIVAL);
-                                  player.getAbilities().allowFlying = false;
-                                  player.getAbilities().flying = false;
-                                  player.sendAbilitiesUpdate();
-                                  player.sendMessage(Text.literal("§cCreative mode disabled"), false);
-                              } else {
-                                  player.changeGameMode(GameMode.CREATIVE);
-                                  player.getAbilities().allowFlying = true;
-                                  player.getAbilities().flying = true;
-                                  player.getAbilities().creativeMode = true;
-                                  player.sendAbilitiesUpdate();
-                                  player.sendMessage(Text.literal("§aCreative mode enabled!"), false);
-                              }
-                              return 1;
-                          })
-                      );
-                  });
+          cat > settings.gradle <<'EOF'
+          pluginManagement {
+              repositories {
+                  maven {
+                      name = 'Fabric'
+                      url = 'https://maven.fabricmc.net/'
+                  }
+                  gradlePluginPortal()
+                  mavenCentral()
               }
-              
-              private static ItemStack getItemByName(String name) {
-                  Identifier id = Identifier.tryParse(name.toLowerCase());
-                  if (id != null && Registries.ITEM.containsId(id)) {
-                      return new ItemStack(Registries.ITEM.get(id));
+          }
+
+          rootProject.name = 'fabric-utility-mod-12111'
+          EOF
+
+          cat > gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx2G
+          org.gradle.parallel=true
+
+          minecraft_version=1.21.11
+          yarn_mappings=1.21.11+build.1
+          loader_version=0.16.10
+          fabric_version=0.110.0+1.21.11
+
+          mod_version=1.0.0
+          maven_group=com.example
+          archives_base_name=fabric-utility-mod-12111
+          EOF
+
+          cat > build.gradle <<'EOF'
+          plugins {
+              id 'fabric-loom' version '1.9-SNAPSHOT'
+              id 'maven-publish'
+          }
+
+          version = project.mod_version
+          group = project.maven_group
+
+          base {
+              archivesName = project.archives_base_name
+          }
+
+          repositories {
+              maven {
+                  name = 'Fabric'
+                  url = 'https://maven.fabricmc.net/'
+              }
+              mavenCentral()
+          }
+
+          dependencies {
+              minecraft "com.mojang:minecraft:${project.minecraft_version}"
+              mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+              modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+              modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+          }
+
+          java {
+              toolchain {
+                  languageVersion = JavaLanguageVersion.of(21)
+              }
+              withSourcesJar()
+          }
+
+          tasks.withType(JavaCompile).configureEach {
+              it.options.release = 21
+              it.options.encoding = "UTF-8"
+          }
+
+          processResources {
+              inputs.property "version", project.version
+
+              filesMatching("fabric.mod.json") {
+                  expand "version": project.version
+              }
+          }
+
+          jar {
+              from("LICENSE") {
+                  rename { "${it}_${project.base.archivesName.get()}" }
+              }
+          }
+
+          publishing {
+              publications {
+                  mavenJava(MavenPublication) {
+                      artifactId = project.archives_base_name
+                      from components.java
                   }
-                  
-                  switch (name.toLowerCase()) {
-                      case "dirt": return new ItemStack(Items.DIRT);
-                      case "stone": return new ItemStack(Items.STONE);
-                      case "cobblestone": return new ItemStack(Items.COBBLESTONE);
-                      case "diamond": return new ItemStack(Items.DIAMOND);
-                      case "iron": return new ItemStack(Items.IRON_INGOT);
-                      case "gold": return new ItemStack(Items.GOLD_INGOT);
-                      case "emerald": return new ItemStack(Items.EMERALD);
-                      case "coal": return new ItemStack(Items.COAL);
-                      case "netherite": return new ItemStack(Items.NETHERITE_INGOT);
-                      case "stick": return new ItemStack(Items.STICK);
-                      case "apple": return new ItemStack(Items.APPLE);
-                      case "bread": return new ItemStack(Items.BREAD);
-                      case "steak": return new ItemStack(Items.COOKED_BEEF);
-                      case "sword": return new ItemStack(Items.DIAMOND_SWORD);
-                      case "pickaxe": return new ItemStack(Items.DIAMOND_PICKAXE);
-                      case "axe": return new ItemStack(Items.DIAMOND_AXE);
-                      case "elytra": return new ItemStack(Items.ELYTRA);
-                      case "totem": return new ItemStack(Items.TOTEM_OF_UNDYING);
-                      default: return ItemStack.EMPTY;
-                  }
+              }
+
+              repositories {
               }
           }
           EOF
 
-      - name: Modify Main Class
-        run: |
-          # Изменяем главный класс для регистрации команд
-          cat <<'EOF' > src/main/java/com/example/ExampleMod.java
-          package com.example;
+          cat > src/main/resources/fabric.mod.json <<'EOF'
+          {
+            "schemaVersion": 1,
+            "id": "utilitymod12111",
+            "version": "${version}",
+            "name": "Utility Mod 1.21.11",
+            "description": "Commands: /givem, /godm, /fly, /crm",
+            "authors": [
+              "GitHub Actions"
+            ],
+            "contact": {},
+            "license": "MIT",
+            "icon": "assets/utilitymod12111/icon.png",
+            "environment": "*",
+            "entrypoints": {
+              "main": [
+                "com.example.givemod.UtilityMod"
+              ]
+            },
+            "depends": {
+              "fabricloader": ">=0.16.10",
+              "minecraft": "~1.21.11",
+              "java": ">=21",
+              "fabric-api": "*"
+            }
+          }
+          EOF
 
-          import com.example.commands.SimpleCommands;
+          cat > src/main/java/com/example/givemod/UtilityMod.java <<'EOF'
+          package com.example.givemod;
+
           import net.fabricmc.api.ModInitializer;
-          import org.slf4j.Logger;
-          import org.slf4j.LoggerFactory;
 
-          public class ExampleMod implements ModInitializer {
-              public static final String MOD_ID = "example";
-              public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+          public class UtilityMod implements ModInitializer {
+              public static final String MOD_ID = "utilitymod12111";
 
               @Override
               public void onInitialize() {
-                  LOGGER.info("Simple Commands Mod initialized!");
-                  SimpleCommands.register();
+                  ModCommands.register();
               }
           }
           EOF
 
-      - name: Build Mod
-        run: |
-          chmod +x gradlew
-          ./gradlew build
+          cat > src/main/java/com/example/givemod/ModCommands.java <<'EOF'
+          package com.example.givemod;
 
-      - name: Upload Artifact
+          import com.mojang.brigadier.CommandDispatcher;
+          import com.mojang.brigadier.arguments.IntegerArgumentType;
+          import com.mojang.brigadier.arguments.StringArgumentType;
+          import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+          import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+          import net.minecraft.command.CommandRegistryAccess;
+          import net.minecraft.item.Item;
+          import net.minecraft.item.ItemStack;
+          import net.minecraft.item.Items;
+          import net.minecraft.server.command.CommandManager;
+          import net.minecraft.server.command.ServerCommandSource;
+          import net.minecraft.server.network.ServerPlayerEntity;
+          import net.minecraft.text.Text;
+          import net.minecraft.world.GameMode;
+
+          import java.util.HashMap;
+          import java.util.HashSet;
+          import java.util.Map;
+          import java.util.Set;
+
+          public class ModCommands {
+              private static final Set<java.util.UUID> GOD_MODE = new HashSet<>();
+              private static final Set<java.util.UUID> FLY_MODE = new HashSet<>();
+
+              private static final Map<String, Item> ALIASES = new HashMap<>();
+
+              static {
+                  ALIASES.put("dirt", Items.DIRT);
+                  ALIASES.put("stone", Items.STONE);
+                  ALIASES.put("diamond", Items.DIAMOND);
+                  ALIASES.put("iron", Items.IRON_INGOT);
+                  ALIASES.put("gold", Items.GOLD_INGOT);
+                  ALIASES.put("emerald", Items.EMERALD);
+                  ALIASES.put("coal", Items.COAL);
+                  ALIASES.put("netherite", Items.NETHERITE_INGOT);
+                  ALIASES.put("sword", Items.DIAMOND_SWORD);
+                  ALIASES.put("pickaxe", Items.DIAMOND_PICKAXE);
+                  ALIASES.put("axe", Items.DIAMOND_AXE);
+                  ALIASES.put("elytra", Items.ELYTRA);
+                  ALIASES.put("totem", Items.TOTEM_OF_UNDYING);
+                  ALIASES.put("bread", Items.BREAD);
+                  ALIASES.put("steak", Items.COOKED_BEEF);
+                  ALIASES.put("apple", Items.APPLE);
+                  ALIASES.put("stick", Items.STICK);
+              }
+
+              public static void register() {
+                  CommandRegistrationCallback.EVENT.register(ModCommands::registerCommands);
+
+                  ServerTickEvents.END_SERVER_TICK.register(server -> {
+                      for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+                          if (GOD_MODE.contains(player.getUuid())) {
+                              player.setInvulnerable(true);
+                              if (player.getHealth() < player.getMaxHealth()) {
+                                  player.setHealth(player.getMaxHealth());
+                              }
+                              player.getHungerManager().setFoodLevel(20);
+                              player.getHungerManager().setSaturationLevelClient(20.0f);
+                              player.clearStatusEffects();
+                              player.setAir(player.getMaxAir());
+                              player.extinguish();
+                          } else {
+                              player.setInvulnerable(false);
+                          }
+
+                          boolean shouldFly = FLY_MODE.contains(player.getUuid()) || player.isCreative();
+                          if (shouldFly) {
+                              player.getAbilities().allowFlying = true;
+                          } else {
+                              player.getAbilities().allowFlying = false;
+                              player.getAbilities().flying = false;
+                          }
+                          player.sendAbilitiesUpdate();
+                      }
+                  });
+              }
+
+              private static void registerCommands(CommandDispatcher<ServerCommandSource> dispatcher,
+                                                   CommandRegistryAccess registryAccess,
+                                                   CommandManager.RegistrationEnvironment environment) {
+                  dispatcher.register(
+                          CommandManager.literal("givem")
+                                  .then(CommandManager.argument("item", StringArgumentType.word())
+                                          .executes(ctx -> giveItem(
+                                                  ctx.getSource().getPlayerOrThrow(),
+                                                  StringArgumentType.getString(ctx, "item"),
+                                                  1
+                                          ))
+                                          .then(CommandManager.argument("amount", IntegerArgumentType.integer(1, 64))
+                                                  .executes(ctx -> giveItem(
+                                                          ctx.getSource().getPlayerOrThrow(),
+                                                          StringArgumentType.getString(ctx, "item"),
+                                                          IntegerArgumentType.getInteger(ctx, "amount")
+                                                  ))
+                                          )
+                                  )
+                  );
+
+                  dispatcher.register(
+                          CommandManager.literal("godm")
+                                  .executes(ctx -> toggleGod(ctx.getSource().getPlayerOrThrow()))
+                  );
+
+                  dispatcher.register(
+                          CommandManager.literal("fly")
+                                  .executes(ctx -> toggleFly(ctx.getSource().getPlayerOrThrow()))
+                  );
+
+                  dispatcher.register(
+                          CommandManager.literal("crm")
+                                  .executes(ctx -> toggleCreative(ctx.getSource().getPlayerOrThrow()))
+                  );
+              }
+
+              private static int giveItem(ServerPlayerEntity player, String alias, int amount) {
+                  Item item = ALIASES.get(alias.toLowerCase());
+
+                  if (item == null) {
+                      player.sendMessage(Text.literal("Неизвестный предмет/алиас: " + alias), false);
+                      return 0;
+                  }
+
+                  ItemStack stack = new ItemStack(item, amount);
+                  boolean inserted = player.getInventory().insertStack(stack);
+
+                  if (!inserted || !stack.isEmpty()) {
+                      player.dropItem(stack, false);
+                  }
+
+                  player.sendMessage(Text.literal("Вы получили: " + amount + " x " + item.getName().getString()), false);
+                  return 1;
+              }
+
+              private static int toggleGod(ServerPlayerEntity player) {
+                  if (GOD_MODE.contains(player.getUuid())) {
+                      GOD_MODE.remove(player.getUuid());
+                      player.setInvulnerable(false);
+                      player.sendMessage(Text.literal("Режим бога: выключен"), false);
+                  } else {
+                      GOD_MODE.add(player.getUuid());
+                      player.setInvulnerable(true);
+                      player.setHealth(player.getMaxHealth());
+                      player.getHungerManager().setFoodLevel(20);
+                      player.getHungerManager().setSaturationLevelClient(20.0f);
+                      player.clearStatusEffects();
+                      player.extinguish();
+                      player.sendMessage(Text.literal("Режим бога: включен"), false);
+                  }
+                  player.sendAbilitiesUpdate();
+                  return 1;
+              }
+
+              private static int toggleFly(ServerPlayerEntity player) {
+                  if (FLY_MODE.contains(player.getUuid())) {
+                      FLY_MODE.remove(player.getUuid());
+                      if (!player.isCreative()) {
+                          player.getAbilities().allowFlying = false;
+                          player.getAbilities().flying = false;
+                      }
+                      player.sendAbilitiesUpdate();
+                      player.sendMessage(Text.literal("Полет: выключен"), false);
+                  } else {
+                      FLY_MODE.add(player.getUuid());
+                      player.getAbilities().allowFlying = true;
+                      player.sendAbilitiesUpdate();
+                      player.sendMessage(Text.literal("Полет: включен"), false);
+                  }
+                  return 1;
+              }
+
+              private static int toggleCreative(ServerPlayerEntity player) {
+                  if (player.interactionManager.getGameMode() == GameMode.CREATIVE) {
+                      player.changeGameMode(GameMode.SURVIVAL);
+                      FLY_MODE.remove(player.getUuid());
+                      player.getAbilities().allowFlying = false;
+                      player.getAbilities().flying = false;
+                      player.sendAbilitiesUpdate();
+                      player.sendMessage(Text.literal("Creative mode: выключен"), false);
+                  } else {
+                      player.changeGameMode(GameMode.CREATIVE);
+                      FLY_MODE.add(player.getUuid());
+                      player.getAbilities().allowFlying = true;
+                      player.getAbilities().flying = true;
+                      player.sendAbilitiesUpdate();
+                      player.sendMessage(Text.literal("Creative mode: включен"), false);
+                  }
+                  return 1;
+              }
+          }
+          EOF
+
+          cat > LICENSE <<'EOF'
+          MIT License
+
+          Copyright (c) 2025
+
+          Permission is hereby granted, free of charge, to any person obtaining a copy
+          of this software and associated documentation files (the "Software"), to deal
+          in the Software without restriction, including without limitation the rights
+          to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+          copies of the Software, and to permit persons to whom the Software is
+          furnished to do so, subject to the following conditions:
+
+          The above copyright notice and this permission notice shall be included in all
+          copies or substantial portions of the Software.
+
+          THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+          IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+          FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+          AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+          LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+          OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+          SOFTWARE.
+          EOF
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Generate Gradle Wrapper
+        run: gradle wrapper --gradle-version 8.10
+
+      - name: Build mod
+        run: ./gradlew build --stacktrace
+
+      - name: Upload JAR
         uses: actions/upload-artifact@v4
         with:
-          name: Simple_Commands_1.21.1
+          name: fabric-utility-mod-12111
           path: build/libs/*.jar
