@@ -1,4 +1,4 @@
-name: Pocket_Code_Style
+name: Pocket_Code_RU_Fixed
 on: [push, workflow_dispatch]
 
 jobs:
@@ -16,7 +16,7 @@ jobs:
 
       - name: Create Project
         run: |
-          mkdir -p app/src/main/java/com/pocketstyle/app
+          mkdir -p app/src/main/java/com/pocketru/fixed
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
           mkdir -p app/src/main/res/drawable
@@ -128,7 +128,7 @@ jobs:
                   <TextView
                       android:layout_width="match_parent"
                       android:layout_height="wrap_content"
-                      android:text="Projects"
+                      android:text="Проекты"
                       android:textSize="26sp"
                       android:textStyle="bold"
                       android:textColor="#2D678F"/>
@@ -137,7 +137,7 @@ jobs:
                       android:id="@+id/btn_new_project"
                       android:layout_width="match_parent"
                       android:layout_height="48dp"
-                      android:text="+ New Project"
+                      android:text="+ Новый проект"
                       android:textColor="#FFFFFF"
                       android:background="@drawable/btn_blue"
                       android:layout_marginTop="12dp"/>
@@ -182,7 +182,7 @@ jobs:
                           android:layout_width="0dp"
                           android:layout_height="wrap_content"
                           android:layout_weight="1"
-                          android:text="Scenes"
+                          android:text="Сцены"
                           android:textSize="24sp"
                           android:textStyle="bold"
                           android:textColor="#2D678F"
@@ -194,7 +194,7 @@ jobs:
                       android:id="@+id/btn_new_scene"
                       android:layout_width="match_parent"
                       android:layout_height="48dp"
-                      android:text="+ New Scene"
+                      android:text="+ Новая сцена"
                       android:textColor="#FFFFFF"
                       android:background="@drawable/btn_purple"
                       android:layout_marginTop="12dp"/>
@@ -239,7 +239,7 @@ jobs:
                           android:layout_width="0dp"
                           android:layout_height="wrap_content"
                           android:layout_weight="1"
-                          android:text="Objects"
+                          android:text="Объекты"
                           android:textSize="24sp"
                           android:textStyle="bold"
                           android:textColor="#2D678F"
@@ -247,10 +247,10 @@ jobs:
                           android:paddingLeft="12dp"/>
 
                       <Button
-                          android:id="@+id/btn_run_scene"
+                          android:id="@+id/btn_play_scene"
                           android:layout_width="wrap_content"
                           android:layout_height="44dp"
-                          android:text="Run"
+                          android:text="Запуск"
                           android:textColor="#FFFFFF"
                           android:background="@drawable/btn_green"/>
                   </LinearLayout>
@@ -259,7 +259,7 @@ jobs:
                       android:id="@+id/btn_new_object"
                       android:layout_width="match_parent"
                       android:layout_height="48dp"
-                      android:text="+ New Object"
+                      android:text="+ Новый объект"
                       android:textColor="#FFFFFF"
                       android:background="@drawable/btn_blue"
                       android:layout_marginTop="12dp"/>
@@ -304,34 +304,13 @@ jobs:
                           android:layout_width="0dp"
                           android:layout_height="wrap_content"
                           android:layout_weight="1"
-                          android:text="Scripts"
+                          android:text="Скрипты"
                           android:textSize="24sp"
                           android:textStyle="bold"
                           android:textColor="#2D678F"
                           android:gravity="center_vertical"
                           android:paddingLeft="12dp"/>
-
-                      <Button
-                          android:id="@+id/btn_run_object"
-                          android:layout_width="wrap_content"
-                          android:layout_height="44dp"
-                          android:text="Run"
-                          android:textColor="#FFFFFF"
-                          android:background="@drawable/btn_green"/>
                   </LinearLayout>
-
-                  <FrameLayout
-                      android:id="@+id/stage"
-                      android:layout_width="match_parent"
-                      android:layout_height="220dp"
-                      android:background="@drawable/bg_stage"
-                      android:layout_marginTop="10dp">
-
-                      <FrameLayout
-                          android:id="@+id/stage_layer"
-                          android:layout_width="match_parent"
-                          android:layout_height="match_parent"/>
-                  </FrameLayout>
 
                   <LinearLayout
                       android:layout_width="match_parent"
@@ -351,7 +330,7 @@ jobs:
                               android:layout_width="0dp"
                               android:layout_height="wrap_content"
                               android:layout_weight="1"
-                              android:text="Blocks"
+                              android:text="Блоки"
                               android:textStyle="bold"
                               android:textSize="18sp"
                               android:textColor="#356D99"/>
@@ -380,11 +359,41 @@ jobs:
                       </ScrollView>
                   </LinearLayout>
               </LinearLayout>
+
+              <FrameLayout
+                  android:id="@+id/screen_player"
+                  android:layout_width="match_parent"
+                  android:layout_height="match_parent"
+                  android:visibility="gone"
+                  android:background="#101820">
+
+                  <FrameLayout
+                      android:id="@+id/player_stage"
+                      android:layout_width="match_parent"
+                      android:layout_height="match_parent"
+                      android:layout_margin="12dp"
+                      android:background="@drawable/bg_stage">
+
+                      <FrameLayout
+                          android:id="@+id/player_stage_layer"
+                          android:layout_width="match_parent"
+                          android:layout_height="match_parent"/>
+                  </FrameLayout>
+
+                  <Button
+                      android:id="@+id/btn_stop_player"
+                      android:layout_width="80dp"
+                      android:layout_height="48dp"
+                      android:layout_margin="16dp"
+                      android:text="Стоп"
+                      android:textColor="#FFFFFF"
+                      android:background="@drawable/btn_red"/>
+              </FrameLayout>
           </FrameLayout>
           LAYOUT
 
-          cat <<EOF > app/src/main/java/com/pocketstyle/app/BlockItem.java
-          package com.pocketstyle.app;
+          cat <<EOF > app/src/main/java/com/pocketru/fixed/BlockItem.java
+          package com.pocketru.fixed;
 
           public class BlockItem {
               public String type;
@@ -401,15 +410,17 @@ jobs:
           }
           EOF
 
-          cat <<EOF > app/src/main/java/com/pocketstyle/app/ObjectItem.java
-          package com.pocketstyle.app;
+          cat <<EOF > app/src/main/java/com/pocketru/fixed/ObjectItem.java
+          package com.pocketru.fixed;
 
           import java.util.ArrayList;
 
           public class ObjectItem {
-              public String name = "Object";
+              public String name = "Объект";
               public String emoji = "🐱";
               public String imageUri = "";
+              public float startX = 100f;
+              public float startY = 80f;
               public float x = 100f;
               public float y = 80f;
               public boolean visible = true;
@@ -418,31 +429,31 @@ jobs:
           }
           EOF
 
-          cat <<EOF > app/src/main/java/com/pocketstyle/app/SceneItem.java
-          package com.pocketstyle.app;
+          cat <<EOF > app/src/main/java/com/pocketru/fixed/SceneItem.java
+          package com.pocketru.fixed;
 
           import java.util.ArrayList;
 
           public class SceneItem {
-              public String name = "Scene";
+              public String name = "Сцена";
               public String bgColor = "#D8F0FF";
               public ArrayList<ObjectItem> objects = new ArrayList<>();
           }
           EOF
 
-          cat <<EOF > app/src/main/java/com/pocketstyle/app/ProjectItem.java
-          package com.pocketstyle.app;
+          cat <<EOF > app/src/main/java/com/pocketru/fixed/ProjectItem.java
+          package com.pocketru.fixed;
 
           import java.util.ArrayList;
 
           public class ProjectItem {
-              public String name = "Project";
+              public String name = "Проект";
               public ArrayList<SceneItem> scenes = new ArrayList<>();
           }
           EOF
 
-          cat <<'STORE' > app/src/main/java/com/pocketstyle/app/ProjectStore.java
-          package com.pocketstyle.app;
+          cat <<'STORE' > app/src/main/java/com/pocketru/fixed/ProjectStore.java
+          package com.pocketru.fixed;
 
           import android.content.Context;
           import org.json.JSONArray;
@@ -452,7 +463,7 @@ jobs:
 
           public class ProjectStore {
               private static File file(Context c){
-                  return new File(c.getFilesDir(), "projects.json");
+                  return new File(c.getFilesDir(), "projects_ru_fixed.json");
               }
 
               public static ArrayList<ProjectItem> load(Context c){
@@ -470,14 +481,14 @@ jobs:
                       for(int i=0;i<arr.length();i++){
                           JSONObject p = arr.getJSONObject(i);
                           ProjectItem pr = new ProjectItem();
-                          pr.name = p.optString("name", "Project");
+                          pr.name = p.optString("name", "Проект");
 
                           JSONArray scenes = p.optJSONArray("scenes");
                           if(scenes != null){
                               for(int j=0;j<scenes.length();j++){
                                   JSONObject s = scenes.getJSONObject(j);
                                   SceneItem sc = new SceneItem();
-                                  sc.name = s.optString("name", "Scene");
+                                  sc.name = s.optString("name", "Сцена");
                                   sc.bgColor = s.optString("bgColor", "#D8F0FF");
 
                                   JSONArray objs = s.optJSONArray("objects");
@@ -485,11 +496,13 @@ jobs:
                                       for(int k=0;k<objs.length();k++){
                                           JSONObject o = objs.getJSONObject(k);
                                           ObjectItem ob = new ObjectItem();
-                                          ob.name = o.optString("name", "Object");
+                                          ob.name = o.optString("name", "Объект");
                                           ob.emoji = o.optString("emoji", "🐱");
                                           ob.imageUri = o.optString("imageUri", "");
-                                          ob.x = (float)o.optDouble("x", 100);
-                                          ob.y = (float)o.optDouble("y", 80);
+                                          ob.startX = (float)o.optDouble("startX", 100);
+                                          ob.startY = (float)o.optDouble("startY", 80);
+                                          ob.x = ob.startX;
+                                          ob.y = ob.startY;
                                           ob.visible = o.optBoolean("visible", true);
                                           ob.say = o.optString("say", "");
 
@@ -539,8 +552,8 @@ jobs:
                                   o.put("name", ob.name);
                                   o.put("emoji", ob.emoji);
                                   o.put("imageUri", ob.imageUri);
-                                  o.put("x", ob.x);
-                                  o.put("y", ob.y);
+                                  o.put("startX", ob.startX);
+                                  o.put("startY", ob.startY);
                                   o.put("visible", ob.visible);
                                   o.put("say", ob.say);
 
@@ -560,6 +573,7 @@ jobs:
                               s.put("objects", objs);
                               scenes.put(s);
                           }
+
                           p.put("scenes", scenes);
                           arr.put(p);
                       }
@@ -572,8 +586,8 @@ jobs:
           }
           STORE
 
-          cat <<'RUNNER' > app/src/main/java/com/pocketstyle/app/ScriptRunner.java
-          package com.pocketstyle.app;
+          cat <<'RUNNER' > app/src/main/java/com/pocketru/fixed/ScriptRunner.java
+          package com.pocketru.fixed;
 
           import android.os.Handler;
           import android.os.Looper;
@@ -581,94 +595,119 @@ jobs:
 
           public class ScriptRunner {
               public interface Host {
-                  void renderScene();
+                  void renderPlayerScene();
                   boolean stopped();
               }
 
-              public static void runObject(Host host, ObjectItem obj){
-                  runEvent(host, obj, "event_run");
-              }
-
-              public static void runTap(Host host, ObjectItem obj){
-                  runEvent(host, obj, "event_tap");
-              }
-
               public static void runScene(Host host, SceneItem scene){
-                  for(ObjectItem o : scene.objects){
-                      runObject(host, o);
+                  for(ObjectItem obj : scene.objects){
+                      runObjectStart(host, obj);
                   }
               }
 
-              private static void runEvent(Host host, ObjectItem obj, String eventType){
-                  ArrayList<BlockItem> seq = new ArrayList<>();
+              public static void runTapped(Host host, ObjectItem obj){
+                  runObjectEvent(host, obj, "event_tap");
+              }
+
+              private static void runObjectStart(Host host, ObjectItem obj){
+                  ArrayList<BlockItem> seq = collectEvent(obj, "event_start");
+                  if(seq.isEmpty()){
+                      seq = collectLinear(obj);
+                  }
+                  execute(host, obj, seq);
+              }
+
+              private static void runObjectEvent(Host host, ObjectItem obj, String eventType){
+                  ArrayList<BlockItem> seq = collectEvent(obj, eventType);
+                  execute(host, obj, seq);
+              }
+
+              private static ArrayList<BlockItem> collectLinear(ObjectItem obj){
+                  ArrayList<BlockItem> out = new ArrayList<>();
+                  for(BlockItem b : obj.blocks){
+                      if(!b.type.startsWith("event_")) out.add(b);
+                  }
+                  return out;
+              }
+
+              private static ArrayList<BlockItem> collectEvent(ObjectItem obj, String type){
+                  ArrayList<BlockItem> out = new ArrayList<>();
                   boolean cap = false;
                   for(BlockItem b : obj.blocks){
-                      if(eventType.equals(b.type)){
+                      if(type.equals(b.type)){
                           cap = true;
                           continue;
                       }
                       if(cap && b.type.startsWith("event_")) break;
-                      if(cap) seq.add(b);
+                      if(cap) out.add(b);
                   }
-                  execute(host, obj, seq);
+                  return out;
               }
 
               private static void execute(Host host, ObjectItem obj, ArrayList<BlockItem> seq){
                   Handler h = new Handler(Looper.getMainLooper());
                   long delay = 0;
+
                   for(BlockItem b : seq){
                       switch (b.type){
-                          case "move_x":
-                              final float dx = parse(b.arg1, 20);
+                          case "move_x": {
+                              final float dx = parse(b.arg1, 20f);
                               h.postDelayed(() -> {
                                   if(host.stopped()) return;
                                   obj.x += dx;
-                                  host.renderScene();
+                                  host.renderPlayerScene();
                               }, delay);
                               break;
-                          case "move_y":
-                              final float dy = parse(b.arg1, 20);
+                          }
+                          case "move_y": {
+                              final float dy = parse(b.arg1, 20f);
                               h.postDelayed(() -> {
                                   if(host.stopped()) return;
                                   obj.y += dy;
-                                  host.renderScene();
+                                  host.renderPlayerScene();
                               }, delay);
                               break;
-                          case "go_xy":
-                              final float x = parse(b.arg1, 100);
-                              final float y = parse(b.arg2, 80);
+                          }
+                          case "go_xy": {
+                              final float x = parse(b.arg1, 100f);
+                              final float y = parse(b.arg2, 80f);
                               h.postDelayed(() -> {
                                   if(host.stopped()) return;
                                   obj.x = x;
                                   obj.y = y;
-                                  host.renderScene();
+                                  host.renderPlayerScene();
                               }, delay);
                               break;
-                          case "say":
+                          }
+                          case "say": {
                               final String txt = b.arg1 == null ? "" : b.arg1;
                               h.postDelayed(() -> {
                                   if(host.stopped()) return;
                                   obj.say = txt;
-                                  host.renderScene();
+                                  host.renderPlayerScene();
                               }, delay);
                               break;
-                          case "hide":
+                          }
+                          case "hide": {
                               h.postDelayed(() -> {
                                   if(host.stopped()) return;
                                   obj.visible = false;
-                                  host.renderScene();
+                                  host.renderPlayerScene();
                               }, delay);
                               break;
-                          case "show":
+                          }
+                          case "show": {
                               h.postDelayed(() -> {
                                   if(host.stopped()) return;
                                   obj.visible = true;
-                                  host.renderScene();
+                                  host.renderPlayerScene();
                               }, delay);
                               break;
-                          case "wait":
-                              delay += (long)(parse(b.arg1, 1) * 1000f);
+                          }
+                          case "wait": {
+                              delay += (long)(parse(b.arg1, 1f) * 1000f);
                               break;
+                          }
                       }
                   }
               }
@@ -679,16 +718,16 @@ jobs:
           }
           RUNNER
 
-          cat <<'MAINACT' > app/src/main/java/com/pocketstyle/app/MainActivity.java
-          package com.pocketstyle.app;
+          cat <<'MAINACT' > app/src/main/java/com/pocketru/fixed/MainActivity.java
+          package com.pocketru.fixed;
 
           import android.app.AlertDialog;
           import android.content.Intent;
           import android.graphics.Color;
+          import android.graphics.Typeface;
           import android.graphics.drawable.GradientDrawable;
           import android.net.Uri;
           import android.os.Bundle;
-          import android.view.Gravity;
           import android.view.View;
           import android.widget.Button;
           import android.widget.EditText;
@@ -700,25 +739,24 @@ jobs:
           import androidx.activity.result.ActivityResultLauncher;
           import androidx.activity.result.contract.ActivityResultContracts;
           import androidx.appcompat.app.AppCompatActivity;
-          import org.json.JSONObject;
           import java.util.ArrayList;
 
           public class MainActivity extends AppCompatActivity implements ScriptRunner.Host {
-              private View screenProjects, screenScenes, screenObjects, screenScripts;
+              private View screenProjects, screenScenes, screenObjects, screenScripts, screenPlayer;
               private LinearLayout projectsList, scenesList, objectsList, blocksList;
-              private FrameLayout stage, stageLayer;
+              private FrameLayout playerStage, playerStageLayer;
               private TextView txtProjectTitle, txtSceneTitle, txtObjectTitle;
 
               private final ArrayList<ProjectItem> projects = new ArrayList<>();
               private int currentProject = -1, currentScene = -1, currentObject = -1;
-              private boolean stopFlag = false;
               private int pendingImportProject = -1, pendingImportScene = -1, pendingImportObject = -1;
+              private boolean stopFlag = false;
 
               private ActivityResultLauncher<Intent> imagePicker;
 
               @Override
-              public void renderScene() {
-                  runOnUiThread(this::renderStage);
+              public void renderPlayerScene() {
+                  runOnUiThread(this::drawPlayerScene);
               }
 
               @Override
@@ -735,14 +773,15 @@ jobs:
                   screenScenes = findViewById(R.id.screen_scenes);
                   screenObjects = findViewById(R.id.screen_objects);
                   screenScripts = findViewById(R.id.screen_scripts);
+                  screenPlayer = findViewById(R.id.screen_player);
 
                   projectsList = findViewById(R.id.projects_list);
                   scenesList = findViewById(R.id.scenes_list);
                   objectsList = findViewById(R.id.objects_list);
                   blocksList = findViewById(R.id.blocks_list);
 
-                  stage = findViewById(R.id.stage);
-                  stageLayer = findViewById(R.id.stage_layer);
+                  playerStage = findViewById(R.id.player_stage);
+                  playerStageLayer = findViewById(R.id.player_stage_layer);
 
                   txtProjectTitle = findViewById(R.id.txt_project_title);
                   txtSceneTitle = findViewById(R.id.txt_scene_title);
@@ -754,16 +793,18 @@ jobs:
                       if(res.getResultCode() == RESULT_OK && res.getData() != null && res.getData().getData() != null){
                           try{
                               Uri uri = res.getData().getData();
-                              getContentResolver().takePersistableUriPermission(uri,
-                                  Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                              getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
                               if(pendingImportProject >= 0 && pendingImportScene >= 0 && pendingImportObject >= 0){
-                                  projects.get(pendingImportProject).scenes.get(pendingImportScene).objects.get(pendingImportObject).imageUri = uri.toString();
+                                  projects.get(pendingImportProject)
+                                          .scenes.get(pendingImportScene)
+                                          .objects.get(pendingImportObject)
+                                          .imageUri = uri.toString();
                                   saveAll();
                                   renderObjects();
                               }
                           }catch(Exception e){
-                              toast("Import failed");
+                              toast("Ошибка импорта");
                           }
                       }
                   });
@@ -776,17 +817,8 @@ jobs:
                   findViewById(R.id.btn_new_scene).setOnClickListener(v -> createSceneDialog());
                   findViewById(R.id.btn_new_object).setOnClickListener(v -> createObjectDialog());
 
-                  findViewById(R.id.btn_run_scene).setOnClickListener(v -> {
-                      stopFlag = false;
-                      SceneItem sc = currentScene();
-                      if(sc != null) ScriptRunner.runScene(this, sc);
-                  });
-
-                  findViewById(R.id.btn_run_object).setOnClickListener(v -> {
-                      stopFlag = false;
-                      ObjectItem ob = currentObject();
-                      if(ob != null) ScriptRunner.runObject(this, ob);
-                  });
+                  findViewById(R.id.btn_play_scene).setOnClickListener(v -> startPlayer());
+                  findViewById(R.id.btn_stop_player).setOnClickListener(v -> stopPlayer());
 
                   findViewById(R.id.btn_add_block).setOnClickListener(v -> showCategoryDialog());
 
@@ -824,6 +856,7 @@ jobs:
                   screenScenes.setVisibility(View.GONE);
                   screenObjects.setVisibility(View.GONE);
                   screenScripts.setVisibility(View.GONE);
+                  screenPlayer.setVisibility(View.GONE);
                   renderProjects();
               }
 
@@ -832,6 +865,7 @@ jobs:
                   screenScenes.setVisibility(View.VISIBLE);
                   screenObjects.setVisibility(View.GONE);
                   screenScripts.setVisibility(View.GONE);
+                  screenPlayer.setVisibility(View.GONE);
                   renderScenes();
               }
 
@@ -840,6 +874,7 @@ jobs:
                   screenScenes.setVisibility(View.GONE);
                   screenObjects.setVisibility(View.VISIBLE);
                   screenScripts.setVisibility(View.GONE);
+                  screenPlayer.setVisibility(View.GONE);
                   renderObjects();
               }
 
@@ -848,8 +883,35 @@ jobs:
                   screenScenes.setVisibility(View.GONE);
                   screenObjects.setVisibility(View.GONE);
                   screenScripts.setVisibility(View.VISIBLE);
+                  screenPlayer.setVisibility(View.GONE);
                   renderBlocks();
-                  renderStage();
+              }
+
+              private void startPlayer(){
+                  SceneItem scene = currentScene();
+                  if(scene == null) return;
+
+                  for(ObjectItem o : scene.objects){
+                      o.x = o.startX;
+                      o.y = o.startY;
+                      o.visible = true;
+                      o.say = "";
+                  }
+
+                  stopFlag = false;
+                  screenProjects.setVisibility(View.GONE);
+                  screenScenes.setVisibility(View.GONE);
+                  screenObjects.setVisibility(View.GONE);
+                  screenScripts.setVisibility(View.GONE);
+                  screenPlayer.setVisibility(View.VISIBLE);
+
+                  drawPlayerScene();
+                  ScriptRunner.runScene(this, scene);
+              }
+
+              private void stopPlayer(){
+                  stopFlag = true;
+                  showObjects();
               }
 
               private void renderProjects(){
@@ -857,11 +919,8 @@ jobs:
                   for(int i=0;i<projects.size();i++){
                       ProjectItem p = projects.get(i);
                       LinearLayout card = makeCard();
-                      TextView tv = title(p.name);
-                      TextView sub = subtitle("Scenes: " + p.scenes.size());
-
-                      card.addView(tv);
-                      card.addView(sub);
+                      card.addView(title(p.name));
+                      card.addView(subtitle("Сцен: " + p.scenes.size()));
 
                       final int idx = i;
                       card.setOnClickListener(v -> {
@@ -883,17 +942,14 @@ jobs:
               private void renderScenes(){
                   ProjectItem p = currentProject();
                   if(p == null) return;
-                  txtProjectTitle.setText(p.name + " / Scenes");
+                  txtProjectTitle.setText(p.name + " / Сцены");
 
                   scenesList.removeAllViews();
                   for(int i=0;i<p.scenes.size();i++){
                       SceneItem s = p.scenes.get(i);
                       LinearLayout card = makeCard();
-                      TextView tv = title(s.name);
-                      TextView sub = subtitle("Objects: " + s.objects.size());
-
-                      card.addView(tv);
-                      card.addView(sub);
+                      card.addView(title(s.name));
+                      card.addView(subtitle("Объектов: " + s.objects.size()));
 
                       final int idx = i;
                       card.setOnClickListener(v -> {
@@ -914,48 +970,46 @@ jobs:
               private void renderObjects(){
                   SceneItem s = currentScene();
                   if(s == null) return;
-                  txtSceneTitle.setText(s.name + " / Objects");
+                  txtSceneTitle.setText(s.name + " / Объекты");
 
                   objectsList.removeAllViews();
                   for(int i=0;i<s.objects.size();i++){
                       ObjectItem o = s.objects.get(i);
+
                       LinearLayout card = makeCard();
-                      TextView tv = title(o.name + " " + o.emoji);
-                      TextView sub = subtitle(o.imageUri.isEmpty() ? "Emoji sprite" : "Imported image");
+                      card.addView(title(o.name + " " + o.emoji));
+                      card.addView(subtitle(o.imageUri.isEmpty() ? "Спрайт: emoji" : "Спрайт: изображение"));
 
-                      card.addView(tv);
-                      card.addView(sub);
-
-                      LinearLayout btnRow = new LinearLayout(this);
-                      btnRow.setOrientation(LinearLayout.HORIZONTAL);
+                      LinearLayout row = new LinearLayout(this);
+                      row.setOrientation(LinearLayout.HORIZONTAL);
 
                       Button importBtn = new Button(this);
-                      importBtn.setText("Import");
+                      importBtn.setText("Импорт");
                       importBtn.setTextColor(Color.WHITE);
                       importBtn.setBackgroundResource(R.drawable.btn_purple);
 
-                      Button scriptsBtn = new Button(this);
-                      scriptsBtn.setText("Scripts");
-                      scriptsBtn.setTextColor(Color.WHITE);
-                      scriptsBtn.setBackgroundResource(R.drawable.btn_blue);
+                      Button scriptBtn = new Button(this);
+                      scriptBtn.setText("Скрипты");
+                      scriptBtn.setTextColor(Color.WHITE);
+                      scriptBtn.setBackgroundResource(R.drawable.btn_blue);
 
                       LinearLayout.LayoutParams lp1 = new LinearLayout.LayoutParams(0, dp(40), 1f);
                       LinearLayout.LayoutParams lp2 = new LinearLayout.LayoutParams(0, dp(40), 1f);
                       lp2.leftMargin = dp(8);
 
                       importBtn.setLayoutParams(lp1);
-                      scriptsBtn.setLayoutParams(lp2);
+                      scriptBtn.setLayoutParams(lp2);
 
                       final int idx = i;
                       importBtn.setOnClickListener(v -> importSprite(idx));
-                      scriptsBtn.setOnClickListener(v -> {
+                      scriptBtn.setOnClickListener(v -> {
                           currentObject = idx;
                           showScripts();
                       });
 
-                      btnRow.addView(importBtn);
-                      btnRow.addView(scriptsBtn);
-                      card.addView(btnRow);
+                      row.addView(importBtn);
+                      row.addView(scriptBtn);
+                      card.addView(row);
 
                       card.setOnLongClickListener(v -> {
                           showObjectMenu(idx);
@@ -969,11 +1023,12 @@ jobs:
               private void renderBlocks(){
                   ObjectItem o = currentObject();
                   if(o == null) return;
-                  txtObjectTitle.setText(o.name + " / Scripts");
+                  txtObjectTitle.setText(o.name + " / Скрипты");
 
                   blocksList.removeAllViews();
                   for(int i=0;i<o.blocks.size();i++){
                       BlockItem b = o.blocks.get(i);
+
                       TextView tv = new TextView(this);
                       String text = b.label;
                       if(b.arg1 != null && !b.arg1.isEmpty()) text += " " + b.arg1;
@@ -1002,7 +1057,7 @@ jobs:
                   }
               }
 
-              private void renderStage(){
+              private void drawPlayerScene(){
                   SceneItem scene = currentScene();
                   if(scene == null) return;
 
@@ -1011,10 +1066,10 @@ jobs:
                       bg.setColor(Color.parseColor(scene.bgColor));
                       bg.setCornerRadius(dp(18));
                       bg.setStroke(dp(2), Color.parseColor("#8AC4E8"));
-                      stage.setBackground(bg);
+                      playerStage.setBackground(bg);
                   }catch(Exception ignored){}
 
-                  stageLayer.removeAllViews();
+                  playerStageLayer.removeAllViews();
 
                   for(int i=0;i<scene.objects.size();i++){
                       ObjectItem o = scene.objects.get(i);
@@ -1039,9 +1094,12 @@ jobs:
                       }
 
                       spriteView.setVisibility(o.visible ? View.VISIBLE : View.INVISIBLE);
+
                       final int idx = i;
                       spriteView.setOnClickListener(v -> {
-                          if(!stopFlag) ScriptRunner.runTap(this, scene.objects.get(idx));
+                          if(!stopFlag){
+                              ScriptRunner.runTapped(this, scene.objects.get(idx));
+                          }
                       });
 
                       wrap.addView(spriteView);
@@ -1053,6 +1111,7 @@ jobs:
                           speech.setTextColor(Color.BLACK);
                           speech.setPadding(dp(8), dp(4), dp(8), dp(4));
                           speech.setBackgroundResource(R.drawable.bg_panel);
+
                           FrameLayout.LayoutParams slp = new FrameLayout.LayoutParams(
                               FrameLayout.LayoutParams.WRAP_CONTENT,
                               FrameLayout.LayoutParams.WRAP_CONTENT
@@ -1063,26 +1122,26 @@ jobs:
                           wrap.addView(speech);
                       }
 
-                      stageLayer.addView(wrap);
+                      playerStageLayer.addView(wrap);
                   }
               }
 
               private void createProjectDialog(){
                   EditText input = new EditText(this);
-                  input.setHint("Project name");
-                  input.setText("My Project");
+                  input.setHint("Название проекта");
+                  input.setText("Мой проект");
 
                   new AlertDialog.Builder(this)
-                      .setTitle("Create Project")
+                      .setTitle("Создать проект")
                       .setView(input)
-                      .setPositiveButton("Create", (d,w) -> {
+                      .setPositiveButton("Создать", (d,w) -> {
                           ProjectItem p = new ProjectItem();
-                          p.name = input.getText().toString().trim().isEmpty() ? "Project" : input.getText().toString();
+                          p.name = input.getText().toString().trim().isEmpty() ? "Проект" : input.getText().toString();
                           projects.add(p);
                           saveAll();
                           renderProjects();
                       })
-                      .setNegativeButton("Cancel", null)
+                      .setNegativeButton("Отмена", null)
                       .show();
               }
 
@@ -1094,8 +1153,8 @@ jobs:
                   root.setOrientation(LinearLayout.VERTICAL);
 
                   EditText name = new EditText(this);
-                  name.setHint("Scene name");
-                  name.setText("Scene " + (p.scenes.size()+1));
+                  name.setHint("Название сцены");
+                  name.setText("Сцена " + (p.scenes.size()+1));
 
                   EditText color = new EditText(this);
                   color.setHint("#D8F0FF");
@@ -1105,17 +1164,17 @@ jobs:
                   root.addView(color);
 
                   new AlertDialog.Builder(this)
-                      .setTitle("Create Scene")
+                      .setTitle("Создать сцену")
                       .setView(root)
-                      .setPositiveButton("Create", (d,w) -> {
+                      .setPositiveButton("Создать", (d,w) -> {
                           SceneItem s = new SceneItem();
-                          s.name = name.getText().toString().trim().isEmpty() ? "Scene" : name.getText().toString();
+                          s.name = name.getText().toString().trim().isEmpty() ? "Сцена" : name.getText().toString();
                           s.bgColor = color.getText().toString().trim().isEmpty() ? "#D8F0FF" : color.getText().toString();
                           p.scenes.add(s);
                           saveAll();
                           renderScenes();
                       })
-                      .setNegativeButton("Cancel", null)
+                      .setNegativeButton("Отмена", null)
                       .show();
               }
 
@@ -1127,40 +1186,60 @@ jobs:
                   root.setOrientation(LinearLayout.VERTICAL);
 
                   EditText name = new EditText(this);
-                  name.setHint("Object name");
-                  name.setText("Object " + (s.objects.size()+1));
+                  name.setHint("Название объекта");
+                  name.setText("Объект " + (s.objects.size()+1));
 
                   EditText emoji = new EditText(this);
                   emoji.setHint("Emoji");
                   emoji.setText("🐱");
 
+                  EditText x = new EditText(this);
+                  x.setHint("Старт X");
+                  x.setText("100");
+
+                  EditText y = new EditText(this);
+                  y.setHint("Старт Y");
+                  y.setText("80");
+
                   root.addView(name);
                   root.addView(emoji);
+                  root.addView(x);
+                  root.addView(y);
 
                   new AlertDialog.Builder(this)
-                      .setTitle("Create Object")
+                      .setTitle("Создать объект")
                       .setView(root)
-                      .setPositiveButton("Create", (d,w) -> {
+                      .setPositiveButton("Создать", (d,w) -> {
                           ObjectItem o = new ObjectItem();
-                          o.name = name.getText().toString().trim().isEmpty() ? "Object" : name.getText().toString();
+                          o.name = name.getText().toString().trim().isEmpty() ? "Объект" : name.getText().toString();
                           o.emoji = emoji.getText().toString().trim().isEmpty() ? "🐱" : emoji.getText().toString();
+                          o.startX = parseFloat(x.getText().toString(), 100f);
+                          o.startY = parseFloat(y.getText().toString(), 80f);
+                          o.x = o.startX;
+                          o.y = o.startY;
                           s.objects.add(o);
                           saveAll();
                           renderObjects();
                       })
-                      .setNeutralButton("Create + Import", (d,w) -> {
+                      .setNeutralButton("Создать и импортировать", (d,w) -> {
                           ObjectItem o = new ObjectItem();
-                          o.name = name.getText().toString().trim().isEmpty() ? "Object" : name.getText().toString();
+                          o.name = name.getText().toString().trim().isEmpty() ? "Объект" : name.getText().toString();
                           o.emoji = emoji.getText().toString().trim().isEmpty() ? "🐱" : emoji.getText().toString();
+                          o.startX = parseFloat(x.getText().toString(), 100f);
+                          o.startY = parseFloat(y.getText().toString(), 80f);
+                          o.x = o.startX;
+                          o.y = o.startY;
                           s.objects.add(o);
                           saveAll();
+
                           pendingImportProject = currentProject;
                           pendingImportScene = currentScene;
                           pendingImportObject = s.objects.size()-1;
                           openImagePicker();
+
                           renderObjects();
                       })
-                      .setNegativeButton("Cancel", null)
+                      .setNegativeButton("Отмена", null)
                       .show();
               }
 
@@ -1181,11 +1260,11 @@ jobs:
               }
 
               private void showCategoryDialog(){
-                  String[] cats = {"Events", "Motion", "Looks", "Control"};
+                  String[] cats = {"События", "Движение", "Внешность", "Управление"};
                   new AlertDialog.Builder(this)
-                      .setTitle("Choose Category")
+                      .setTitle("Категория")
                       .setItems(cats, (d,w) -> {
-                          if(w == 0) showBlockTypeDialog("events");
+                          if(w == 0) showBlockTypeDialog("event");
                           else if(w == 1) showBlockTypeDialog("motion");
                           else if(w == 2) showBlockTypeDialog("looks");
                           else showBlockTypeDialog("control");
@@ -1194,37 +1273,37 @@ jobs:
               }
 
               private void showBlockTypeDialog(String cat){
-                  if("events".equals(cat)){
-                      String[] items = {"when run", "when tapped"};
+                  if("event".equals(cat)){
+                      String[] items = {"Когда запущено", "Когда объект нажат"};
                       new AlertDialog.Builder(this)
-                          .setTitle("Events")
+                          .setTitle("События")
                           .setItems(items, (d,w) -> {
-                              if(w == 0) insertBlockDialog(new BlockItem("event_run", "when run", "", ""));
-                              else insertBlockDialog(new BlockItem("event_tap", "when tapped", "", ""));
+                              if(w == 0) insertBlockDialog(new BlockItem("event_start", "Когда запущено", "", ""));
+                              else insertBlockDialog(new BlockItem("event_tap", "Когда объект нажат", "", ""));
                           }).show();
                   } else if("motion".equals(cat)){
-                      String[] items = {"move x", "move y", "go to x y"};
+                      String[] items = {"Двигаться по X", "Двигаться по Y", "Перейти в X Y"};
                       new AlertDialog.Builder(this)
-                          .setTitle("Motion")
+                          .setTitle("Движение")
                           .setItems(items, (d,w) -> {
-                              if(w == 0) askOneArg("move x", "20", v -> insertBlockDialog(new BlockItem("move_x", "move x", v, "")));
-                              else if(w == 1) askOneArg("move y", "20", v -> insertBlockDialog(new BlockItem("move_y", "move y", v, "")));
-                              else askTwoArg("go to x y", "100", "80", (a,b) -> insertBlockDialog(new BlockItem("go_xy", "go to", a, b)));
+                              if(w == 0) askOneArg("Двигаться по X", "20", v -> insertBlockDialog(new BlockItem("move_x", "Двигаться по X", v, "")));
+                              else if(w == 1) askOneArg("Двигаться по Y", "20", v -> insertBlockDialog(new BlockItem("move_y", "Двигаться по Y", v, "")));
+                              else askTwoArg("Перейти в X Y", "100", "80", (a,b) -> insertBlockDialog(new BlockItem("go_xy", "Перейти в", a, b)));
                           }).show();
                   } else if("looks".equals(cat)){
-                      String[] items = {"say", "hide", "show"};
+                      String[] items = {"Сказать", "Скрыть", "Показать"};
                       new AlertDialog.Builder(this)
-                          .setTitle("Looks")
+                          .setTitle("Внешность")
                           .setItems(items, (d,w) -> {
-                              if(w == 0) askOneArg("say", "Hello!", v -> insertBlockDialog(new BlockItem("say", "say", v, "")));
-                              else if(w == 1) insertBlockDialog(new BlockItem("hide", "hide", "", ""));
-                              else insertBlockDialog(new BlockItem("show", "show", "", ""));
+                              if(w == 0) askOneArg("Сказать", "Привет!", v -> insertBlockDialog(new BlockItem("say", "Сказать", v, "")));
+                              else if(w == 1) insertBlockDialog(new BlockItem("hide", "Скрыть", "", ""));
+                              else insertBlockDialog(new BlockItem("show", "Показать", "", ""));
                           }).show();
                   } else if("control".equals(cat)){
-                      String[] items = {"wait"};
+                      String[] items = {"Ждать"};
                       new AlertDialog.Builder(this)
-                          .setTitle("Control")
-                          .setItems(items, (d,w) -> askOneArg("wait", "1", v -> insertBlockDialog(new BlockItem("wait", "wait", v, ""))))
+                          .setTitle("Управление")
+                          .setItems(items, (d,w) -> askOneArg("Ждать", "1", v -> insertBlockDialog(new BlockItem("wait", "Ждать", v, ""))))
                           .show();
                   }
               }
@@ -1238,8 +1317,8 @@ jobs:
                   new AlertDialog.Builder(this)
                       .setTitle(title)
                       .setView(input)
-                      .setPositiveButton("OK", (d,w) -> cb.ok(input.getText().toString()))
-                      .setNegativeButton("Cancel", null)
+                      .setPositiveButton("ОК", (d,w) -> cb.ok(input.getText().toString()))
+                      .setNegativeButton("Отмена", null)
                       .show();
               }
 
@@ -1248,17 +1327,18 @@ jobs:
                   root.setOrientation(LinearLayout.VERTICAL);
                   EditText a = new EditText(this);
                   EditText b = new EditText(this);
+                  a.setHint("X");
+                  b.setHint("Y");
                   a.setText(d1);
                   b.setText(d2);
-                  a.setHint("x");
-                  b.setHint("y");
                   root.addView(a);
                   root.addView(b);
+
                   new AlertDialog.Builder(this)
                       .setTitle(title)
                       .setView(root)
-                      .setPositiveButton("OK", (d,w) -> cb.ok(a.getText().toString(), b.getText().toString()))
-                      .setNegativeButton("Cancel", null)
+                      .setPositiveButton("ОК", (d,w) -> cb.ok(a.getText().toString(), b.getText().toString()))
+                      .setNegativeButton("Отмена", null)
                       .show();
               }
 
@@ -1267,13 +1347,13 @@ jobs:
                   if(o == null) return;
 
                   String[] opts = new String[o.blocks.size()+1];
-                  opts[0] = "At end";
+                  opts[0] = "В конец";
                   for(int i=0;i<o.blocks.size();i++){
-                      opts[i+1] = "Before: " + o.blocks.get(i).label;
+                      opts[i+1] = "Перед: " + o.blocks.get(i).label;
                   }
 
                   new AlertDialog.Builder(this)
-                      .setTitle("Where to insert?")
+                      .setTitle("Куда вставить блок?")
                       .setItems(opts, (d,w) -> {
                           if(w == 0) o.blocks.add(block);
                           else o.blocks.add(w-1, block);
@@ -1287,9 +1367,9 @@ jobs:
                   ObjectItem o = currentObject();
                   if(o == null) return;
 
-                  String[] items = {"Delete"};
+                  String[] items = {"Удалить"};
                   new AlertDialog.Builder(this)
-                      .setTitle("Block")
+                      .setTitle("Блок")
                       .setItems(items, (d,w) -> {
                           o.blocks.remove(idx);
                           saveAll();
@@ -1298,7 +1378,7 @@ jobs:
               }
 
               private void showProjectMenu(int idx){
-                  String[] items = {"Rename", "Delete"};
+                  String[] items = {"Переименовать", "Удалить"};
                   new AlertDialog.Builder(this)
                       .setTitle(projects.get(idx).name)
                       .setItems(items, (d,w) -> {
@@ -1306,14 +1386,14 @@ jobs:
                               EditText input = new EditText(this);
                               input.setText(projects.get(idx).name);
                               new AlertDialog.Builder(this)
-                                  .setTitle("Rename Project")
+                                  .setTitle("Переименовать проект")
                                   .setView(input)
-                                  .setPositiveButton("OK", (dd,ww) -> {
+                                  .setPositiveButton("ОК", (dd,ww) -> {
                                       projects.get(idx).name = input.getText().toString();
                                       saveAll();
                                       renderProjects();
                                   })
-                                  .setNegativeButton("Cancel", null)
+                                  .setNegativeButton("Отмена", null)
                                   .show();
                           } else {
                               projects.remove(idx);
@@ -1326,7 +1406,7 @@ jobs:
               private void showSceneMenu(int idx){
                   ProjectItem p = currentProject();
                   if(p == null) return;
-                  String[] items = {"Rename", "Delete"};
+                  String[] items = {"Переименовать", "Удалить"};
                   new AlertDialog.Builder(this)
                       .setTitle(p.scenes.get(idx).name)
                       .setItems(items, (d,w) -> {
@@ -1334,14 +1414,14 @@ jobs:
                               EditText input = new EditText(this);
                               input.setText(p.scenes.get(idx).name);
                               new AlertDialog.Builder(this)
-                                  .setTitle("Rename Scene")
+                                  .setTitle("Переименовать сцену")
                                   .setView(input)
-                                  .setPositiveButton("OK", (dd,ww) -> {
+                                  .setPositiveButton("ОК", (dd,ww) -> {
                                       p.scenes.get(idx).name = input.getText().toString();
                                       saveAll();
                                       renderScenes();
                                   })
-                                  .setNegativeButton("Cancel", null)
+                                  .setNegativeButton("Отмена", null)
                                   .show();
                           } else {
                               p.scenes.remove(idx);
@@ -1354,7 +1434,7 @@ jobs:
               private void showObjectMenu(int idx){
                   SceneItem s = currentScene();
                   if(s == null) return;
-                  String[] items = {"Rename", "Delete"};
+                  String[] items = {"Переименовать", "Удалить"};
                   new AlertDialog.Builder(this)
                       .setTitle(s.objects.get(idx).name)
                       .setItems(items, (d,w) -> {
@@ -1362,14 +1442,14 @@ jobs:
                               EditText input = new EditText(this);
                               input.setText(s.objects.get(idx).name);
                               new AlertDialog.Builder(this)
-                                  .setTitle("Rename Object")
+                                  .setTitle("Переименовать объект")
                                   .setView(input)
-                                  .setPositiveButton("OK", (dd,ww) -> {
+                                  .setPositiveButton("ОК", (dd,ww) -> {
                                       s.objects.get(idx).name = input.getText().toString();
                                       saveAll();
                                       renderObjects();
                                   })
-                                  .setNegativeButton("Cancel", null)
+                                  .setNegativeButton("Отмена", null)
                                   .show();
                           } else {
                               s.objects.remove(idx);
@@ -1398,7 +1478,7 @@ jobs:
                   tv.setText(s);
                   tv.setTextSize(18f);
                   tv.setTextColor(Color.parseColor("#2E648F"));
-                  tv.setTypeface(null, android.graphics.Typeface.BOLD);
+                  tv.setTypeface(null, Typeface.BOLD);
                   return tv;
               }
 
@@ -1413,6 +1493,10 @@ jobs:
               private int dp(int v){
                   return (int)(v * getResources().getDisplayMetrics().density);
               }
+
+              private float parseFloat(String s, float d){
+                  try { return Float.parseFloat(s); } catch(Exception e){ return d; }
+              }
           }
           MAINACT
 
@@ -1420,10 +1504,10 @@ jobs:
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <application
-                  android:label="Pocket Code Style"
+                  android:label="Карманный Код"
                   android:theme="@style/AppTheme">
                   <activity
-                      android:name="com.pocketstyle.app.MainActivity"
+                      android:name="com.pocketru.fixed.MainActivity"
                       android:exported="true">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/>
@@ -1452,11 +1536,11 @@ jobs:
           }
 
           android {
-              namespace 'com.pocketstyle.app'
+              namespace 'com.pocketru.fixed'
               compileSdk 34
 
               defaultConfig {
-                  applicationId 'com.pocketstyle.app'
+                  applicationId 'com.pocketru.fixed'
                   minSdk 24
                   targetSdk 34
               }
@@ -1479,5 +1563,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Pocket_Code_Style_APK
+          name: Pocket_Code_RU_Fixed_APK
           path: app/build/outputs/apk/debug/app-debug.apk
