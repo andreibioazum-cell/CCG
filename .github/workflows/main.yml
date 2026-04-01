@@ -1,343 +1,1259 @@
-name: Build CheatMod
-
-on:
-  push:
-  workflow_dispatch:
+name: Pocket_Cat_v2
+on: [push, workflow_dispatch]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Setup Java 21
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: 21
+          java-version: '17'
+          distribution: 'temurin'
 
-      - name: Generate and Build
+      - name: Create Project
         run: |
-          cat > gradle.properties << 'EOF'
-          org.gradle.jvmargs=-Xmx2G
-          minecraft_version=1.21.1
-          yarn_mappings=1.21.1+build.3
-          loader_version=0.16.14
-          fabric_version=0.115.0+1.21.1
+          mkdir -p app/src/main/java/com/pocketcat/v2
+          mkdir -p app/src/main/res/layout
+          mkdir -p app/src/main/res/values
+          mkdir -p app/src/main/res/drawable
+
+          echo "android.useAndroidX=true" > gradle.properties
+          echo "android.enableJetifier=true" >> gradle.properties
+
+          cat <<EOF > app/src/main/res/values/themes.xml
+          <resources>
+            <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+              <item name="android:windowBackground">#EEF8FF</item>
+            </style>
+          </resources>
           EOF
 
-          cat > settings.gradle << 'EOF'
-          pluginManagement {
-              repositories {
-                  maven { url "https://maven.fabricmc.net/" }
-                  mavenCentral()
-                  gradlePluginPortal()
+          cat <<EOF > app/src/main/res/drawable/bg_stage.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+            <solid android:color="#CDEEFF"/>
+            <corners android:radius="18dp"/>
+            <stroke android:width="2dp" android:color="#79BCEB"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/bg_panel.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+            <solid android:color="#FFFFFF"/>
+            <corners android:radius="16dp"/>
+            <stroke android:width="1dp" android:color="#CFE6F5"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/bg_toolbar.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+            <solid android:color="#F7FCFF"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/btn_green.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+            <solid android:color="#4CD964"/>
+            <corners android:radius="14dp"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/btn_red.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+            <solid android:color="#FF6B6B"/>
+            <corners android:radius="14dp"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/btn_blue.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+            <solid android:color="#4C97FF"/>
+            <corners android:radius="14dp"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/btn_orange.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+            <solid android:color="#FFAB19"/>
+            <corners android:radius="14dp"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/btn_purple.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+            <solid android:color="#9966FF"/>
+            <corners android:radius="14dp"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/block_events.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+            <solid android:color="#FFBF00"/>
+            <corners android:radius="16dp"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/block_motion.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+            <solid android:color="#4C97FF"/>
+            <corners android:radius="16dp"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/block_looks.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+            <solid android:color="#9966FF"/>
+            <corners android:radius="16dp"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/block_control.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+            <solid android:color="#FFAB19"/>
+            <corners android:radius="16dp"/>
+          </shape>
+          EOF
+
+          cat <<'LAYOUT' > app/src/main/res/layout/activity_main.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:orientation="vertical"
+              android:background="#EEF8FF">
+
+              <LinearLayout
+                  android:layout_width="match_parent"
+                  android:layout_height="60dp"
+                  android:orientation="horizontal"
+                  android:gravity="center_vertical"
+                  android:background="@drawable/bg_toolbar"
+                  android:paddingLeft="12dp"
+                  android:paddingRight="12dp">
+
+                  <TextView
+                      android:layout_width="wrap_content"
+                      android:layout_height="wrap_content"
+                      android:text="Pocket Cat"
+                      android:textColor="#2A668F"
+                      android:textStyle="bold"
+                      android:textSize="24sp"/>
+
+                  <View
+                      android:layout_width="0dp"
+                      android:layout_height="1dp"
+                      android:layout_weight="1"/>
+
+                  <Button
+                      android:id="@+id/btn_add_sprite"
+                      android:layout_width="wrap_content"
+                      android:layout_height="42dp"
+                      android:text="+ Sprite"
+                      android:textColor="#FFFFFF"
+                      android:background="@drawable/btn_blue"/>
+
+                  <Button
+                      android:id="@+id/btn_scene"
+                      android:layout_width="wrap_content"
+                      android:layout_height="42dp"
+                      android:text="Scene"
+                      android:textColor="#FFFFFF"
+                      android:background="@drawable/btn_purple"
+                      android:layout_marginLeft="8dp"/>
+
+                  <Button
+                      android:id="@+id/btn_save"
+                      android:layout_width="wrap_content"
+                      android:layout_height="42dp"
+                      android:text="Save"
+                      android:textColor="#FFFFFF"
+                      android:background="@drawable/btn_blue"
+                      android:layout_marginLeft="8dp"/>
+
+                  <Button
+                      android:id="@+id/btn_load"
+                      android:layout_width="wrap_content"
+                      android:layout_height="42dp"
+                      android:text="Load"
+                      android:textColor="#FFFFFF"
+                      android:background="@drawable/btn_orange"
+                      android:layout_marginLeft="8dp"/>
+
+                  <Button
+                      android:id="@+id/btn_run"
+                      android:layout_width="50dp"
+                      android:layout_height="42dp"
+                      android:text="⚑"
+                      android:textSize="20sp"
+                      android:textColor="#FFFFFF"
+                      android:background="@drawable/btn_green"
+                      android:layout_marginLeft="8dp"/>
+
+                  <Button
+                      android:id="@+id/btn_stop"
+                      android:layout_width="50dp"
+                      android:layout_height="42dp"
+                      android:text="■"
+                      android:textSize="18sp"
+                      android:textColor="#FFFFFF"
+                      android:background="@drawable/btn_red"
+                      android:layout_marginLeft="8dp"/>
+              </LinearLayout>
+
+              <LinearLayout
+                  android:layout_width="match_parent"
+                  android:layout_height="0dp"
+                  android:layout_weight="1"
+                  android:orientation="horizontal"
+                  android:padding="10dp">
+
+                  <LinearLayout
+                      android:layout_width="110dp"
+                      android:layout_height="match_parent"
+                      android:orientation="vertical"
+                      android:background="@drawable/bg_panel"
+                      android:padding="8dp">
+
+                      <TextView
+                          android:layout_width="match_parent"
+                          android:layout_height="wrap_content"
+                          android:text="Blocks"
+                          android:textStyle="bold"
+                          android:textColor="#356D99"
+                          android:textSize="16sp"/>
+
+                      <Button
+                          android:id="@+id/tab_events"
+                          android:layout_width="match_parent"
+                          android:layout_height="44dp"
+                          android:text="Events"
+                          android:textColor="#FFFFFF"
+                          android:background="@drawable/btn_orange"
+                          android:layout_marginTop="10dp"/>
+
+                      <Button
+                          android:id="@+id/tab_motion"
+                          android:layout_width="match_parent"
+                          android:layout_height="44dp"
+                          android:text="Motion"
+                          android:textColor="#FFFFFF"
+                          android:background="@drawable/btn_blue"
+                          android:layout_marginTop="8dp"/>
+
+                      <Button
+                          android:id="@+id/tab_looks"
+                          android:layout_width="match_parent"
+                          android:layout_height="44dp"
+                          android:text="Looks"
+                          android:textColor="#FFFFFF"
+                          android:background="@drawable/btn_purple"
+                          android:layout_marginTop="8dp"/>
+
+                      <Button
+                          android:id="@+id/tab_control"
+                          android:layout_width="match_parent"
+                          android:layout_height="44dp"
+                          android:text="Control"
+                          android:textColor="#FFFFFF"
+                          android:background="@drawable/btn_orange"
+                          android:layout_marginTop="8dp"/>
+                  </LinearLayout>
+
+                  <LinearLayout
+                      android:layout_width="0dp"
+                      android:layout_height="match_parent"
+                      android:layout_weight="1"
+                      android:orientation="vertical"
+                      android:layout_marginLeft="10dp">
+
+                      <FrameLayout
+                          android:id="@+id/stage"
+                          android:layout_width="match_parent"
+                          android:layout_height="250dp"
+                          android:background="@drawable/bg_stage">
+
+                          <FrameLayout
+                              android:id="@+id/stage_layer"
+                              android:layout_width="match_parent"
+                              android:layout_height="match_parent"/>
+                      </FrameLayout>
+
+                      <HorizontalScrollView
+                          android:layout_width="match_parent"
+                          android:layout_height="70dp"
+                          android:layout_marginTop="8dp"
+                          android:background="@drawable/bg_panel">
+
+                          <LinearLayout
+                              android:id="@+id/sprite_list"
+                              android:layout_width="wrap_content"
+                              android:layout_height="match_parent"
+                              android:orientation="horizontal"
+                              android:padding="8dp"/>
+                      </HorizontalScrollView>
+
+                      <LinearLayout
+                          android:layout_width="match_parent"
+                          android:layout_height="0dp"
+                          android:layout_weight="1"
+                          android:orientation="horizontal"
+                          android:layout_marginTop="10dp">
+
+                          <LinearLayout
+                              android:layout_width="0dp"
+                              android:layout_height="match_parent"
+                              android:layout_weight="1"
+                              android:orientation="vertical"
+                              android:background="@drawable/bg_panel"
+                              android:padding="8dp">
+
+                              <TextView
+                                  android:layout_width="match_parent"
+                                  android:layout_height="wrap_content"
+                                  android:text="Library"
+                                  android:textStyle="bold"
+                                  android:textColor="#356D99"
+                                  android:textSize="16sp"/>
+
+                              <ScrollView
+                                  android:layout_width="match_parent"
+                                  android:layout_height="0dp"
+                                  android:layout_weight="1"
+                                  android:layout_marginTop="8dp">
+
+                                  <LinearLayout
+                                      android:id="@+id/library_container"
+                                      android:layout_width="match_parent"
+                                      android:layout_height="wrap_content"
+                                      android:orientation="vertical"/>
+                              </ScrollView>
+                          </LinearLayout>
+
+                          <LinearLayout
+                              android:layout_width="0dp"
+                              android:layout_height="match_parent"
+                              android:layout_weight="1"
+                              android:orientation="vertical"
+                              android:layout_marginLeft="10dp"
+                              android:background="@drawable/bg_panel"
+                              android:padding="8dp">
+
+                              <TextView
+                                  android:id="@+id/txt_script_title"
+                                  android:layout_width="match_parent"
+                                  android:layout_height="wrap_content"
+                                  android:text="Script"
+                                  android:textStyle="bold"
+                                  android:textColor="#356D99"
+                                  android:textSize="16sp"/>
+
+                              <ScrollView
+                                  android:layout_width="match_parent"
+                                  android:layout_height="0dp"
+                                  android:layout_weight="1"
+                                  android:layout_marginTop="8dp">
+
+                                  <LinearLayout
+                                      android:id="@+id/script_container"
+                                      android:layout_width="match_parent"
+                                      android:layout_height="wrap_content"
+                                      android:orientation="vertical"/>
+                              </ScrollView>
+
+                              <LinearLayout
+                                  android:layout_width="match_parent"
+                                  android:layout_height="wrap_content"
+                                  android:orientation="horizontal"
+                                  android:layout_marginTop="8dp">
+
+                                  <Button
+                                      android:id="@+id/btn_clear_script"
+                                      android:layout_width="0dp"
+                                      android:layout_height="42dp"
+                                      android:layout_weight="1"
+                                      android:text="Clear"
+                                      android:textColor="#FFFFFF"
+                                      android:background="@drawable/btn_red"/>
+
+                                  <Button
+                                      android:id="@+id/btn_delete_last"
+                                      android:layout_width="0dp"
+                                      android:layout_height="42dp"
+                                      android:layout_weight="1"
+                                      android:text="Delete Last"
+                                      android:textColor="#FFFFFF"
+                                      android:background="@drawable/btn_orange"
+                                      android:layout_marginLeft="8dp"/>
+                              </LinearLayout>
+                          </LinearLayout>
+                      </LinearLayout>
+                  </LinearLayout>
+              </LinearLayout>
+          </LinearLayout>
+          LAYOUT
+
+          cat <<EOF > app/src/main/java/com/pocketcat/v2/CodeBlock.java
+          package com.pocketcat.v2;
+
+          public class CodeBlock {
+              public String type;
+              public String label;
+              public String arg1;
+              public String arg2;
+
+              public CodeBlock(String type, String label, String arg1, String arg2){
+                  this.type = type;
+                  this.label = label;
+                  this.arg1 = arg1;
+                  this.arg2 = arg2;
               }
           }
-          rootProject.name = "cheatmod"
           EOF
 
-          cat > build.gradle << 'EOF'
-          plugins {
-              id 'fabric-loom' version '1.9-SNAPSHOT'
-              id 'java'
-          }
-          version = "1.0.0"
-          group = "com.mymod"
-          repositories {
-              mavenCentral()
-              maven { url "https://maven.fabricmc.net/" }
-          }
-          dependencies {
-              minecraft "com.mojang:minecraft:${project.minecraft_version}"
-              mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
-              modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-              modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-          }
-          processResources {
-              inputs.property "version", project.version
-              filesMatching("fabric.mod.json") { expand "version": project.version }
-          }
-          tasks.withType(JavaCompile).configureEach { options.release = 21 }
-          java {
-              sourceCompatibility = JavaVersion.VERSION_21
-              targetCompatibility = JavaVersion.VERSION_21
+          cat <<EOF > app/src/main/java/com/pocketcat/v2/SpriteModel.java
+          package com.pocketcat.v2;
+
+          import java.util.ArrayList;
+
+          public class SpriteModel {
+              public String name = "Sprite";
+              public String emoji = "🐱";
+              public float x = 120f;
+              public float y = 110f;
+              public boolean visible = true;
+              public String color = "#FFFFFF";
+              public String say = "";
+              public ArrayList<CodeBlock> blocks = new ArrayList<>();
+
+              public SpriteModel(String name, String emoji){
+                  this.name = name;
+                  this.emoji = emoji;
+              }
           }
           EOF
 
-          echo "MIT" > LICENSE
+          cat <<EOF > app/src/main/java/com/pocketcat/v2/SceneModel.java
+          package com.pocketcat.v2;
 
-          mkdir -p src/main/resources
-          cat > src/main/resources/fabric.mod.json << 'EOF'
-          {
-            "schemaVersion": 1,
-            "id": "cheatmod",
-            "version": "${version}",
-            "name": "CheatMod",
-            "description": "Cheat commands",
-            "authors": ["Dev"],
-            "license": "MIT",
-            "environment": "*",
-            "entrypoints": { "main": ["com.mymod.cheatmod.CheatMod"] },
-            "mixins": ["cheatmod.mixins.json"],
-            "depends": {
-              "fabricloader": ">=0.16.0",
-              "minecraft": "~1.21.1",
-              "java": ">=21",
-              "fabric-api": "*"
-            }
+          public class SceneModel {
+              public String name = "Scene";
+              public String bgColor = "#CDEEFF";
           }
           EOF
 
-          cat > src/main/resources/cheatmod.mixins.json << 'EOF'
-          {
-            "required": true,
-            "minVersion": "0.8",
-            "package": "com.mymod.cheatmod.mixin",
-            "compatibilityLevel": "JAVA_21",
-            "mixins": ["ServerPlayerEntityMixin"],
-            "injectors": { "defaultRequire": 1 }
+          cat <<'RUNNER' > app/src/main/java/com/pocketcat/v2/ScriptEngine.java
+          package com.pocketcat.v2;
+
+          import android.os.Handler;
+          import android.os.Looper;
+          import java.util.ArrayList;
+          import java.util.List;
+          import java.util.Stack;
+
+          public class ScriptEngine {
+              public interface Host {
+                  void renderAll();
+                  void toast(String s);
+                  List<SpriteModel> sprites();
+                  boolean isStopped();
+              }
+
+              public static void runGreenFlag(Host host){
+                  for(SpriteModel s : host.sprites()){
+                      runEvent(host, s, "event_flag");
+                  }
+              }
+
+              public static void runTap(Host host, SpriteModel sprite){
+                  runEvent(host, sprite, "event_tap");
+              }
+
+              private static void runEvent(Host host, SpriteModel sprite, String eventType){
+                  ArrayList<CodeBlock> source = sprite.blocks;
+                  ArrayList<CodeBlock> seq = new ArrayList<>();
+                  boolean capture = false;
+
+                  for(CodeBlock b : source){
+                      if(eventType.equals(b.type)){
+                          capture = true;
+                          continue;
+                      }
+                      if(capture && b.type.startsWith("event_")) break;
+                      if(capture) seq.add(b);
+                  }
+
+                  execute(host, sprite, seq);
+              }
+
+              private static void execute(Host host, SpriteModel sprite, ArrayList<CodeBlock> seq){
+                  Handler h = new Handler(Looper.getMainLooper());
+                  ArrayList<CodeBlock> flat = expandRepeat(seq);
+
+                  long delay = 0;
+                  for(CodeBlock b : flat){
+                      switch (b.type){
+                          case "move_x": {
+                              final float dx = parseFloat(b.arg1, 10f);
+                              h.postDelayed(() -> {
+                                  if(host.isStopped()) return;
+                                  sprite.x += dx;
+                                  host.renderAll();
+                              }, delay);
+                              break;
+                          }
+                          case "move_y": {
+                              final float dy = parseFloat(b.arg1, 10f);
+                              h.postDelayed(() -> {
+                                  if(host.isStopped()) return;
+                                  sprite.y += dy;
+                                  host.renderAll();
+                              }, delay);
+                              break;
+                          }
+                          case "go_xy": {
+                              final float x = parseFloat(b.arg1, 120f);
+                              final float y = parseFloat(b.arg2, 110f);
+                              h.postDelayed(() -> {
+                                  if(host.isStopped()) return;
+                                  sprite.x = x;
+                                  sprite.y = y;
+                                  host.renderAll();
+                              }, delay);
+                              break;
+                          }
+                          case "say": {
+                              final String txt = b.arg1 == null ? "" : b.arg1;
+                              h.postDelayed(() -> {
+                                  if(host.isStopped()) return;
+                                  sprite.say = txt;
+                                  host.renderAll();
+                              }, delay);
+                              break;
+                          }
+                          case "hide": {
+                              h.postDelayed(() -> {
+                                  if(host.isStopped()) return;
+                                  sprite.visible = false;
+                                  host.renderAll();
+                              }, delay);
+                              break;
+                          }
+                          case "show": {
+                              h.postDelayed(() -> {
+                                  if(host.isStopped()) return;
+                                  sprite.visible = true;
+                                  host.renderAll();
+                              }, delay);
+                              break;
+                          }
+                          case "set_color": {
+                              final String c = b.arg1 == null ? "#FFFFFF" : b.arg1;
+                              h.postDelayed(() -> {
+                                  if(host.isStopped()) return;
+                                  sprite.color = c;
+                                  host.renderAll();
+                              }, delay);
+                              break;
+                          }
+                          case "wait": {
+                              delay += (long)(parseFloat(b.arg1, 1f) * 1000f);
+                              break;
+                          }
+                      }
+                  }
+              }
+
+              private static ArrayList<CodeBlock> expandRepeat(ArrayList<CodeBlock> src){
+                  ArrayList<CodeBlock> out = new ArrayList<>();
+                  for(int i=0;i<src.size();i++){
+                      CodeBlock b = src.get(i);
+                      if("repeat".equals(b.type)){
+                          int times = Math.max(0, (int)parseFloat(b.arg1, 1));
+                          ArrayList<CodeBlock> inner = new ArrayList<>();
+                          int depth = 1;
+                          i++;
+                          while(i < src.size()){
+                              CodeBlock c = src.get(i);
+                              if("repeat".equals(c.type)) depth++;
+                              else if("end_repeat".equals(c.type)){
+                                  depth--;
+                                  if(depth == 0) break;
+                              }
+                              if(depth > 0) inner.add(c);
+                              i++;
+                          }
+                          ArrayList<CodeBlock> exp = expandRepeat(inner);
+                          for(int t=0;t<times;t++) out.addAll(exp);
+                      } else if(!"end_repeat".equals(b.type)) {
+                          out.add(b);
+                      }
+                  }
+                  return out;
+              }
+
+              private static float parseFloat(String s, float d){
+                  try { return Float.parseFloat(s); } catch(Exception e){ return d; }
+              }
           }
-          EOF
+          RUNNER
 
-          mkdir -p src/main/java/com/mymod/cheatmod/command
-          mkdir -p src/main/java/com/mymod/cheatmod/handler
-          mkdir -p src/main/java/com/mymod/cheatmod/mixin
+          cat <<'MAINACT' > app/src/main/java/com/pocketcat/v2/MainActivity.java
+          package com.pocketcat.v2;
 
-          cat > src/main/java/com/mymod/cheatmod/CheatMod.java << 'EOF'
-          package com.mymod.cheatmod;
+          import android.app.AlertDialog;
+          import android.content.Intent;
+          import android.graphics.Color;
+          import android.graphics.drawable.GradientDrawable;
+          import android.os.Bundle;
+          import android.view.Gravity;
+          import android.view.View;
+          import android.widget.Button;
+          import android.widget.EditText;
+          import android.widget.FrameLayout;
+          import android.widget.LinearLayout;
+          import android.widget.TextView;
+          import android.widget.Toast;
+          import androidx.activity.result.ActivityResultLauncher;
+          import androidx.activity.result.contract.ActivityResultContracts;
+          import androidx.appcompat.app.AppCompatActivity;
+          import org.json.JSONArray;
+          import org.json.JSONObject;
+          import java.io.*;
+          import java.util.ArrayList;
+          import java.util.List;
 
-          import com.mymod.cheatmod.command.*;
-          import net.fabricmc.api.ModInitializer;
-          import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+          public class MainActivity extends AppCompatActivity implements ScriptEngine.Host {
+              private LinearLayout libraryContainer, scriptContainer, spriteList;
+              private FrameLayout stage, stageLayer;
+              private TextView txtScriptTitle;
+              private String currentTab = "events";
 
-          public class CheatMod implements ModInitializer {
+              private final ArrayList<SpriteModel> sprites = new ArrayList<>();
+              private final SceneModel scene = new SceneModel();
+              private int selectedSprite = -1;
+              private boolean stopped = false;
+
+              private ActivityResultLauncher<Intent> saveLauncher, loadLauncher;
+
               @Override
-              public void onInitialize() {
-                  CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
-                      GivemCommand.register(dispatcher, registryAccess);
-                      GodmCommand.register(dispatcher);
-                      FlyCommand.register(dispatcher);
-                      CrmCommand.register(dispatcher);
+              public void renderAll() {
+                  runOnUiThread(() -> {
+                      renderStage();
+                      renderSpriteList();
+                      renderScript();
                   });
               }
-          }
-          EOF
 
-          cat > src/main/java/com/mymod/cheatmod/handler/GodModeHandler.java << 'EOF'
-          package com.mymod.cheatmod.handler;
-
-          import java.util.HashSet;
-          import java.util.Set;
-          import java.util.UUID;
-
-          public class GodModeHandler {
-              private static final Set<UUID> gods = new HashSet<>();
-              public static boolean has(UUID u) { return gods.contains(u); }
-              public static boolean toggle(UUID u) {
-                  if (gods.contains(u)) { gods.remove(u); return false; }
-                  else { gods.add(u); return true; }
-              }
-          }
-          EOF
-
-          cat > src/main/java/com/mymod/cheatmod/mixin/ServerPlayerEntityMixin.java << 'EOF'
-          package com.mymod.cheatmod.mixin;
-
-          import com.mymod.cheatmod.handler.GodModeHandler;
-          import net.minecraft.server.network.ServerPlayerEntity;
-          import net.minecraft.entity.damage.DamageSource;
-          import org.spongepowered.asm.mixin.Mixin;
-          import org.spongepowered.asm.mixin.injection.At;
-          import org.spongepowered.asm.mixin.injection.Inject;
-          import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-
-          @Mixin(ServerPlayerEntity.class)
-          public abstract class ServerPlayerEntityMixin {
-              @Inject(method = "damage", at = @At("HEAD"), cancellable = true)
-              private void onDamage(DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
-                  ServerPlayerEntity player = (ServerPlayerEntity)(Object)this;
-                  if (GodModeHandler.has(player.getUuid())) cir.setReturnValue(false);
-              }
-          }
-          EOF
-
-          cat > src/main/java/com/mymod/cheatmod/command/GivemCommand.java << 'EOF'
-          package com.mymod.cheatmod.command;
-
-          import com.mojang.brigadier.CommandDispatcher;
-          import com.mojang.brigadier.arguments.IntegerArgumentType;
-          import com.mojang.brigadier.arguments.StringArgumentType;
-          import com.mojang.brigadier.suggestion.SuggestionProvider;
-          import net.minecraft.command.CommandRegistryAccess;
-          import net.minecraft.item.Item;
-          import net.minecraft.item.ItemStack;
-          import net.minecraft.item.Items;
-          import net.minecraft.registry.Registries;
-          import net.minecraft.server.command.CommandManager;
-          import net.minecraft.server.command.ServerCommandSource;
-          import net.minecraft.server.network.ServerPlayerEntity;
-          import net.minecraft.text.Text;
-          import net.minecraft.util.Identifier;
-          import java.util.HashMap;
-          import java.util.Map;
-
-          public class GivemCommand {
-              private static final Map<String, Item> A = new HashMap<>();
-              static {
-                  A.put("dirt", Items.DIRT);
-                  A.put("stone", Items.STONE);
-                  A.put("diamond", Items.DIAMOND);
-                  A.put("iron", Items.IRON_INGOT);
-                  A.put("gold", Items.GOLD_INGOT);
-                  A.put("emerald", Items.EMERALD);
-                  A.put("coal", Items.COAL);
-                  A.put("netherite", Items.NETHERITE_INGOT);
-                  A.put("sword", Items.NETHERITE_SWORD);
-                  A.put("pickaxe", Items.NETHERITE_PICKAXE);
-                  A.put("axe", Items.NETHERITE_AXE);
-                  A.put("elytra", Items.ELYTRA);
-                  A.put("totem", Items.TOTEM_OF_UNDYING);
-                  A.put("bread", Items.BREAD);
-                  A.put("steak", Items.COOKED_BEEF);
-                  A.put("apple", Items.GOLDEN_APPLE);
-                  A.put("stick", Items.STICK);
+              @Override
+              public void toast(String s) {
+                  Toast.makeText(this, s, Toast.LENGTH_SHORT).show();
               }
 
-              private static final SuggestionProvider<ServerCommandSource> SUG = (ctx, b) -> {
-                  String r = b.getRemaining().toLowerCase();
-                  for (String a : A.keySet()) if (a.startsWith(r)) b.suggest(a);
-                  return b.buildFuture();
-              };
-
-              public static void register(CommandDispatcher<ServerCommandSource> d, CommandRegistryAccess ra) {
-                  d.register(CommandManager.literal("givem")
-                      .then(CommandManager.argument("item", StringArgumentType.string()).suggests(SUG)
-                          .executes(c -> run(c.getSource(), StringArgumentType.getString(c, "item"), 1))
-                          .then(CommandManager.argument("amount", IntegerArgumentType.integer(1, 6400))
-                              .executes(c -> run(c.getSource(), StringArgumentType.getString(c, "item"),
-                                  IntegerArgumentType.getInteger(c, "amount"))))));
+              @Override
+              public List<SpriteModel> sprites() {
+                  return sprites;
               }
 
-              private static int run(ServerCommandSource s, String name, int amt) {
-                  ServerPlayerEntity p = s.getPlayer();
-                  if (p == null) { s.sendError(Text.literal("§cPlayers only")); return 0; }
-                  Item item = A.get(name.toLowerCase());
-                  if (item == null) {
-                      Identifier id = name.contains(":") ? Identifier.tryParse(name) : Identifier.tryParse("minecraft:" + name);
-                      if (id != null && Registries.ITEM.containsId(id)) item = Registries.ITEM.get(id);
-                  }
-                  if (item == null || item == Items.AIR) { s.sendError(Text.literal("§cUnknown: " + name)); return 0; }
-                  int left = amt;
-                  while (left > 0) {
-                      int sz = Math.min(left, item.getMaxCount());
-                      ItemStack st = new ItemStack(item, sz);
-                      if (!p.getInventory().insertStack(st) && !st.isEmpty()) p.dropItem(st, false);
-                      left -= sz;
-                  }
-                  s.sendFeedback(() -> Text.literal("§aGave §e" + amt + "x §b" + name), false);
-                  return 1;
+              @Override
+              public boolean isStopped() {
+                  return stopped;
               }
-          }
-          EOF
 
-          cat > src/main/java/com/mymod/cheatmod/command/GodmCommand.java << 'EOF'
-          package com.mymod.cheatmod.command;
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  setContentView(R.layout.activity_main);
 
-          import com.mojang.brigadier.CommandDispatcher;
-          import com.mymod.cheatmod.handler.GodModeHandler;
-          import net.minecraft.server.command.CommandManager;
-          import net.minecraft.server.command.ServerCommandSource;
-          import net.minecraft.server.network.ServerPlayerEntity;
-          import net.minecraft.text.Text;
+                  libraryContainer = findViewById(R.id.library_container);
+                  scriptContainer = findViewById(R.id.script_container);
+                  spriteList = findViewById(R.id.sprite_list);
+                  stage = findViewById(R.id.stage);
+                  stageLayer = findViewById(R.id.stage_layer);
+                  txtScriptTitle = findViewById(R.id.txt_script_title);
 
-          public class GodmCommand {
-              public static void register(CommandDispatcher<ServerCommandSource> d) {
-                  d.register(CommandManager.literal("godm").executes(c -> {
-                      ServerCommandSource s = c.getSource();
-                      ServerPlayerEntity p = s.getPlayer();
-                      if (p == null) { s.sendError(Text.literal("§cPlayers only")); return 0; }
-                      boolean on = GodModeHandler.toggle(p.getUuid());
-                      if (on) {
-                          p.setHealth(p.getMaxHealth());
-                          p.getHungerManager().setFoodLevel(20);
-                          p.getHungerManager().setSaturationLevel(20.0f);
-                          p.clearStatusEffects();
-                          s.sendFeedback(() -> Text.literal("§a§lGod Mode §aON"), false);
-                      } else {
-                          s.sendFeedback(() -> Text.literal("§c§lGod Mode §cOFF"), false);
+                  sprites.add(new SpriteModel("Cat", "🐱"));
+                  selectedSprite = 0;
+
+                  findViewById(R.id.tab_events).setOnClickListener(v -> { currentTab = "events"; fillLibrary(); });
+                  findViewById(R.id.tab_motion).setOnClickListener(v -> { currentTab = "motion"; fillLibrary(); });
+                  findViewById(R.id.tab_looks).setOnClickListener(v -> { currentTab = "looks"; fillLibrary(); });
+                  findViewById(R.id.tab_control).setOnClickListener(v -> { currentTab = "control"; fillLibrary(); });
+
+                  findViewById(R.id.btn_add_sprite).setOnClickListener(v -> showAddSpriteDialog());
+                  findViewById(R.id.btn_scene).setOnClickListener(v -> showSceneDialog());
+
+                  findViewById(R.id.btn_clear_script).setOnClickListener(v -> {
+                      SpriteModel s = currentSprite();
+                      if(s == null) return;
+                      s.blocks.clear();
+                      renderScript();
+                  });
+
+                  findViewById(R.id.btn_delete_last).setOnClickListener(v -> {
+                      SpriteModel s = currentSprite();
+                      if(s == null || s.blocks.isEmpty()) return;
+                      s.blocks.remove(s.blocks.size() - 1);
+                      renderScript();
+                  });
+
+                  findViewById(R.id.btn_run).setOnClickListener(v -> {
+                      stopped = false;
+                      resetSprites();
+                      ScriptEngine.runGreenFlag(this);
+                  });
+
+                  findViewById(R.id.btn_stop).setOnClickListener(v -> {
+                      stopped = true;
+                      resetSprites();
+                  });
+
+                  saveLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), res -> {
+                      if(res.getResultCode() == RESULT_OK && res.getData() != null){
+                          try{
+                              OutputStream out = getContentResolver().openOutputStream(res.getData().getData());
+                              JSONObject root = new JSONObject();
+
+                              JSONObject sc = new JSONObject();
+                              sc.put("name", scene.name);
+                              sc.put("bgColor", scene.bgColor);
+                              root.put("scene", sc);
+
+                              JSONArray arr = new JSONArray();
+                              for(SpriteModel s : sprites){
+                                  JSONObject o = new JSONObject();
+                                  o.put("name", s.name);
+                                  o.put("emoji", s.emoji);
+                                  o.put("x", s.x);
+                                  o.put("y", s.y);
+                                  o.put("visible", s.visible);
+                                  o.put("color", s.color);
+                                  o.put("say", s.say);
+
+                                  JSONArray blocks = new JSONArray();
+                                  for(CodeBlock b : s.blocks){
+                                      JSONObject bo = new JSONObject();
+                                      bo.put("type", b.type);
+                                      bo.put("label", b.label);
+                                      bo.put("arg1", b.arg1);
+                                      bo.put("arg2", b.arg2);
+                                      blocks.put(bo);
+                                  }
+                                  o.put("blocks", blocks);
+                                  arr.put(o);
+                              }
+
+                              root.put("sprites", arr);
+                              out.write(root.toString().getBytes());
+                              out.close();
+                              toast("Saved");
+                          }catch(Exception e){
+                              toast("Save error");
+                          }
                       }
-                      return 1;
-                  }));
-              }
-          }
-          EOF
+                  });
 
-          cat > src/main/java/com/mymod/cheatmod/command/FlyCommand.java << 'EOF'
-          package com.mymod.cheatmod.command;
+                  loadLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), res -> {
+                      if(res.getResultCode() == RESULT_OK && res.getData() != null){
+                          try{
+                              InputStream in = getContentResolver().openInputStream(res.getData().getData());
+                              BufferedReader rd = new BufferedReader(new InputStreamReader(in));
+                              StringBuilder sb = new StringBuilder();
+                              String line;
+                              while((line = rd.readLine()) != null) sb.append(line);
+                              in.close();
 
-          import com.mojang.brigadier.CommandDispatcher;
-          import net.minecraft.server.command.CommandManager;
-          import net.minecraft.server.command.ServerCommandSource;
-          import net.minecraft.server.network.ServerPlayerEntity;
-          import net.minecraft.text.Text;
+                              JSONObject root = new JSONObject(sb.toString());
+                              JSONObject sc = root.getJSONObject("scene");
+                              scene.name = sc.optString("name", "Scene");
+                              scene.bgColor = sc.optString("bgColor", "#CDEEFF");
 
-          public class FlyCommand {
-              public static void register(CommandDispatcher<ServerCommandSource> d) {
-                  d.register(CommandManager.literal("fly").executes(c -> {
-                      ServerCommandSource s = c.getSource();
-                      ServerPlayerEntity p = s.getPlayer();
-                      if (p == null) { s.sendError(Text.literal("§cPlayers only")); return 0; }
-                      boolean nw = !p.getAbilities().allowFlying;
-                      p.getAbilities().allowFlying = nw;
-                      if (!nw) p.getAbilities().flying = false;
-                      p.sendAbilitiesUpdate();
-                      s.sendFeedback(() -> Text.literal(nw ? "§a§lFly §aON" : "§c§lFly §cOFF"), false);
-                      return 1;
-                  }));
-              }
-          }
-          EOF
+                              sprites.clear();
+                              JSONArray arr = root.getJSONArray("sprites");
+                              for(int i=0;i<arr.length();i++){
+                                  JSONObject o = arr.getJSONObject(i);
+                                  SpriteModel s = new SpriteModel(
+                                      o.optString("name", "Sprite"),
+                                      o.optString("emoji", "🐱")
+                                  );
+                                  s.x = (float)o.optDouble("x", 120);
+                                  s.y = (float)o.optDouble("y", 110);
+                                  s.visible = o.optBoolean("visible", true);
+                                  s.color = o.optString("color", "#FFFFFF");
+                                  s.say = o.optString("say", "");
 
-          cat > src/main/java/com/mymod/cheatmod/command/CrmCommand.java << 'EOF'
-          package com.mymod.cheatmod.command;
+                                  JSONArray blocks = o.getJSONArray("blocks");
+                                  for(int j=0;j<blocks.length();j++){
+                                      JSONObject bo = blocks.getJSONObject(j);
+                                      s.blocks.add(new CodeBlock(
+                                          bo.optString("type"),
+                                          bo.optString("label"),
+                                          bo.optString("arg1"),
+                                          bo.optString("arg2")
+                                      ));
+                                  }
+                                  sprites.add(s);
+                              }
 
-          import com.mojang.brigadier.CommandDispatcher;
-          import net.minecraft.server.command.CommandManager;
-          import net.minecraft.server.command.ServerCommandSource;
-          import net.minecraft.server.network.ServerPlayerEntity;
-          import net.minecraft.text.Text;
-          import net.minecraft.world.GameMode;
-
-          public class CrmCommand {
-              public static void register(CommandDispatcher<ServerCommandSource> d) {
-                  d.register(CommandManager.literal("crm").executes(c -> {
-                      ServerCommandSource s = c.getSource();
-                      ServerPlayerEntity p = s.getPlayer();
-                      if (p == null) { s.sendError(Text.literal("§cPlayers only")); return 0; }
-                      boolean cr = p.interactionManager.getGameMode() == GameMode.CREATIVE;
-                      if (!cr) {
-                          p.changeGameMode(GameMode.CREATIVE);
-                          p.getAbilities().allowFlying = true;
-                          p.getAbilities().flying = true;
-                          p.sendAbilitiesUpdate();
-                          s.sendFeedback(() -> Text.literal("§a§lCreative §aON"), false);
-                      } else {
-                          p.changeGameMode(GameMode.SURVIVAL);
-                          p.getAbilities().allowFlying = false;
-                          p.getAbilities().flying = false;
-                          p.sendAbilitiesUpdate();
-                          s.sendFeedback(() -> Text.literal("§c§lCreative §cOFF §7(Survival)"), false);
+                              if(sprites.isEmpty()){
+                                  sprites.add(new SpriteModel("Cat", "🐱"));
+                              }
+                              selectedSprite = 0;
+                              renderAll();
+                              toast("Loaded");
+                          }catch(Exception e){
+                              toast("Load error");
+                          }
                       }
-                      return 1;
-                  }));
+                  });
+
+                  findViewById(R.id.btn_save).setOnClickListener(v -> {
+                      Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                      i.addCategory(Intent.CATEGORY_OPENABLE);
+                      i.setType("application/json");
+                      i.putExtra(Intent.EXTRA_TITLE, "pocket_cat_v2.json");
+                      saveLauncher.launch(i);
+                  });
+
+                  findViewById(R.id.btn_load).setOnClickListener(v -> {
+                      Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                      i.addCategory(Intent.CATEGORY_OPENABLE);
+                      i.setType("*/*");
+                      loadLauncher.launch(i);
+                  });
+
+                  fillLibrary();
+                  renderAll();
               }
+
+              private void resetSprites(){
+                  for(SpriteModel s : sprites){
+                      s.say = "";
+                      s.visible = true;
+                  }
+                  renderAll();
+              }
+
+              private SpriteModel currentSprite(){
+                  if(selectedSprite < 0 || selectedSprite >= sprites.size()) return null;
+                  return sprites.get(selectedSprite);
+              }
+
+              private void fillLibrary(){
+                  libraryContainer.removeAllViews();
+
+                  if("events".equals(currentTab)){
+                      addLibraryButton("when green flag clicked", "event_flag", "when green flag clicked", "", "", R.drawable.block_events, false, false);
+                      addLibraryButton("when this sprite tapped", "event_tap", "when this sprite tapped", "", "", R.drawable.block_events, false, false);
+                  } else if("motion".equals(currentTab)){
+                      addLibraryButton("move x", "move_x", "move x", "20", "", R.drawable.block_motion, true, false);
+                      addLibraryButton("move y", "move_y", "move y", "20", "", R.drawable.block_motion, true, false);
+                      addLibraryButton("go to x y", "go_xy", "go to", "120", "110", R.drawable.block_motion, true, true);
+                  } else if("looks".equals(currentTab)){
+                      addLibraryButton("say", "say", "say", "Hello!", "", R.drawable.block_looks, true, false);
+                      addLibraryButton("set color", "set_color", "set color", "#FFFFFF", "", R.drawable.block_looks, true, false);
+                      addLibraryButton("hide", "hide", "hide", "", "", R.drawable.block_looks, false, false);
+                      addLibraryButton("show", "show", "show", "", "", R.drawable.block_looks, false, false);
+                  } else if("control".equals(currentTab)){
+                      addLibraryButton("wait", "wait", "wait", "1", "", R.drawable.block_control, true, false);
+                      addLibraryButton("repeat", "repeat", "repeat", "3", "", R.drawable.block_control, true, false);
+                      addLibraryButton("end repeat", "end_repeat", "end repeat", "", "", R.drawable.block_control, false, false);
+                  }
+              }
+
+              private void addLibraryButton(String text, String type, String label, String arg1, String arg2, int bg, boolean ask1, boolean ask2){
+                  Button b = new Button(this);
+                  b.setAllCaps(false);
+                  b.setText(text);
+                  b.setTextColor(Color.WHITE);
+                  b.setBackgroundResource(bg);
+
+                  LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                      LinearLayout.LayoutParams.MATCH_PARENT,
+                      LinearLayout.LayoutParams.WRAP_CONTENT
+                  );
+                  lp.topMargin = dp(8);
+                  b.setLayoutParams(lp);
+
+                  b.setOnClickListener(v -> {
+                      SpriteModel s = currentSprite();
+                      if(s == null){
+                          toast("Create/select sprite");
+                          return;
+                      }
+
+                      if(ask1 && ask2){
+                          askTwoValues(label, arg1, arg2, (v1, v2) -> {
+                              s.blocks.add(new CodeBlock(type, label, v1, v2));
+                              renderScript();
+                          });
+                      } else if(ask1){
+                          askOneValue(label, arg1, value -> {
+                              s.blocks.add(new CodeBlock(type, label, value, ""));
+                              renderScript();
+                          });
+                      } else {
+                          s.blocks.add(new CodeBlock(type, label, arg1, arg2));
+                          renderScript();
+                      }
+                  });
+
+                  libraryContainer.addView(b);
+              }
+
+              private interface OneValueCallback { void onValue(String v); }
+              private interface TwoValueCallback { void onValue(String v1, String v2); }
+
+              private void askOneValue(String title, String def, OneValueCallback cb){
+                  EditText input = new EditText(this);
+                  input.setText(def);
+                  new AlertDialog.Builder(this)
+                      .setTitle(title)
+                      .setView(input)
+                      .setPositiveButton("OK", (d,w) -> cb.onValue(input.getText().toString()))
+                      .setNegativeButton("Cancel", null)
+                      .show();
+              }
+
+              private void askTwoValues(String title, String d1, String d2, TwoValueCallback cb){
+                  LinearLayout root = new LinearLayout(this);
+                  root.setOrientation(LinearLayout.VERTICAL);
+                  EditText a = new EditText(this);
+                  EditText b = new EditText(this);
+                  a.setHint("x");
+                  b.setHint("y");
+                  a.setText(d1);
+                  b.setText(d2);
+                  root.addView(a);
+                  root.addView(b);
+
+                  new AlertDialog.Builder(this)
+                      .setTitle(title)
+                      .setView(root)
+                      .setPositiveButton("OK", (d,w) -> cb.onValue(a.getText().toString(), b.getText().toString()))
+                      .setNegativeButton("Cancel", null)
+                      .show();
+              }
+
+              private void showAddSpriteDialog(){
+                  LinearLayout root = new LinearLayout(this);
+                  root.setOrientation(LinearLayout.VERTICAL);
+
+                  EditText name = new EditText(this);
+                  name.setHint("Sprite name");
+                  name.setText("Sprite " + (sprites.size()+1));
+
+                  EditText emoji = new EditText(this);
+                  emoji.setHint("Emoji");
+                  emoji.setText("🐱");
+
+                  root.addView(name);
+                  root.addView(emoji);
+
+                  new AlertDialog.Builder(this)
+                      .setTitle("Create Sprite")
+                      .setView(root)
+                      .setPositiveButton("Create", (d,w) -> {
+                          SpriteModel s = new SpriteModel(
+                              name.getText().toString().trim().isEmpty() ? "Sprite" : name.getText().toString(),
+                              emoji.getText().toString().trim().isEmpty() ? "🐱" : emoji.getText().toString()
+                          );
+                          s.x = 50f + sprites.size()*30f;
+                          s.y = 80f + sprites.size()*20f;
+                          sprites.add(s);
+                          selectedSprite = sprites.size()-1;
+                          renderAll();
+                      })
+                      .setNegativeButton("Cancel", null)
+                      .show();
+              }
+
+              private void showSceneDialog(){
+                  EditText input = new EditText(this);
+                  input.setHint("#CDEEFF");
+                  input.setText(scene.bgColor);
+
+                  new AlertDialog.Builder(this)
+                      .setTitle("Scene background color")
+                      .setView(input)
+                      .setPositiveButton("Apply", (d,w) -> {
+                          scene.bgColor = input.getText().toString();
+                          renderStage();
+                      })
+                      .setNegativeButton("Cancel", null)
+                      .show();
+              }
+
+              private void renderStage(){
+                  try{
+                      GradientDrawable bg = new GradientDrawable();
+                      bg.setColor(Color.parseColor(scene.bgColor));
+                      bg.setCornerRadius(dp(18));
+                      bg.setStroke(dp(2), Color.parseColor("#79BCEB"));
+                      stage.setBackground(bg);
+                  }catch(Exception ignored){}
+
+                  stageLayer.removeAllViews();
+
+                  for(int i=0;i<sprites.size();i++){
+                      SpriteModel s = sprites.get(i);
+
+                      FrameLayout wrap = new FrameLayout(this);
+                      FrameLayout.LayoutParams wlp = new FrameLayout.LayoutParams(
+                          FrameLayout.LayoutParams.WRAP_CONTENT,
+                          FrameLayout.LayoutParams.WRAP_CONTENT
+                      );
+                      wlp.leftMargin = 0;
+                      wlp.topMargin = 0;
+                      wrap.setLayoutParams(wlp);
+                      wrap.setTranslationX(s.x);
+                      wrap.setTranslationY(s.y);
+
+                      TextView tv = new TextView(this);
+                      tv.setText(s.emoji);
+                      tv.setTextSize(48f);
+                      try{
+                          tv.setTextColor(Color.parseColor(s.color));
+                      }catch(Exception e){
+                          tv.setTextColor(Color.WHITE);
+                      }
+                      tv.setVisibility(s.visible ? View.VISIBLE : View.INVISIBLE);
+
+                      final int idx = i;
+                      tv.setOnClickListener(v -> {
+                          selectedSprite = idx;
+                          renderSpriteList();
+                          renderScript();
+                          if(!stopped) ScriptEngine.runTap(this, sprites.get(idx));
+                      });
+
+                      wrap.addView(tv);
+
+                      if(s.say != null && !s.say.isEmpty()){
+                          TextView speech = new TextView(this);
+                          speech.setText(s.say);
+                          speech.setTextSize(14f);
+                          speech.setTextColor(Color.BLACK);
+                          speech.setPadding(dp(8), dp(4), dp(8), dp(4));
+                          speech.setBackgroundResource(R.drawable.bg_panel);
+
+                          FrameLayout.LayoutParams slp = new FrameLayout.LayoutParams(
+                              FrameLayout.LayoutParams.WRAP_CONTENT,
+                              FrameLayout.LayoutParams.WRAP_CONTENT
+                          );
+                          slp.gravity = Gravity.TOP|Gravity.END;
+                          slp.leftMargin = dp(34);
+                          slp.topMargin = -dp(20);
+                          speech.setLayoutParams(slp);
+                          wrap.addView(speech);
+                      }
+
+                      stageLayer.addView(wrap);
+                  }
+              }
+
+              private void renderSpriteList(){
+                  spriteList.removeAllViews();
+
+                  for(int i=0;i<sprites.size();i++){
+                      SpriteModel s = sprites.get(i);
+
+                      LinearLayout card = new LinearLayout(this);
+                      card.setOrientation(LinearLayout.VERTICAL);
+                      card.setGravity(Gravity.CENTER);
+                      card.setPadding(dp(10), dp(6), dp(10), dp(6));
+                      card.setBackgroundResource(R.drawable.bg_panel);
+
+                      LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(88), LinearLayout.LayoutParams.MATCH_PARENT);
+                      if(i > 0) lp.leftMargin = dp(8);
+                      card.setLayoutParams(lp);
+
+                      if(i == selectedSprite){
+                          card.setBackgroundColor(Color.parseColor("#DDF1FF"));
+                      }
+
+                      TextView emoji = new TextView(this);
+                      emoji.setText(s.emoji);
+                      emoji.setTextSize(28f);
+
+                      TextView name = new TextView(this);
+                      name.setText(s.name);
+                      name.setTextSize(12f);
+                      name.setTextColor(Color.parseColor("#2C5D85"));
+
+                      card.addView(emoji);
+                      card.addView(name);
+
+                      final int idx = i;
+                      card.setOnClickListener(v -> {
+                          selectedSprite = idx;
+                          renderSpriteList();
+                          renderScript();
+                      });
+
+                      card.setOnLongClickListener(v -> {
+                          showSpriteMenu(idx);
+                          return true;
+                      });
+
+                      spriteList.addView(card);
+                  }
+              }
+
+              private void showSpriteMenu(int idx){
+                  String[] items = {"Rename", "Delete"};
+                  new AlertDialog.Builder(this)
+                      .setTitle(sprites.get(idx).name)
+                      .setItems(items, (d,w) -> {
+                          if(w == 0){
+                              EditText input = new EditText(this);
+                              input.setText(sprites.get(idx).name);
+                              new AlertDialog.Builder(this)
+                                  .setTitle("Rename Sprite")
+                                  .setView(input)
+                                  .setPositiveButton("OK", (dd,ww) -> {
+                                      sprites.get(idx).name = input.getText().toString();
+                                      renderSpriteList();
+                                      renderScript();
+                                  })
+                                  .setNegativeButton("Cancel", null)
+                                  .show();
+                          } else if(w == 1){
+                              if(sprites.size() <= 1){
+                                  toast("Need at least 1 sprite");
+                                  return;
+                              }
+                              sprites.remove(idx);
+                              if(selectedSprite >= sprites.size()) selectedSprite = sprites.size()-1;
+                              renderAll();
+                          }
+                      })
+                      .show();
+              }
+
+              private void renderScript(){
+                  scriptContainer.removeAllViews();
+
+                  SpriteModel s = currentSprite();
+                  txtScriptTitle.setText(s == null ? "Script" : ("Script: " + s.name));
+
+                  if(s == null) return;
+
+                  for(int i=0;i<s.blocks.size();i++){
+                      CodeBlock b = s.blocks.get(i);
+
+                      TextView tv = new TextView(this);
+                      String text = b.label;
+                      if(b.arg1 != null && !b.arg1.isEmpty()) text += " " + b.arg1;
+                      if(b.arg2 != null && !b.arg2.isEmpty()) text += " " + b.arg2;
+                      tv.setText(text);
+                      tv.setTextColor(Color.WHITE);
+                      tv.setTextSize(16f);
+                      tv.setPadding(dp(14), dp(10), dp(14), dp(10));
+
+                      if(b.type.startsWith("event_")) tv.setBackgroundResource(R.drawable.block_events);
+                      else if(b.type.startsWith("move") || "go_xy".equals(b.type)) tv.setBackgroundResource(R.drawable.block_motion);
+                      else if("wait".equals(b.type) || "repeat".equals(b.type) || "end_repeat".equals(b.type)) tv.setBackgroundResource(R.drawable.block_control);
+                      else tv.setBackgroundResource(R.drawable.block_looks);
+
+                      LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                          LinearLayout.LayoutParams.MATCH_PARENT,
+                          LinearLayout.LayoutParams.WRAP_CONTENT
+                      );
+                      lp.topMargin = dp(8);
+                      tv.setLayoutParams(lp);
+
+                      final int idx = i;
+                      tv.setOnClickListener(v -> showBlockMenu(idx));
+
+                      scriptContainer.addView(tv);
+                  }
+              }
+
+              private void showBlockMenu(int idx){
+                  SpriteModel s = currentSprite();
+                  if(s == null) return;
+
+                  String[] items = {"Delete"};
+                  new AlertDialog.Builder(this)
+                      .setTitle("Block")
+                      .setItems(items, (d,w) -> {
+                          s.blocks.remove(idx);
+                          renderScript();
+                      })
+                      .show();
+              }
+
+              private int dp(int v){
+                  return (int)(v * getResources().getDisplayMetrics().density);
+              }
+          }
+          MAINACT
+
+          cat <<EOF > app/src/main/AndroidManifest.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application
+                  android:label="Pocket Cat"
+                  android:theme="@style/AppTheme">
+                  <activity
+                      android:name="com.pocketcat.v2.MainActivity"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          echo "include ':app'" > settings.gradle
+
+          cat <<EOF > build.gradle
+          buildscript {
+              repositories { google(); mavenCentral() }
+              dependencies { classpath 'com.android.tools.build:gradle:8.2.2' }
+          }
+          allprojects {
+              repositories { google(); mavenCentral() }
           }
           EOF
 
-          gradle wrapper --gradle-version 8.12
-          ./gradlew build --no-daemon
+          cat <<EOF > app/build.gradle
+          plugins {
+              id 'com.android.application'
+          }
 
-      - name: Upload JAR
+          android {
+              namespace 'com.pocketcat.v2'
+              compileSdk 34
+
+              defaultConfig {
+                  applicationId 'com.pocketcat.v2'
+                  minSdk 24
+                  targetSdk 34
+              }
+
+              buildFeatures {
+                  buildConfig true
+              }
+          }
+
+          dependencies {
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+          }
+          EOF
+
+      - name: Build APK
+        run: |
+          gradle wrapper --gradle-version 8.5
+          ./gradlew assembleDebug
+
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: cheatmod-1.21.1
-          path: build/libs/*.jar
+          name: Pocket_Cat_v2_APK
+          path: app/build/outputs/apk/debug/app-debug.apk
