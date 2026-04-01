@@ -1036,7 +1036,6 @@ jobs:
               private static final float FLOOR_Y = 0f, PLAYER_HEIGHT = 3.2f, PLAYER_RADIUS = 0.5f;
 
               public float playerYaw = 0f;
-              private float animTime = 0f;
               private float walkAnim = 0f;
               private boolean moving = false;
 
@@ -1263,21 +1262,20 @@ jobs:
                   GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
 
                   float lookX = (float) (Math.sin(Math.toRadians(rY)) * Math.cos(Math.toRadians(rX)));
-                  float lookY = (float) Math.sin(Math.toRadians(rX));
                   float lookZ = (float) (-Math.cos(Math.toRadians(rY)) * Math.cos(Math.toRadians(rX)));
 
                   float camDist = 10f;
-                  float camHeight = 4f;
+                  float camHeight = 6f;
 
                   float camX = pX - lookX * camDist;
-                  float camY = pY + camHeight - lookY * 2f;
+                  float camY = pY + camHeight;
                   float camZ = pZ - lookZ * camDist;
 
-                  Matrix.setLookAtM(view, 0, camX, camY, camZ, pX, pY + 1.5f, pZ, 0, 1, 0);
+                  Matrix.setLookAtM(view, 0, camX, camY, camZ, pX, pY + 1.8f, pZ, 0, 1, 0);
                   Matrix.multiplyMM(vp, 0, proj, 0, view, 0);
 
                   drawSky();
-                  drawWorld(lookX, lookY, lookZ);
+                  drawWorld(lookX, 0f, lookZ);
 
                   if (!isEngineMode || isPlayingLevel) {
                       drawPlayer();
@@ -1356,24 +1354,24 @@ jobs:
                   GLES30.glUniform1f(uSel, 0f);
                   GLES30.glUniform1f(uFloor, 0f);
 
-                  float baseY = pY - PLAYER_HEIGHT + 0.1f;
+                  float baseY = pY - PLAYER_HEIGHT;
 
-                  float armSwing = moving ? (float) Math.sin(walkAnim) * 35f : 0f;
-                  float legSwing = moving ? (float) Math.sin(walkAnim) * 35f : 0f;
+                  float armSwing = moving ? (float) Math.sin(walkAnim) * 25f : 0f;
+                  float legSwing = moving ? (float) Math.sin(walkAnim) * 25f : 0f;
 
                   if (!isOnGround()) {
-                      armSwing = -30f;
-                      legSwing = 20f;
+                      armSwing = -20f;
+                      legSwing = 15f;
                   }
 
-                  drawPart(uM, uMVP, uC, pX, baseY + 4.6f, pZ, 1.2f, 1.2f, 1.2f, playerYaw, 0, 0, 1f, 0.9f, 0.7f, 1f);
-                  drawPart(uM, uMVP, uC, pX, baseY + 3.0f, pZ, 1.8f, 2.2f, 1.0f, playerYaw, 0, 0, 0.1f, 0.4f, 1f, 1f);
+                  drawPart(uM, uMVP, uC, pX, baseY + 4.3f, pZ, 1.2f, 1.2f, 1.2f, playerYaw, 0, 0, 1f, 0.9f, 0.7f, 1f);
+                  drawPart(uM, uMVP, uC, pX, baseY + 2.7f, pZ, 1.7f, 2.0f, 1.0f, playerYaw, 0, 0, 0.12f, 0.45f, 1f, 1f);
 
-                  drawPart(uM, uMVP, uC, pX - 1.4f, baseY + 3.1f, pZ, 0.7f, 2.0f, 0.7f, playerYaw, 0, armSwing, 1f, 0.9f, 0.7f, 1f);
-                  drawPart(uM, uMVP, uC, pX + 1.4f, baseY + 3.1f, pZ, 0.7f, 2.0f, 0.7f, playerYaw, 0, -armSwing, 1f, 0.9f, 0.7f, 1f);
+                  drawPart(uM, uMVP, uC, pX - 1.25f, baseY + 2.7f, pZ, 0.65f, 1.8f, 0.65f, playerYaw, 0, armSwing, 1f, 0.9f, 0.7f, 1f);
+                  drawPart(uM, uMVP, uC, pX + 1.25f, baseY + 2.7f, pZ, 0.65f, 1.8f, 0.65f, playerYaw, 0, -armSwing, 1f, 0.9f, 0.7f, 1f);
 
-                  drawPart(uM, uMVP, uC, pX - 0.5f, baseY + 1.0f, pZ, 0.8f, 2.0f, 0.8f, playerYaw, 0, -legSwing, 0.15f, 0.15f, 0.2f, 1f);
-                  drawPart(uM, uMVP, uC, pX + 0.5f, baseY + 1.0f, pZ, 0.8f, 2.0f, 0.8f, playerYaw, 0, legSwing, 0.15f, 0.15f, 0.2f, 1f);
+                  drawPart(uM, uMVP, uC, pX - 0.45f, baseY + 0.8f, pZ, 0.75f, 1.8f, 0.75f, playerYaw, 0, -legSwing, 0.15f, 0.15f, 0.2f, 1f);
+                  drawPart(uM, uMVP, uC, pX + 0.45f, baseY + 0.8f, pZ, 0.75f, 1.8f, 0.75f, playerYaw, 0, legSwing, 0.15f, 0.15f, 0.2f, 1f);
               }
 
               private void drawPart(int uM, int uMVP, int uC,
@@ -1408,7 +1406,6 @@ jobs:
                           walkAnim += 0.22f;
                       }
 
-                      animTime += 0.05f;
                       vY -= .025f;
 
                       float nX = pX + mX, nY = pY + vY, nZ = pZ + mZ, fY = nY - PLAYER_HEIGHT, hY = nY;
@@ -1853,7 +1850,7 @@ jobs:
                           }
                       } else if(e.getAction()==MotionEvent.ACTION_MOVE){
                           ren.rY+=(e.getX()-lx)*.2f;
-                          ren.rX=Math.max(-85,Math.min(85,ren.rX-(e.getY()-ly)*.2f));
+                          ren.rX=Math.max(-55,Math.min(55,ren.rX-(e.getY()-ly)*.2f));
                           lx=e.getX();ly=e.getY();
                       }
                       return true;
@@ -2009,7 +2006,7 @@ jobs:
                           lx=e.getX();ly=e.getY();
                       }else if(e.getAction()==MotionEvent.ACTION_MOVE){
                           ren.rY+=(e.getX()-lx)*.25f;
-                          ren.rX=Math.max(-85,Math.min(85,ren.rX-(e.getY()-ly)*.25f));
+                          ren.rX=Math.max(-55,Math.min(55,ren.rX-(e.getY()-ly)*.25f));
                           lx=e.getX();ly=e.getY();
                       }
                       return true;
