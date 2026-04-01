@@ -1,4 +1,4 @@
-name: Build Fabric Mod 1.21.11
+name: Build Fabric Mod 1.21.1
 
 on:
   workflow_dispatch:
@@ -25,39 +25,37 @@ jobs:
         run: |
           mkdir -p src/main/java/com/example/givemod
           mkdir -p src/main/resources
+          mkdir -p src/main/resources/assets/utilitymod1211
 
           cat > settings.gradle <<'EOF'
           pluginManagement {
               repositories {
-                  maven {
-                      name = 'Fabric'
-                      url = 'https://maven.fabricmc.net/'
-                  }
+                  maven { url = 'https://maven.fabricmc.net/' }
                   gradlePluginPortal()
                   mavenCentral()
               }
           }
 
-          rootProject.name = 'fabric-utility-mod-12111'
+          rootProject.name = 'fabric-utility-mod-1211'
           EOF
 
           cat > gradle.properties <<'EOF'
           org.gradle.jvmargs=-Xmx2G
           org.gradle.parallel=true
 
-          minecraft_version=1.21.11
-          yarn_mappings=1.21.11+build.1
+          minecraft_version=1.21.1
+          yarn_mappings=1.21.1+build.3
           loader_version=0.16.10
-          fabric_version=0.110.0+1.21.11
+          fabric_version=0.116.0+1.21.1
 
           mod_version=1.0.0
           maven_group=com.example
-          archives_base_name=fabric-utility-mod-12111
+          archives_base_name=fabric-utility-mod-1211
           EOF
 
           cat > build.gradle <<'EOF'
           plugins {
-              id 'fabric-loom' version '1.9-SNAPSHOT'
+              id 'fabric-loom' version '1.8'
               id 'maven-publish'
           }
 
@@ -69,10 +67,7 @@ jobs:
           }
 
           repositories {
-              maven {
-                  name = 'Fabric'
-                  url = 'https://maven.fabricmc.net/'
-              }
+              maven { url = 'https://maven.fabricmc.net/' }
               mavenCentral()
           }
 
@@ -91,33 +86,22 @@ jobs:
           }
 
           tasks.withType(JavaCompile).configureEach {
-              it.options.release = 21
-              it.options.encoding = "UTF-8"
+              options.release = 21
+              options.encoding = "UTF-8"
           }
 
           processResources {
               inputs.property "version", project.version
-
               filesMatching("fabric.mod.json") {
                   expand "version": project.version
-              }
-          }
-
-          jar {
-              from("LICENSE") {
-                  rename { "${it}_${project.base.archivesName.get()}" }
               }
           }
 
           publishing {
               publications {
                   mavenJava(MavenPublication) {
-                      artifactId = project.archives_base_name
                       from components.java
                   }
-              }
-
-              repositories {
               }
           }
           EOF
@@ -125,16 +109,12 @@ jobs:
           cat > src/main/resources/fabric.mod.json <<'EOF'
           {
             "schemaVersion": 1,
-            "id": "utilitymod12111",
+            "id": "utilitymod1211",
             "version": "${version}",
-            "name": "Utility Mod 1.21.11",
+            "name": "Utility Mod 1.21.1",
             "description": "Commands: /givem, /godm, /fly, /crm",
-            "authors": [
-              "GitHub Actions"
-            ],
-            "contact": {},
+            "authors": ["GitHub Actions"],
             "license": "MIT",
-            "icon": "assets/utilitymod12111/icon.png",
             "environment": "*",
             "entrypoints": {
               "main": [
@@ -143,7 +123,7 @@ jobs:
             },
             "depends": {
               "fabricloader": ">=0.16.10",
-              "minecraft": "~1.21.11",
+              "minecraft": "~1.21.1",
               "java": ">=21",
               "fabric-api": "*"
             }
@@ -156,8 +136,6 @@ jobs:
           import net.fabricmc.api.ModInitializer;
 
           public class UtilityMod implements ModInitializer {
-              public static final String MOD_ID = "utilitymod12111";
-
               @Override
               public void onInitialize() {
                   ModCommands.register();
@@ -174,6 +152,7 @@ jobs:
           import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
           import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
           import net.minecraft.command.CommandRegistryAccess;
+          import net.minecraft.entity.effect.StatusEffectInstance;
           import net.minecraft.item.Item;
           import net.minecraft.item.ItemStack;
           import net.minecraft.item.Items;
@@ -187,11 +166,11 @@ jobs:
           import java.util.HashSet;
           import java.util.Map;
           import java.util.Set;
+          import java.util.UUID;
 
           public class ModCommands {
-              private static final Set<java.util.UUID> GOD_MODE = new HashSet<>();
-              private static final Set<java.util.UUID> FLY_MODE = new HashSet<>();
-
+              private static final Set<UUID> GOD_MODE = new HashSet<>();
+              private static final Set<UUID> FLY_MODE = new HashSet<>();
               private static final Map<String, Item> ALIASES = new HashMap<>();
 
               static {
@@ -219,13 +198,15 @@ jobs:
 
                   ServerTickEvents.END_SERVER_TICK.register(server -> {
                       for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
-                          if (GOD_MODE.contains(player.getUuid())) {
+                          UUID uuid = player.getUuid();
+
+                          if (GOD_MODE.contains(uuid)) {
                               player.setInvulnerable(true);
                               if (player.getHealth() < player.getMaxHealth()) {
                                   player.setHealth(player.getMaxHealth());
                               }
                               player.getHungerManager().setFoodLevel(20);
-                              player.getHungerManager().setSaturationLevelClient(20.0f);
+                              player.getHungerManager().setSaturationLevel(20.0f);
                               player.clearStatusEffects();
                               player.setAir(player.getMaxAir());
                               player.extinguish();
@@ -233,8 +214,8 @@ jobs:
                               player.setInvulnerable(false);
                           }
 
-                          boolean shouldFly = FLY_MODE.contains(player.getUuid()) || player.isCreative();
-                          if (shouldFly) {
+                          boolean allowFly = FLY_MODE.contains(uuid) || player.isCreative();
+                          if (allowFly) {
                               player.getAbilities().allowFlying = true;
                           } else {
                               player.getAbilities().allowFlying = false;
@@ -245,9 +226,11 @@ jobs:
                   });
               }
 
-              private static void registerCommands(CommandDispatcher<ServerCommandSource> dispatcher,
-                                                   CommandRegistryAccess registryAccess,
-                                                   CommandManager.RegistrationEnvironment environment) {
+              private static void registerCommands(
+                      CommandDispatcher<ServerCommandSource> dispatcher,
+                      CommandRegistryAccess registryAccess,
+                      CommandManager.RegistrationEnvironment environment
+              ) {
                   dispatcher.register(
                           CommandManager.literal("givem")
                                   .then(CommandManager.argument("item", StringArgumentType.word())
@@ -302,27 +285,33 @@ jobs:
               }
 
               private static int toggleGod(ServerPlayerEntity player) {
-                  if (GOD_MODE.contains(player.getUuid())) {
-                      GOD_MODE.remove(player.getUuid());
+                  UUID uuid = player.getUuid();
+
+                  if (GOD_MODE.contains(uuid)) {
+                      GOD_MODE.remove(uuid);
                       player.setInvulnerable(false);
                       player.sendMessage(Text.literal("Режим бога: выключен"), false);
                   } else {
-                      GOD_MODE.add(player.getUuid());
+                      GOD_MODE.add(uuid);
                       player.setInvulnerable(true);
                       player.setHealth(player.getMaxHealth());
                       player.getHungerManager().setFoodLevel(20);
-                      player.getHungerManager().setSaturationLevelClient(20.0f);
+                      player.getHungerManager().setSaturationLevel(20.0f);
+                      for (StatusEffectInstance effect : player.getStatusEffects()) {
+                      }
                       player.clearStatusEffects();
                       player.extinguish();
                       player.sendMessage(Text.literal("Режим бога: включен"), false);
                   }
-                  player.sendAbilitiesUpdate();
+
                   return 1;
               }
 
               private static int toggleFly(ServerPlayerEntity player) {
-                  if (FLY_MODE.contains(player.getUuid())) {
-                      FLY_MODE.remove(player.getUuid());
+                  UUID uuid = player.getUuid();
+
+                  if (FLY_MODE.contains(uuid)) {
+                      FLY_MODE.remove(uuid);
                       if (!player.isCreative()) {
                           player.getAbilities().allowFlying = false;
                           player.getAbilities().flying = false;
@@ -330,11 +319,12 @@ jobs:
                       player.sendAbilitiesUpdate();
                       player.sendMessage(Text.literal("Полет: выключен"), false);
                   } else {
-                      FLY_MODE.add(player.getUuid());
+                      FLY_MODE.add(uuid);
                       player.getAbilities().allowFlying = true;
                       player.sendAbilitiesUpdate();
                       player.sendMessage(Text.literal("Полет: включен"), false);
                   }
+
                   return 1;
               }
 
@@ -354,6 +344,7 @@ jobs:
                       player.sendAbilitiesUpdate();
                       player.sendMessage(Text.literal("Creative mode: включен"), false);
                   }
+
                   return 1;
               }
           }
@@ -361,33 +352,13 @@ jobs:
 
           cat > LICENSE <<'EOF'
           MIT License
-
-          Copyright (c) 2025
-
-          Permission is hereby granted, free of charge, to any person obtaining a copy
-          of this software and associated documentation files (the "Software"), to deal
-          in the Software without restriction, including without limitation the rights
-          to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-          copies of the Software, and to permit persons to whom the Software is
-          furnished to do so, subject to the following conditions:
-
-          The above copyright notice and this permission notice shall be included in all
-          copies or substantial portions of the Software.
-
-          THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-          IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-          FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-          AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-          LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-          OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-          SOFTWARE.
           EOF
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
       - name: Generate Gradle Wrapper
-        run: gradle wrapper --gradle-version 8.10
+        run: gradle wrapper --gradle-version 8.8
 
       - name: Build mod
         run: ./gradlew build --stacktrace
@@ -395,5 +366,5 @@ jobs:
       - name: Upload JAR
         uses: actions/upload-artifact@v4
         with:
-          name: fabric-utility-mod-12111
+          name: fabric-utility-mod-1211
           path: build/libs/*.jar
