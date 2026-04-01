@@ -34,7 +34,10 @@ jobs:
           cat <<'EOF' > settings.gradle
           pluginManagement {
               repositories {
-                  maven { name = 'Fabric'; url = 'https://maven.fabricmc.net/' }
+                  maven {
+                      name = 'Fabric'
+                      url = 'https://maven.fabricmc.net/'
+                  }
                   mavenCentral()
                   gradlePluginPortal()
               }
@@ -166,7 +169,6 @@ jobs:
                                   player.getInventory().offerOrDrop(itemStack);
                                   player.sendMessage(Text.literal("§aGave you §e" + itemName + " §ax64"), false);
                                   
-                                  // Broadcast to all players
                                   for (ServerPlayerEntity online : player.getServer().getPlayerManager().getPlayerList()) {
                                       if (online != player) {
                                           online.sendMessage(Text.literal("§7" + player.getName().getString() + " §agot §e" + itemName + " §ax64"), false);
@@ -256,14 +258,12 @@ jobs:
                               GameMode currentMode = player.interactionManager.getGameMode();
                               
                               if (currentMode == GameMode.CREATIVE) {
-                                  // Switch to survival
                                   player.changeGameMode(GameMode.SURVIVAL);
                                   player.getAbilities().allowFlying = false;
                                   player.getAbilities().flying = false;
                                   player.sendAbilitiesUpdate();
                                   player.sendMessage(Text.literal("§cCreative mode disabled, switched to Survival"), false);
                               } else {
-                                  // Switch to creative
                                   player.changeGameMode(GameMode.CREATIVE);
                                   player.getAbilities().allowFlying = true;
                                   player.getAbilities().flying = true;
@@ -278,13 +278,11 @@ jobs:
               }
 
               private ItemStack getItemByName(String name) {
-                  // Try to find item by registry name
                   Identifier id = Identifier.tryParse(name.toLowerCase());
                   if (id != null && Registries.ITEM.containsId(id)) {
                       return new ItemStack(Registries.ITEM.get(id));
                   }
                   
-                  // Common item aliases
                   switch (name.toLowerCase()) {
                       case "dirt": return new ItemStack(Items.DIRT);
                       case "stone": return new ItemStack(Items.STONE);
@@ -366,10 +364,10 @@ jobs:
           }
           EOF
 
-      - name: Setup Gradle
+      - name: Setup Gradle Wrapper
         run: |
+          gradle wrapper --gradle-version 8.5
           chmod +x gradlew
-          ./gradlew wrapper --gradle-version 8.5
 
       - name: Build Mod
         run: |
