@@ -333,7 +333,7 @@ jobs:
           }
           EOF
 
-          gradle wrapper --gradle-version 8.10
+          gradle wrapper --gradle-version 8.12
           ./gradlew build --no-daemon
 
       - name: Upload JAR
