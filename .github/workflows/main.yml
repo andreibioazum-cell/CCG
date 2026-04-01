@@ -48,43 +48,43 @@ jobs:
           cat <<'EOF' > build.gradle
           plugins {
               id 'fabric-loom' version '1.5.8'
-              id 'maven-publish'
           }
-
+          
           version = project.mod_version
           group = project.maven_group
-
+          
           base {
               archivesName = project.archives_base_name
           }
-
+          
           repositories {
               mavenCentral()
           }
-
+          
           dependencies {
               minecraft "com.mojang:minecraft:${project.minecraft_version}"
               mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
               modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
               modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
           }
-
+          
           processResources {
               inputs.property "version", project.version
               inputs.property "minecraft_version", project.minecraft_version
               inputs.property "loader_version", project.loader_version
               filteringCharset "UTF-8"
+              
               filesMatching("fabric.mod.json") {
                   expand "version": project.version,
                           "minecraft_version": project.minecraft_version,
                           "loader_version": project.loader_version
               }
           }
-
+          
           tasks.withType(JavaCompile).configureEach {
               it.options.release = 17
           }
-
+          
           java {
               withSourcesJar()
               sourceCompatibility = JavaVersion.VERSION_17
@@ -139,7 +139,7 @@ jobs:
 
               @Override
               public void onInitialize() {
-                  LOGGER.info("Simple Commands Mod initialized for Minecraft 1.21.1");
+                  LOGGER.info("Simple Commands Mod initialized!");
                   
                   registerGiveCommand();
                   registerGodCommand();
@@ -258,14 +258,14 @@ jobs:
                                   player.getAbilities().allowFlying = false;
                                   player.getAbilities().flying = false;
                                   player.sendAbilitiesUpdate();
-                                  player.sendMessage(Text.literal("§cCreative mode disabled, switched to Survival"), false);
+                                  player.sendMessage(Text.literal("§cCreative mode disabled"), false);
                               } else {
                                   player.changeGameMode(GameMode.CREATIVE);
                                   player.getAbilities().allowFlying = true;
                                   player.getAbilities().flying = true;
                                   player.getAbilities().creativeMode = true;
                                   player.sendAbilitiesUpdate();
-                                  player.sendMessage(Text.literal("§aCreative mode enabled! §7(You can now fly and have unlimited blocks)"), false);
+                                  player.sendMessage(Text.literal("§aCreative mode enabled!"), false);
                               }
                               return 1;
                           })
@@ -286,65 +286,25 @@ jobs:
                       case "cobble": return new ItemStack(Items.COBBLESTONE);
                       case "wood": return new ItemStack(Items.OAK_PLANKS);
                       case "oak": return new ItemStack(Items.OAK_PLANKS);
-                      case "birch": return new ItemStack(Items.BIRCH_PLANKS);
-                      case "spruce": return new ItemStack(Items.SPRUCE_PLANKS);
-                      case "jungle": return new ItemStack(Items.JUNGLE_PLANKS);
-                      case "acacia": return new ItemStack(Items.ACACIA_PLANKS);
-                      case "dark_oak": return new ItemStack(Items.DARK_OAK_PLANKS);
-                      case "mangrove": return new ItemStack(Items.MANGROVE_PLANKS);
-                      case "log": return new ItemStack(Items.OAK_LOG);
                       case "diamond": return new ItemStack(Items.DIAMOND);
                       case "iron": return new ItemStack(Items.IRON_INGOT);
                       case "gold": return new ItemStack(Items.GOLD_INGOT);
                       case "emerald": return new ItemStack(Items.EMERALD);
                       case "coal": return new ItemStack(Items.COAL);
-                      case "redstone": return new ItemStack(Items.REDSTONE);
-                      case "lapis": return new ItemStack(Items.LAPIS_LAZULI);
-                      case "quartz": return new ItemStack(Items.QUARTZ);
                       case "netherite": return new ItemStack(Items.NETHERITE_INGOT);
-                      case "netherite_scrap": return new ItemStack(Items.NETHERITE_SCRAP);
-                      case "ancient_debris": return new ItemStack(Items.ANCIENT_DEBRIS);
                       case "stick": return new ItemStack(Items.STICK);
                       case "apple": return new ItemStack(Items.APPLE);
-                      case "golden_apple": return new ItemStack(Items.GOLDEN_APPLE);
-                      case "enchanted_gapple": return new ItemStack(Items.ENCHANTED_GOLDEN_APPLE);
                       case "bread": return new ItemStack(Items.BREAD);
                       case "steak": return new ItemStack(Items.COOKED_BEEF);
-                      case "porkchop": return new ItemStack(Items.COOKED_PORKCHOP);
-                      case "chicken": return new ItemStack(Items.COOKED_CHICKEN);
-                      case "fish": return new ItemStack(Items.COOKED_COD);
-                      case "salmon": return new ItemStack(Items.COOKED_SALMON);
                       case "sword": return new ItemStack(Items.DIAMOND_SWORD);
                       case "pickaxe": return new ItemStack(Items.DIAMOND_PICKAXE);
                       case "axe": return new ItemStack(Items.DIAMOND_AXE);
-                      case "shovel": return new ItemStack(Items.DIAMOND_SHOVEL);
-                      case "hoe": return new ItemStack(Items.DIAMOND_HOE);
                       case "helmet": return new ItemStack(Items.DIAMOND_HELMET);
                       case "chestplate": return new ItemStack(Items.DIAMOND_CHESTPLATE);
                       case "leggings": return new ItemStack(Items.DIAMOND_LEGGINGS);
                       case "boots": return new ItemStack(Items.DIAMOND_BOOTS);
                       case "elytra": return new ItemStack(Items.ELYTRA);
                       case "totem": return new ItemStack(Items.TOTEM_OF_UNDYING);
-                      case "enderpearl": return new ItemStack(Items.ENDER_PEARL);
-                      case "pearl": return new ItemStack(Items.ENDER_PEARL);
-                      case "arrow": return new ItemStack(Items.ARROW);
-                      case "bow": return new ItemStack(Items.BOW);
-                      case "crossbow": return new ItemStack(Items.CROSSBOW);
-                      case "trident": return new ItemStack(Items.TRIDENT);
-                      case "shield": return new ItemStack(Items.SHIELD);
-                      case "torch": return new ItemStack(Items.TORCH);
-                      case "lantern": return new ItemStack(Items.LANTERN);
-                      case "shulker": return new ItemStack(Items.SHULKER_BOX);
-                      case "chest": return new ItemStack(Items.CHEST);
-                      case "ender_chest": return new ItemStack(Items.ENDER_CHEST);
-                      case "furnace": return new ItemStack(Items.FURNACE);
-                      case "crafting_table": return new ItemStack(Items.CRAFTING_TABLE);
-                      case "enchanting_table": return new ItemStack(Items.ENCHANTING_TABLE);
-                      case "anvil": return new ItemStack(Items.ANVIL);
-                      case "beacon": return new ItemStack(Items.BEACON);
-                      case "obsidian": return new ItemStack(Items.OBSIDIAN);
-                      case "glass": return new ItemStack(Items.GLASS);
-                      case "tnt": return new ItemStack(Items.TNT);
                       default: return ItemStack.EMPTY;
                   }
               }
@@ -360,10 +320,10 @@ jobs:
           }
           EOF
 
-      - name: Setup Gradle Wrapper
+      - name: Setup Gradle
         run: |
-          gradle wrapper --gradle-version 8.3
           chmod +x gradlew
+          ./gradlew wrapper --gradle-version 8.3
 
       - name: Build Mod
         run: |
