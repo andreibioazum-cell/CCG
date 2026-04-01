@@ -14,111 +14,20 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Create Fabric Mod Project
+      - name: Download Fabric Example Mod
         run: |
-          mkdir -p src/main/java/com/enjoer/commands
-          mkdir -p src/main/resources
-          mkdir -p src/main/resources/assets/enjoer/lang
+          # Скачиваем официальный Fabric пример
+          wget https://github.com/FabricMC/fabric-example-mod/archive/refs/heads/1.21.zip
+          unzip 1.21.zip
+          cp -r fabric-example-mod-1.21/* .
+          rm -rf fabric-example-mod-1.21
 
-          cat <<'EOF' > gradle.properties
-          org.gradle.jvmargs=-Xmx2G
-          minecraft_version=1.21.1
-          yarn_mappings=1.21.1+build.3
-          loader_version=0.15.11
-          fabric_version=0.96.0+1.21.1
-          mod_version=1.0.0
-          maven_group=com.enjoer
-          archives_base_name=enjoer-commands
-          EOF
+      - name: Create Command Files
+        run: |
+          # Создаем наши команды
+          cat <<'EOF' > src/main/java/com/example/commands/SimpleCommands.java
+          package com.example.commands;
 
-          cat <<'EOF' > settings.gradle
-          pluginManagement {
-              repositories {
-                  maven {
-                      name = 'Fabric'
-                      url = 'https://maven.fabricmc.net/'
-                  }
-                  mavenCentral()
-                  gradlePluginPortal()
-              }
-          }
-          rootProject.name = 'EnjoerCommands'
-          EOF
-
-          cat <<'EOF' > build.gradle
-          plugins {
-              id 'fabric-loom' version '1.5.8'
-          }
-          
-          version = project.mod_version
-          group = project.maven_group
-          
-          base {
-              archivesName = project.archives_base_name
-          }
-          
-          repositories {
-              mavenCentral()
-          }
-          
-          dependencies {
-              minecraft "com.mojang:minecraft:${project.minecraft_version}"
-              mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
-              modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-              modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-          }
-          
-          processResources {
-              inputs.property "version", project.version
-              inputs.property "minecraft_version", project.minecraft_version
-              inputs.property "loader_version", project.loader_version
-              filteringCharset "UTF-8"
-              
-              filesMatching("fabric.mod.json") {
-                  expand "version": project.version,
-                          "minecraft_version": project.minecraft_version,
-                          "loader_version": project.loader_version
-              }
-          }
-          
-          tasks.withType(JavaCompile).configureEach {
-              it.options.release = 17
-          }
-          
-          java {
-              withSourcesJar()
-              sourceCompatibility = JavaVersion.VERSION_17
-              targetCompatibility = JavaVersion.VERSION_17
-          }
-          EOF
-
-          cat <<'EOF' > src/main/resources/fabric.mod.json
-          {
-            "schemaVersion": 1,
-            "id": "enjoer",
-            "version": "${version}",
-            "name": "Simple Commands",
-            "description": "Basic commands: /givem, /godm, /fly, /crm",
-            "authors": ["Enjoer"],
-            "license": "MIT",
-            "environment": "*",
-            "entrypoints": {
-              "main": [
-                "com.enjoer.commands.SimpleCommandsMod"
-              ]
-            },
-            "depends": {
-              "fabricloader": ">=${loader_version}",
-              "fabric-api": "*",
-              "minecraft": "${minecraft_version}"
-            }
-          }
-          EOF
-
-          cat <<'EOF' > src/main/java/com/enjoer/commands/SimpleCommandsMod.java
-          package com.enjoer.commands;
-
-          import net.fabricmc.api.ModInitializer;
           import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
           import net.minecraft.server.command.CommandManager;
           import net.minecraft.server.network.ServerPlayerEntity;
@@ -130,24 +39,11 @@ jobs:
           import net.minecraft.world.GameMode;
           import com.mojang.brigadier.arguments.StringArgumentType;
           import com.mojang.brigadier.arguments.IntegerArgumentType;
-          import org.slf4j.Logger;
-          import org.slf4j.LoggerFactory;
 
-          public class SimpleCommandsMod implements ModInitializer {
-              public static final String MOD_ID = "enjoer";
-              public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
-
-              @Override
-              public void onInitialize() {
-                  LOGGER.info("Simple Commands Mod initialized!");
-                  
-                  registerGiveCommand();
-                  registerGodCommand();
-                  registerFlyCommand();
-                  registerCreativeCommand();
-              }
-
-              private void registerGiveCommand() {
+          public class SimpleCommands {
+              
+              public static void register() {
+                  // /givem command
                   CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
                       dispatcher.register(CommandManager.literal("givem")
                           .then(CommandManager.argument("item", StringArgumentType.word())
@@ -199,9 +95,8 @@ jobs:
                           )
                       );
                   });
-              }
-
-              private void registerGodCommand() {
+                  
+                  // /godm command
                   CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
                       dispatcher.register(CommandManager.literal("godm")
                           .executes(context -> {
@@ -222,9 +117,8 @@ jobs:
                           })
                       );
                   });
-              }
-
-              private void registerFlyCommand() {
+                  
+                  // /fly command
                   CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
                       dispatcher.register(CommandManager.literal("fly")
                           .executes(context -> {
@@ -244,9 +138,8 @@ jobs:
                           })
                       );
                   });
-              }
-
-              private void registerCreativeCommand() {
+                  
+                  // /crm command
                   CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
                       dispatcher.register(CommandManager.literal("crm")
                           .executes(context -> {
@@ -272,8 +165,8 @@ jobs:
                       );
                   });
               }
-
-              private ItemStack getItemByName(String name) {
+              
+              private static ItemStack getItemByName(String name) {
                   Identifier id = Identifier.tryParse(name.toLowerCase());
                   if (id != null && Registries.ITEM.containsId(id)) {
                       return new ItemStack(Registries.ITEM.get(id));
@@ -283,9 +176,6 @@ jobs:
                       case "dirt": return new ItemStack(Items.DIRT);
                       case "stone": return new ItemStack(Items.STONE);
                       case "cobblestone": return new ItemStack(Items.COBBLESTONE);
-                      case "cobble": return new ItemStack(Items.COBBLESTONE);
-                      case "wood": return new ItemStack(Items.OAK_PLANKS);
-                      case "oak": return new ItemStack(Items.OAK_PLANKS);
                       case "diamond": return new ItemStack(Items.DIAMOND);
                       case "iron": return new ItemStack(Items.IRON_INGOT);
                       case "gold": return new ItemStack(Items.GOLD_INGOT);
@@ -299,10 +189,6 @@ jobs:
                       case "sword": return new ItemStack(Items.DIAMOND_SWORD);
                       case "pickaxe": return new ItemStack(Items.DIAMOND_PICKAXE);
                       case "axe": return new ItemStack(Items.DIAMOND_AXE);
-                      case "helmet": return new ItemStack(Items.DIAMOND_HELMET);
-                      case "chestplate": return new ItemStack(Items.DIAMOND_CHESTPLATE);
-                      case "leggings": return new ItemStack(Items.DIAMOND_LEGGINGS);
-                      case "boots": return new ItemStack(Items.DIAMOND_BOOTS);
                       case "elytra": return new ItemStack(Items.ELYTRA);
                       case "totem": return new ItemStack(Items.TOTEM_OF_UNDYING);
                       default: return ItemStack.EMPTY;
@@ -311,22 +197,32 @@ jobs:
           }
           EOF
 
-          cat <<'EOF' > src/main/resources/assets/enjoer/lang/en_us.json
-          {
-            "enjoer.commands.give": "Give items to player",
-            "enjoer.commands.god": "Toggle god mode",
-            "enjoer.commands.fly": "Toggle flight",
-            "enjoer.commands.creative": "Toggle creative mode"
+      - name: Modify Main Class
+        run: |
+          # Изменяем главный класс для регистрации команд
+          cat <<'EOF' > src/main/java/com/example/ExampleMod.java
+          package com.example;
+
+          import com.example.commands.SimpleCommands;
+          import net.fabricmc.api.ModInitializer;
+          import org.slf4j.Logger;
+          import org.slf4j.LoggerFactory;
+
+          public class ExampleMod implements ModInitializer {
+              public static final String MOD_ID = "example";
+              public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+
+              @Override
+              public void onInitialize() {
+                  LOGGER.info("Simple Commands Mod initialized!");
+                  SimpleCommands.register();
+              }
           }
           EOF
 
-      - name: Setup Gradle
-        run: |
-          chmod +x gradlew
-          ./gradlew wrapper --gradle-version 8.3
-
       - name: Build Mod
         run: |
+          chmod +x gradlew
           ./gradlew build
 
       - name: Upload Artifact
