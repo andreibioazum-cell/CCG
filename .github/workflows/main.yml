@@ -1,4 +1,4 @@
-name: Pocket_Code_Ultra_RU_v2
+name: Pocket_Code_Ultra_RU_v3
 on: [push, workflow_dispatch]
 
 jobs:
@@ -16,7 +16,7 @@ jobs:
 
       - name: Create Project
         run: |
-          mkdir -p app/src/main/java/com/pocketultra/ruv2
+          mkdir -p app/src/main/java/com/pocketultra/ruv3
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
           mkdir -p app/src/main/res/drawable
@@ -80,6 +80,13 @@ jobs:
           <shape xmlns:android="http://schemas.android.com/apk/res/android">
             <solid android:color="#9966FF"/>
             <corners android:radius="14dp"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/btn_gray.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android">
+            <solid android:color="#5F7080"/>
+            <corners android:radius="12dp"/>
           </shape>
           EOF
 
@@ -448,8 +455,8 @@ jobs:
           </FrameLayout>
           LAYOUT
 
-          cat <<EOF > app/src/main/java/com/pocketultra/ruv2/BlockItem.java
-          package com.pocketultra.ruv2;
+          cat <<EOF > app/src/main/java/com/pocketultra/ruv3/BlockItem.java
+          package com.pocketultra.ruv3;
 
           public class BlockItem {
               public String type;
@@ -466,8 +473,8 @@ jobs:
           }
           EOF
 
-          cat <<EOF > app/src/main/java/com/pocketultra/ruv2/TextureItem.java
-          package com.pocketultra.ruv2;
+          cat <<EOF > app/src/main/java/com/pocketultra/ruv3/TextureItem.java
+          package com.pocketultra.ruv3;
 
           public class TextureItem {
               public String id = "";
@@ -476,10 +483,8 @@ jobs:
           }
           EOF
 
-          cat <<EOF > app/src/main/java/com/pocketultra/ruv2/ObjectItem.java
-          package com.pocketultra.ruv2;
-
-          import java.util.ArrayList;
+          cat <<EOF > app/src/main/java/com/pocketultra/ruv3/ObjectItem.java
+          package com.pocketultra.ruv3;
 
           public class ObjectItem {
               public String name = "Объект";
@@ -504,20 +509,18 @@ jobs:
           }
           EOF
 
-          cat <<EOF > app/src/main/java/com/pocketultra/ruv2/SceneItem.java
-          package com.pocketultra.ruv2;
-
-          import java.util.ArrayList;
+          cat <<EOF > app/src/main/java/com/pocketultra/ruv3/SceneItem.java
+          package com.pocketultra.ruv3;
 
           public class SceneItem {
               public String name = "Сцена";
               public String bgColor = "#D8F0FF";
-              public ArrayList<ObjectItem> objects = new ArrayList<>();
+              public java.util.ArrayList<ObjectItem> objects = new java.util.ArrayList<>();
           }
           EOF
 
-          cat <<EOF > app/src/main/java/com/pocketultra/ruv2/VariableItem.java
-          package com.pocketultra.ruv2;
+          cat <<EOF > app/src/main/java/com/pocketultra/ruv3/VariableItem.java
+          package com.pocketultra.ruv3;
 
           public class VariableItem {
               public String name = "переменная";
@@ -525,33 +528,29 @@ jobs:
           }
           EOF
 
-          cat <<EOF > app/src/main/java/com/pocketultra/ruv2/ListItemModel.java
-          package com.pocketultra.ruv2;
-
-          import java.util.ArrayList;
+          cat <<EOF > app/src/main/java/com/pocketultra/ruv3/ListItemModel.java
+          package com.pocketultra.ruv3;
 
           public class ListItemModel {
               public String name = "список";
-              public ArrayList<String> items = new ArrayList<>();
+              public java.util.ArrayList<String> items = new java.util.ArrayList<>();
           }
           EOF
 
-          cat <<EOF > app/src/main/java/com/pocketultra/ruv2/ProjectItem.java
-          package com.pocketultra.ruv2;
-
-          import java.util.ArrayList;
+          cat <<EOF > app/src/main/java/com/pocketultra/ruv3/ProjectItem.java
+          package com.pocketultra.ruv3;
 
           public class ProjectItem {
               public String name = "Проект";
-              public ArrayList<SceneItem> scenes = new ArrayList<>();
-              public ArrayList<TextureItem> textures = new ArrayList<>();
-              public ArrayList<VariableItem> variables = new ArrayList<>();
-              public ArrayList<ListItemModel> lists = new ArrayList<>();
+              public java.util.ArrayList<SceneItem> scenes = new java.util.ArrayList<>();
+              public java.util.ArrayList<TextureItem> textures = new java.util.ArrayList<>();
+              public java.util.ArrayList<VariableItem> variables = new java.util.ArrayList<>();
+              public java.util.ArrayList<ListItemModel> lists = new java.util.ArrayList<>();
           }
           EOF
 
-          cat <<'FORMULA' > app/src/main/java/com/pocketultra/ruv2/FormulaEngine.java
-          package com.pocketultra.ruv2;
+          cat <<'FORMULA' > app/src/main/java/com/pocketultra/ruv3/FormulaEngine.java
+          package com.pocketultra.ruv3;
 
           public class FormulaEngine {
               public interface Host {
@@ -563,10 +562,11 @@ jobs:
               }
 
               public static float eval(Host host, String expr){
-                  if(expr == null || expr.trim().isEmpty()) return 0f;
+                  if(expr == null) return 0f;
                   expr = expr.trim();
+                  if(expr.isEmpty()) return 0f;
 
-                  try { return Float.parseFloat(expr); } catch(Exception ignored){}
+                  if(isNumber(expr)) return Float.parseFloat(expr);
 
                   if(expr.equalsIgnoreCase("X")) return host.object() != null ? host.object().x : 0f;
                   if(expr.equalsIgnoreCase("Y")) return host.object() != null ? host.object().y : 0f;
@@ -583,48 +583,46 @@ jobs:
                       }
                   }
 
-                  if(expr.startsWith("sin(") && expr.endsWith(")")){
-                      return (float)Math.sin(Math.toRadians(eval(host, inner(expr))));
+                  if(expr.startsWith("(") && expr.endsWith(")") && balanced(expr)){
+                      return eval(host, expr.substring(1, expr.length()-1));
                   }
-                  if(expr.startsWith("cos(") && expr.endsWith(")")){
-                      return (float)Math.cos(Math.toRadians(eval(host, inner(expr))));
+
+                  if(expr.startsWith("-") && isUnaryMinus(expr)){
+                      return -eval(host, expr.substring(1));
                   }
-                  if(expr.startsWith("tan(") && expr.endsWith(")")){
-                      return (float)Math.tan(Math.toRadians(eval(host, inner(expr))));
-                  }
-                  if(expr.startsWith("atan(") && expr.endsWith(")")){
-                      return (float)Math.toDegrees(Math.atan(eval(host, inner(expr))));
-                  }
-                  if(expr.startsWith("sqrt(") && expr.endsWith(")")){
-                      return (float)Math.sqrt(Math.max(0f, eval(host, inner(expr))));
-                  }
-                  if(expr.startsWith("abs(") && expr.endsWith(")")){
-                      return Math.abs(eval(host, inner(expr)));
-                  }
+
+                  if(expr.startsWith("sin(") && expr.endsWith(")")) return (float)Math.sin(Math.toRadians(eval(host, inner(expr))));
+                  if(expr.startsWith("cos(") && expr.endsWith(")")) return (float)Math.cos(Math.toRadians(eval(host, inner(expr))));
+                  if(expr.startsWith("tan(") && expr.endsWith(")")) return (float)Math.tan(Math.toRadians(eval(host, inner(expr))));
+                  if(expr.startsWith("atan(") && expr.endsWith(")")) return (float)Math.toDegrees(Math.atan(eval(host, inner(expr))));
+                  if(expr.startsWith("sqrt(") && expr.endsWith(")")) return (float)Math.sqrt(Math.max(0f, eval(host, inner(expr))));
+                  if(expr.startsWith("abs(") && expr.endsWith(")")) return Math.abs(eval(host, inner(expr)));
                   if(expr.startsWith("random(") && expr.endsWith(")")){
-                      String body = inner(expr);
-                      String[] a = body.split(",");
+                      String[] a = splitTop(inner(expr), ',');
                       if(a.length == 2){
-                          float x = eval(host, a[0].trim());
-                          float y = eval(host, a[1].trim());
-                          float mn = Math.min(x,y), mx = Math.max(x,y);
+                          float x = eval(host, a[0]);
+                          float y = eval(host, a[1]);
+                          float mn = Math.min(x, y), mx = Math.max(x, y);
                           return mn + (float)Math.random() * (mx - mn);
                       }
                   }
 
-                  try{
-                      int plus = expr.lastIndexOf('+');
-                      if(plus > 0){
-                          return eval(host, expr.substring(0, plus).trim()) + eval(host, expr.substring(plus+1).trim());
-                      }
-                  }catch(Exception ignored){}
+                  int idx = findTopLevelOp(expr, '+', '-');
+                  if(idx > 0){
+                      char op = expr.charAt(idx);
+                      float a = eval(host, expr.substring(0, idx));
+                      float b = eval(host, expr.substring(idx+1));
+                      return op == '+' ? a + b : a - b;
+                  }
 
-                  try{
-                      int minus = expr.lastIndexOf('-');
-                      if(minus > 0){
-                          return eval(host, expr.substring(0, minus).trim()) - eval(host, expr.substring(minus+1).trim());
-                      }
-                  }catch(Exception ignored){}
+                  idx = findTopLevelOp(expr, '*', '/');
+                  if(idx > 0){
+                      char op = expr.charAt(idx);
+                      float a = eval(host, expr.substring(0, idx));
+                      float b = eval(host, expr.substring(idx+1));
+                      if(op == '*') return a * b;
+                      return b == 0f ? 0f : a / b;
+                  }
 
                   return 0f;
               }
@@ -644,14 +642,66 @@ jobs:
                   return expr;
               }
 
+              private static boolean isNumber(String s){
+                  try { Float.parseFloat(s); return true; } catch(Exception e){ return false; }
+              }
+
+              private static boolean balanced(String s){
+                  int d=0;
+                  for(int i=0;i<s.length();i++){
+                      char c=s.charAt(i);
+                      if(c=='(') d++;
+                      else if(c==')') d--;
+                      if(d<0) return false;
+                  }
+                  return d==0;
+              }
+
+              private static boolean isUnaryMinus(String s){
+                  return s.startsWith("-") && s.length() > 1;
+              }
+
               private static String inner(String s){
                   return s.substring(s.indexOf('(')+1, s.lastIndexOf(')')).trim();
+              }
+
+              private static int findTopLevelOp(String s, char op1, char op2){
+                  int depth = 0;
+                  for(int i=s.length()-1;i>=0;i--){
+                      char c = s.charAt(i);
+                      if(c==')') depth++;
+                      else if(c=='(') depth--;
+                      else if(depth==0 && (c==op1 || c==op2)){
+                          if(i==0) continue;
+                          char prev = s.charAt(i-1);
+                          if(c=='-' && (prev=='+'||prev=='-'||prev=='*'||prev=='/'||prev=='(')) continue;
+                          return i;
+                      }
+                  }
+                  return -1;
+              }
+
+              private static String[] splitTop(String s, char sep){
+                  int depth=0;
+                  java.util.ArrayList<String> out=new java.util.ArrayList<>();
+                  StringBuilder cur=new StringBuilder();
+                  for(int i=0;i<s.length();i++){
+                      char c=s.charAt(i);
+                      if(c=='(') depth++;
+                      else if(c==')') depth--;
+                      if(c==sep && depth==0){
+                          out.add(cur.toString().trim());
+                          cur.setLength(0);
+                      }else cur.append(c);
+                  }
+                  out.add(cur.toString().trim());
+                  return out.toArray(new String[0]);
               }
           }
           FORMULA
 
-          cat <<'STORE' > app/src/main/java/com/pocketultra/ruv2/ProjectStore.java
-          package com.pocketultra.ruv2;
+          cat <<'STORE' > app/src/main/java/com/pocketultra/ruv3/ProjectStore.java
+          package com.pocketultra.ruv3;
 
           import android.content.Context;
           import org.json.JSONArray;
@@ -661,7 +711,7 @@ jobs:
 
           public class ProjectStore {
               private static File file(Context c){
-                  return new File(c.getFilesDir(), "projects_ultra_ru_v2.json");
+                  return new File(c.getFilesDir(), "projects_ultra_ru_v3.json");
               }
 
               public static ArrayList<ProjectItem> load(Context c){
@@ -766,7 +816,6 @@ jobs:
                                   pr.scenes.add(sc);
                               }
                           }
-
                           out.add(pr);
                       }
                   }catch(Exception ignored){}
@@ -862,8 +911,8 @@ jobs:
           }
           STORE
 
-          cat <<'RUNTIME' > app/src/main/java/com/pocketultra/ruv2/ScriptRuntime.java
-          package com.pocketultra.ruv2;
+          cat <<'RUNTIME' > app/src/main/java/com/pocketultra/ruv3/ScriptRuntime.java
+          package com.pocketultra.ruv3;
 
           import android.os.Handler;
           import android.os.Looper;
@@ -881,7 +930,6 @@ jobs:
               public static void runScene(Host host){
                   SceneItem scene = host.scene();
                   if(scene == null) return;
-
                   for(ObjectItem o : scene.objects){
                       runStart(host, o);
                   }
@@ -901,14 +949,20 @@ jobs:
 
               private static void runStart(Host host, ObjectItem obj){
                   ArrayList<ArrayList<BlockItem>> scripts = splitScripts(obj.blocks);
-                  boolean found = false;
+                  boolean hasHeaders = false;
+                  for(ArrayList<BlockItem> s : scripts){
+                      if(!s.isEmpty() && s.get(0).type.startsWith("event_")) hasHeaders = true;
+                  }
+
+                  boolean foundStart = false;
                   for(ArrayList<BlockItem> script : scripts){
                       if(!script.isEmpty() && "event_start".equals(script.get(0).type)){
-                          found = true;
+                          foundStart = true;
                           execute(host, obj, script, 1);
                       }
                   }
-                  if(!found){
+
+                  if(!hasHeaders && !foundStart){
                       ArrayList<BlockItem> linear = new ArrayList<>();
                       for(BlockItem b : obj.blocks){
                           if(!b.type.startsWith("event_")) linear.add(b);
@@ -1089,7 +1143,7 @@ jobs:
                               break;
                           }
                           case "goto_scene": {
-                              final String sceneName = FormulaEngine.text(hostFor(host, obj), b.arg1);
+                              final String sceneName = FormulaEngine.text(hostFor(host, obj), b.arg1).replace("\"", "");
                               h.postDelayed(() -> {
                                   if(host.stopped()) return;
                                   host.goToSceneByName(sceneName);
@@ -1139,8 +1193,8 @@ jobs:
           }
           RUNTIME
 
-          cat <<'MAINACT' > app/src/main/java/com/pocketultra/ruv2/MainActivity.java
-          package com.pocketultra.ruv2;
+          cat <<'MAINACT' > app/src/main/java/com/pocketultra/ruv3/MainActivity.java
+          package com.pocketultra.ruv3;
 
           import android.annotation.SuppressLint;
           import android.app.AlertDialog;
@@ -1150,13 +1204,16 @@ jobs:
           import android.graphics.drawable.GradientDrawable;
           import android.net.Uri;
           import android.os.Bundle;
+          import android.text.InputType;
           import android.view.MotionEvent;
           import android.view.View;
           import android.widget.Button;
           import android.widget.EditText;
           import android.widget.FrameLayout;
+          import android.widget.GridLayout;
           import android.widget.ImageView;
           import android.widget.LinearLayout;
+          import android.widget.ScrollView;
           import android.widget.TextView;
           import android.widget.Toast;
           import androidx.activity.result.ActivityResultLauncher;
@@ -2040,27 +2097,16 @@ jobs:
 
               private void showFormulaHelp(){
                   String msg =
-                      "Формулы:\n\n" +
-                      "10\n" +
-                      "X\n" +
-                      "Y\n" +
-                      "касаниеX\n" +
-                      "касаниеY\n" +
-                      "колКасаний\n" +
-                      "мояПеременная\n" +
-                      "X+10\n" +
-                      "Y-5\n" +
-                      "sin(30)\n" +
-                      "cos(60)\n" +
-                      "tan(45)\n" +
-                      "atan(1)\n" +
-                      "sqrt(25)\n" +
-                      "abs(-5)\n" +
-                      "random(1,10)\n\n" +
-                      "Текст:\n" +
-                      "\"Привет\"";
+                      "Поддерживается:\n\n" +
+                      "Числа: 10, -1, 3.14\n" +
+                      "X, Y\n" +
+                      "касаниеX, касаниеY, колКасаний\n" +
+                      "переменные\n" +
+                      "X+10, Y-5, X*2, Y/2\n" +
+                      "sin(), cos(), tan(), atan(), sqrt(), abs(), random(a,b)\n" +
+                      "Текст: \"Привет\"";
                   new AlertDialog.Builder(this)
-                      .setTitle("Редактор формул")
+                      .setTitle("Формулы")
                       .setMessage(msg)
                       .setPositiveButton("ОК", null)
                       .show();
@@ -2089,27 +2135,27 @@ jobs:
                           .setItems(items, (d,w) -> {
                               if(w == 0) insertBlockDialog(new BlockItem("event_start", "Когда запущено", "", ""));
                               else if(w == 1) insertBlockDialog(new BlockItem("event_tap", "Когда объект нажат", "", ""));
-                              else askOneArg("Имя сигнала", "сигнал1", v -> insertBlockDialog(new BlockItem("event_signal", "Когда получен сигнал", v, "")));
+                              else openFormulaEditor("Имя сигнала", "сигнал1", false, v -> insertBlockDialog(new BlockItem("event_signal", "Когда получен сигнал", v, "")));
                           }).show();
                   } else if("motion".equals(cat)){
                       String[] items = {"Двигаться по X", "Двигаться по Y", "Перейти в X Y", "Перейти в сцену"};
                       new AlertDialog.Builder(this)
                           .setTitle("Движение")
                           .setItems(items, (d,w) -> {
-                              if(w == 0) askOneArg("Формула X", "10", v -> insertBlockDialog(new BlockItem("move_x", "Двигаться по X", v, "")));
-                              else if(w == 1) askOneArg("Формула Y", "10", v -> insertBlockDialog(new BlockItem("move_y", "Двигаться по Y", v, "")));
-                              else if(w == 2) askTwoArg("Перейти в X Y", "X+10", "Y", (a,b) -> insertBlockDialog(new BlockItem("go_xy", "Перейти в", a, b)));
-                              else askOneArg("Имя сцены", "\"Сцена 2\"", v -> insertBlockDialog(new BlockItem("goto_scene", "Перейти в сцену", v, "")));
+                              if(w == 0) openFormulaEditor("Формула X", "10", true, v -> insertBlockDialog(new BlockItem("move_x", "Двигаться по X", v, "")));
+                              else if(w == 1) openFormulaEditor("Формула Y", "10", true, v -> insertBlockDialog(new BlockItem("move_y", "Двигаться по Y", v, "")));
+                              else openTwoFormulaEditor("Перейти в X Y", "X+10", "Y", true, (a,b) -> insertBlockDialog(new BlockItem("go_xy", "Перейти в", a, b)));
+                              else openFormulaEditor("Имя сцены", "\"Сцена 2\"", false, v -> insertBlockDialog(new BlockItem("goto_scene", "Перейти в сцену", v, "")));
                           }).show();
                   } else if("looks".equals(cat)){
                       String[] items = {"Сказать", "Скрыть", "Показать", "Текст объекта"};
                       new AlertDialog.Builder(this)
                           .setTitle("Внешность")
                           .setItems(items, (d,w) -> {
-                              if(w == 0) askOneArg("Текст / формула", "\"Привет\"", v -> insertBlockDialog(new BlockItem("say", "Сказать", v, "")));
+                              if(w == 0) openFormulaEditor("Текст", "\"Привет\"", false, v -> insertBlockDialog(new BlockItem("say", "Сказать", v, "")));
                               else if(w == 1) insertBlockDialog(new BlockItem("hide", "Скрыть", "", ""));
                               else if(w == 2) insertBlockDialog(new BlockItem("show", "Показать", "", ""));
-                              else askOneArg("Новый текст", "\"Текст\"", v -> {
+                              else openFormulaEditor("Текст", "\"Текст\"", false, v -> {
                                   ObjectItem o = currentObject();
                                   if(o != null){
                                       o.spriteType = "text";
@@ -2124,7 +2170,7 @@ jobs:
                       new AlertDialog.Builder(this)
                           .setTitle("Управление")
                           .setItems(items, (d,w) -> {
-                              if(w == 0) askOneArg("Секунды", "1", v -> insertBlockDialog(new BlockItem("wait", "Ждать", v, "")));
+                              if(w == 0) openFormulaEditor("Секунды", "1", true, v -> insertBlockDialog(new BlockItem("wait", "Ждать", v, "")));
                               else if(w == 1) insertBlockDialog(new BlockItem("forever", "Вечно", "", ""));
                               else insertBlockDialog(new BlockItem("end_forever", "Конец вечно", "", ""));
                           }).show();
@@ -2133,15 +2179,15 @@ jobs:
                       new AlertDialog.Builder(this)
                           .setTitle("Данные")
                           .setItems(items, (d,w) -> {
-                              if(w == 0) chooseVariable((name) -> askOneArg("Значение / формула", "10", val -> insertBlockDialog(new BlockItem("set_var", "Установить переменную", name, val))));
-                              else if(w == 1) chooseVariable((name) -> askOneArg("Прибавить / формула", "1", val -> insertBlockDialog(new BlockItem("change_var", "Изменить переменную", name, val))));
-                              else chooseList((name) -> askOneArg("Значение", "\"элемент\"", val -> insertBlockDialog(new BlockItem("list_add", "Добавить в список", name, val))));
+                              if(w == 0) chooseVariable((name) -> openFormulaEditor("Значение", "10", true, val -> insertBlockDialog(new BlockItem("set_var", "Установить переменную", name, val))));
+                              else if(w == 1) chooseVariable((name) -> openFormulaEditor("Изменить на", "-1", true, val -> insertBlockDialog(new BlockItem("change_var", "Изменить переменную", name, val))));
+                              else chooseList((name) -> openFormulaEditor("Значение", "\"элемент\"", false, val -> insertBlockDialog(new BlockItem("list_add", "Добавить в список", name, val))));
                           }).show();
                   } else if("signal".equals(cat)){
                       String[] items = {"Послать сигнал"};
                       new AlertDialog.Builder(this)
                           .setTitle("Сигналы")
-                          .setItems(items, (d,w) -> askOneArg("Имя сигнала", "сигнал1", v -> insertBlockDialog(new BlockItem("signal", "Послать сигнал", v, ""))))
+                          .setItems(items, (d,w) -> openFormulaEditor("Имя сигнала", "сигнал1", false, v -> insertBlockDialog(new BlockItem("signal", "Послать сигнал", v, ""))))
                           .show();
                   }
               }
@@ -2178,35 +2224,122 @@ jobs:
                       .show();
               }
 
-              private void askOneArg(String title, String def, OneArg cb){
-                  EditText input = new EditText(this);
-                  input.setText(def);
-
-                  new AlertDialog.Builder(this)
-                      .setTitle(title)
-                      .setView(input)
-                      .setPositiveButton("ОК", (d,w) -> cb.ok(input.getText().toString()))
-                      .setNeutralButton("Переменные", (d,w) -> chooseVariable(cb::ok))
-                      .setNegativeButton("Отмена", null)
-                      .show();
-              }
-
-              private void askTwoArg(String title, String d1, String d2, TwoArg cb){
+              private void openTwoFormulaEditor(String title, String def1, String def2, boolean numeric, TwoArg cb){
                   LinearLayout root = new LinearLayout(this);
                   root.setOrientation(LinearLayout.VERTICAL);
-                  EditText a = new EditText(this);
-                  EditText b = new EditText(this);
-                  a.setText(d1);
-                  b.setText(d2);
-                  a.setHint("X");
-                  b.setHint("Y");
-                  root.addView(a);
-                  root.addView(b);
+
+                  TextView t1 = new TextView(this);
+                  t1.setText("Arg1");
+                  TextView v1 = new TextView(this);
+                  v1.setText(def1);
+                  v1.setTextSize(18f);
+                  v1.setPadding(dp(10), dp(10), dp(10), dp(10));
+                  v1.setBackgroundResource(R.drawable.bg_panel);
+
+                  TextView t2 = new TextView(this);
+                  t2.setText("Arg2");
+                  TextView v2 = new TextView(this);
+                  v2.setText(def2);
+                  v2.setTextSize(18f);
+                  v2.setPadding(dp(10), dp(10), dp(10), dp(10));
+                  v2.setBackgroundResource(R.drawable.bg_panel);
+
+                  root.addView(t1);
+                  root.addView(v1);
+                  root.addView(t2);
+                  root.addView(v2);
+
+                  final String[] a1 = {def1};
+                  final String[] a2 = {def2};
+
+                  v1.setOnClickListener(v -> openFormulaEditor("Arg1", a1[0], numeric, val -> { a1[0] = val; v1.setText(val); }));
+                  v2.setOnClickListener(v -> openFormulaEditor("Arg2", a2[0], numeric, val -> { a2[0] = val; v2.setText(val); }));
 
                   new AlertDialog.Builder(this)
                       .setTitle(title)
                       .setView(root)
-                      .setPositiveButton("ОК", (d,w) -> cb.ok(a.getText().toString(), b.getText().toString()))
+                      .setPositiveButton("ОК", (d,w) -> cb.ok(a1[0], a2[0]))
+                      .setNegativeButton("Отмена", null)
+                      .show();
+              }
+
+              private void openFormulaEditor(String title, String def, boolean numericMode, OneArg cb){
+                  LinearLayout root = new LinearLayout(this);
+                  root.setOrientation(LinearLayout.VERTICAL);
+                  root.setPadding(dp(8), dp(8), dp(8), dp(8));
+
+                  TextView display = new TextView(this);
+                  display.setText(def);
+                  display.setTextSize(20f);
+                  display.setTextColor(Color.BLACK);
+                  display.setPadding(dp(12), dp(12), dp(12), dp(12));
+                  display.setBackgroundResource(R.drawable.bg_panel);
+                  root.addView(display);
+
+                  GridLayout grid = new GridLayout(this);
+                  grid.setColumnCount(4);
+
+                  String[] keys = numericMode
+                      ? new String[]{"7","8","9","+","4","5","6","-","1","2","3","*","0",".","(",")","X","Y","/","⌫","sin(","cos(","tan(","atan(","sqrt(","abs(","random(","касаниеX","касаниеY","колКасаний","Перем.","Очистить"}
+                      : new String[]{"Текст","X","Y","касаниеX","касаниеY","колКасаний","Перем.","sin(","cos(","tan(","atan(","sqrt(","abs(","random(","+","-","*","/","(",")","⌫","Очистить"};
+
+                  final StringBuilder sb = new StringBuilder(def == null ? "" : def);
+
+                  for(String k : keys){
+                      Button b = new Button(this);
+                      b.setText(k);
+                      b.setTextColor(Color.WHITE);
+                      b.setAllCaps(false);
+                      b.setBackgroundResource(R.drawable.btn_gray);
+
+                      GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
+                      lp.width = 0;
+                      lp.height = dp(48);
+                      lp.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
+                      lp.setMargins(dp(4), dp(4), dp(4), dp(4));
+                      b.setLayoutParams(lp);
+
+                      b.setOnClickListener(v -> {
+                          if("⌫".equals(k)){
+                              if(sb.length() > 0) sb.deleteCharAt(sb.length()-1);
+                          } else if("Очистить".equals(k)){
+                              sb.setLength(0);
+                          } else if("Перем.".equals(k)){
+                              chooseVariable(name -> {
+                                  sb.append(name);
+                                  display.setText(sb.toString());
+                              });
+                              return;
+                          } else if("Текст".equals(k)){
+                              EditText input = new EditText(this);
+                              input.setInputType(InputType.TYPE_CLASS_TEXT);
+                              new AlertDialog.Builder(this)
+                                  .setTitle("Текст")
+                                  .setView(input)
+                                  .setPositiveButton("ОК", (dd,ww) -> {
+                                      sb.append("\"").append(input.getText().toString()).append("\"");
+                                      display.setText(sb.toString());
+                                  })
+                                  .setNegativeButton("Отмена", null)
+                                  .show();
+                              return;
+                          } else {
+                              sb.append(k);
+                          }
+                          display.setText(sb.toString());
+                      });
+
+                      grid.addView(b);
+                  }
+
+                  ScrollView sv = new ScrollView(this);
+                  sv.addView(grid);
+                  root.addView(sv);
+
+                  new AlertDialog.Builder(this)
+                      .setTitle(title)
+                      .setView(root)
+                      .setPositiveButton("ОК", (d,w) -> cb.ok(sb.toString()))
                       .setNegativeButton("Отмена", null)
                       .show();
               }
@@ -2246,13 +2379,13 @@ jobs:
                               saveAll();
                               renderBlocks();
                           } else if(w == 1){
-                              askOneArg("Arg1", b.arg1 == null ? "" : b.arg1, val -> {
+                              openFormulaEditor("Arg1", b.arg1 == null ? "" : b.arg1, !isTextBlock(b), val -> {
                                   b.arg1 = val;
                                   saveAll();
                                   renderBlocks();
                               });
                           } else if(w == 2){
-                              askOneArg("Arg2", b.arg2 == null ? "" : b.arg2, val -> {
+                              openFormulaEditor("Arg2", b.arg2 == null ? "" : b.arg2, true, val -> {
                                   b.arg2 = val;
                                   saveAll();
                                   renderBlocks();
@@ -2260,6 +2393,10 @@ jobs:
                           }
                       })
                       .show();
+              }
+
+              private boolean isTextBlock(BlockItem b){
+                  return "say".equals(b.type) || "goto_scene".equals(b.type) || "signal".equals(b.type) || "event_signal".equals(b.type) || "list_add".equals(b.type);
               }
 
               private void showProjectMenu(int idx){
@@ -2400,7 +2537,7 @@ jobs:
                   android:label="Карманный Код Ультра"
                   android:theme="@style/AppTheme">
                   <activity
-                      android:name="com.pocketultra.ruv2.MainActivity"
+                      android:name="com.pocketultra.ruv3.MainActivity"
                       android:exported="true">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/>
@@ -2429,11 +2566,11 @@ jobs:
           }
 
           android {
-              namespace 'com.pocketultra.ruv2'
+              namespace 'com.pocketultra.ruv3'
               compileSdk 34
 
               defaultConfig {
-                  applicationId 'com.pocketultra.ruv2'
+                  applicationId 'com.pocketultra.ruv3'
                   minSdk 24
                   targetSdk 34
               }
@@ -2456,5 +2593,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Pocket_Code_Ultra_RU_v2_APK
+          name: Pocket_Code_Ultra_RU_v3_APK
           path: app/build/outputs/apk/debug/app-debug.apk
