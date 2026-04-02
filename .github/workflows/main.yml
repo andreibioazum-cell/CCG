@@ -1,4 +1,4 @@
-name: Pocket_Code_Ultra_RU_v3
+name: Pocket_Code_Ultra_RU_v3_Fixed
 on: [push, workflow_dispatch]
 
 jobs:
@@ -455,24 +455,6 @@ jobs:
           </FrameLayout>
           LAYOUT
 
-          cat <<EOF > app/src/main/java/com/pocketultra/ruv3/BlockItem.java
-          package com.pocketultra.ruv3;
-
-          public class BlockItem {
-              public String type;
-              public String label;
-              public String arg1;
-              public String arg2;
-
-              public BlockItem(String type, String label, String arg1, String arg2){
-                  this.type = type;
-                  this.label = label;
-                  this.arg1 = arg1;
-                  this.arg2 = arg2;
-              }
-          }
-          EOF
-
           cat <<EOF > app/src/main/java/com/pocketultra/ruv3/TextureItem.java
           package com.pocketultra.ruv3;
 
@@ -480,72 +462,6 @@ jobs:
               public String id = "";
               public String name = "";
               public String uri = "";
-          }
-          EOF
-
-          cat <<EOF > app/src/main/java/com/pocketultra/ruv3/ObjectItem.java
-          package com.pocketultra.ruv3;
-
-          public class ObjectItem {
-              public String name = "Объект";
-              public String spriteType = "emoji";
-              public String emoji = "🐱";
-              public String text = "Текст";
-              public String textureId = "";
-              public String shape = "square";
-              public String color = "#FFFFFF";
-
-              public float startX = 100f;
-              public float startY = 80f;
-              public float x = 100f;
-              public float y = 80f;
-              public float w = 72f;
-              public float h = 72f;
-
-              public boolean visible = true;
-              public String say = "";
-
-              public java.util.ArrayList<BlockItem> blocks = new java.util.ArrayList<>();
-          }
-          EOF
-
-          cat <<EOF > app/src/main/java/com/pocketultra/ruv3/SceneItem.java
-          package com.pocketultra.ruv3;
-
-          public class SceneItem {
-              public String name = "Сцена";
-              public String bgColor = "#D8F0FF";
-              public java.util.ArrayList<ObjectItem> objects = new java.util.ArrayList<>();
-          }
-          EOF
-
-          cat <<EOF > app/src/main/java/com/pocketultra/ruv3/VariableItem.java
-          package com.pocketultra.ruv3;
-
-          public class VariableItem {
-              public String name = "переменная";
-              public String value = "0";
-          }
-          EOF
-
-          cat <<EOF > app/src/main/java/com/pocketultra/ruv3/ListItemModel.java
-          package com.pocketultra.ruv3;
-
-          public class ListItemModel {
-              public String name = "список";
-              public java.util.ArrayList<String> items = new java.util.ArrayList<>();
-          }
-          EOF
-
-          cat <<EOF > app/src/main/java/com/pocketultra/ruv3/ProjectItem.java
-          package com.pocketultra.ruv3;
-
-          public class ProjectItem {
-              public String name = "Проект";
-              public java.util.ArrayList<SceneItem> scenes = new java.util.ArrayList<>();
-              public java.util.ArrayList<TextureItem> textures = new java.util.ArrayList<>();
-              public java.util.ArrayList<VariableItem> variables = new java.util.ArrayList<>();
-              public java.util.ArrayList<ListItemModel> lists = new java.util.ArrayList<>();
           }
           EOF
 
@@ -1769,11 +1685,17 @@ jobs:
                   new AlertDialog.Builder(this)
                       .setTitle("Тип объекта")
                       .setItems(types, (d,w) -> {
-                          if(w == 0) createEmojiObject();
-                          else if(w == 1) createTextObject();
-                          else if(w == 2) createShapeObject("square");
-                          else if(w == 3) createShapeObject("circle");
-                          else createTextureObject();
+                          if(w == 0){
+                              createEmojiObject();
+                          } else if(w == 1){
+                              createTextObject();
+                          } else if(w == 2){
+                              createShapeObject("square");
+                          } else if(w == 3){
+                              createShapeObject("circle");
+                          } else {
+                              createTextureObject();
+                          }
                       })
                       .show();
               }
@@ -2015,8 +1937,11 @@ jobs:
                   new AlertDialog.Builder(this)
                       .setTitle("Данные")
                       .setItems(items, (d,w) -> {
-                          if(w == 0) showVariablesManager();
-                          else showListsManager();
+                          if(w == 0){
+                              showVariablesManager();
+                          } else {
+                              showListsManager();
+                          }
                       })
                       .show();
               }
@@ -2117,12 +2042,19 @@ jobs:
                   new AlertDialog.Builder(this)
                       .setTitle("Категория")
                       .setItems(cats, (d,w) -> {
-                          if(w == 0) showBlockTypeDialog("event");
-                          else if(w == 1) showBlockTypeDialog("motion");
-                          else if(w == 2) showBlockTypeDialog("looks");
-                          else if(w == 3) showBlockTypeDialog("control");
-                          else if(w == 4) showBlockTypeDialog("data");
-                          else showBlockTypeDialog("signal");
+                          if(w == 0){
+                              showBlockTypeDialog("event");
+                          } else if(w == 1){
+                              showBlockTypeDialog("motion");
+                          } else if(w == 2){
+                              showBlockTypeDialog("looks");
+                          } else if(w == 3){
+                              showBlockTypeDialog("control");
+                          } else if(w == 4){
+                              showBlockTypeDialog("data");
+                          } else {
+                              showBlockTypeDialog("signal");
+                          }
                       })
                       .show();
               }
@@ -2133,61 +2065,107 @@ jobs:
                       new AlertDialog.Builder(this)
                           .setTitle("События")
                           .setItems(items, (d,w) -> {
-                              if(w == 0) insertBlockDialog(new BlockItem("event_start", "Когда запущено", "", ""));
-                              else if(w == 1) insertBlockDialog(new BlockItem("event_tap", "Когда объект нажат", "", ""));
-                              else openFormulaEditor("Имя сигнала", "сигнал1", false, v -> insertBlockDialog(new BlockItem("event_signal", "Когда получен сигнал", v, "")));
-                          }).show();
+                              if(w == 0){
+                                  insertBlockDialog(new BlockItem("event_start", "Когда запущено", "", ""));
+                              } else if(w == 1){
+                                  insertBlockDialog(new BlockItem("event_tap", "Когда объект нажат", "", ""));
+                              } else {
+                                  openFormulaEditor("Имя сигнала", "сигнал1", false,
+                                      v -> insertBlockDialog(new BlockItem("event_signal", "Когда получен сигнал", v, "")));
+                              }
+                          })
+                          .show();
                   } else if("motion".equals(cat)){
                       String[] items = {"Двигаться по X", "Двигаться по Y", "Перейти в X Y", "Перейти в сцену"};
                       new AlertDialog.Builder(this)
                           .setTitle("Движение")
                           .setItems(items, (d,w) -> {
-                              if(w == 0) openFormulaEditor("Формула X", "10", true, v -> insertBlockDialog(new BlockItem("move_x", "Двигаться по X", v, "")));
-                              else if(w == 1) openFormulaEditor("Формула Y", "10", true, v -> insertBlockDialog(new BlockItem("move_y", "Двигаться по Y", v, "")));
-                              else openTwoFormulaEditor("Перейти в X Y", "X+10", "Y", true, (a,b) -> insertBlockDialog(new BlockItem("go_xy", "Перейти в", a, b)));
-                              else openFormulaEditor("Имя сцены", "\"Сцена 2\"", false, v -> insertBlockDialog(new BlockItem("goto_scene", "Перейти в сцену", v, "")));
-                          }).show();
+                              if(w == 0){
+                                  openFormulaEditor("Формула X", "10", true,
+                                      v -> insertBlockDialog(new BlockItem("move_x", "Двигаться по X", v, "")));
+                              } else if(w == 1){
+                                  openFormulaEditor("Формула Y", "10", true,
+                                      v -> insertBlockDialog(new BlockItem("move_y", "Двигаться по Y", v, "")));
+                              } else if(w == 2){
+                                  openTwoFormulaEditor("Перейти в X Y", "X+10", "Y", true,
+                                      (a,b) -> insertBlockDialog(new BlockItem("go_xy", "Перейти в", a, b)));
+                              } else if(w == 3){
+                                  openFormulaEditor("Имя сцены", "\"Сцена 2\"", false,
+                                      v -> insertBlockDialog(new BlockItem("goto_scene", "Перейти в сцену", v, "")));
+                              }
+                          })
+                          .show();
                   } else if("looks".equals(cat)){
                       String[] items = {"Сказать", "Скрыть", "Показать", "Текст объекта"};
                       new AlertDialog.Builder(this)
                           .setTitle("Внешность")
                           .setItems(items, (d,w) -> {
-                              if(w == 0) openFormulaEditor("Текст", "\"Привет\"", false, v -> insertBlockDialog(new BlockItem("say", "Сказать", v, "")));
-                              else if(w == 1) insertBlockDialog(new BlockItem("hide", "Скрыть", "", ""));
-                              else if(w == 2) insertBlockDialog(new BlockItem("show", "Показать", "", ""));
-                              else openFormulaEditor("Текст", "\"Текст\"", false, v -> {
-                                  ObjectItem o = currentObject();
-                                  if(o != null){
-                                      o.spriteType = "text";
-                                      o.text = v.replace("\"", "");
-                                      saveAll();
-                                      renderObjects();
-                                  }
-                              });
-                          }).show();
+                              if(w == 0){
+                                  openFormulaEditor("Текст", "\"Привет\"", false,
+                                      v -> insertBlockDialog(new BlockItem("say", "Сказать", v, "")));
+                              } else if(w == 1){
+                                  insertBlockDialog(new BlockItem("hide", "Скрыть", "", ""));
+                              } else if(w == 2){
+                                  insertBlockDialog(new BlockItem("show", "Показать", "", ""));
+                              } else {
+                                  openFormulaEditor("Текст", "\"Текст\"", false, v -> {
+                                      ObjectItem o = currentObject();
+                                      if(o != null){
+                                          o.spriteType = "text";
+                                          o.text = v.replace("\"", "");
+                                          saveAll();
+                                          renderObjects();
+                                      }
+                                  });
+                              }
+                          })
+                          .show();
                   } else if("control".equals(cat)){
                       String[] items = {"Ждать", "Вечно", "Конец вечно"};
                       new AlertDialog.Builder(this)
                           .setTitle("Управление")
                           .setItems(items, (d,w) -> {
-                              if(w == 0) openFormulaEditor("Секунды", "1", true, v -> insertBlockDialog(new BlockItem("wait", "Ждать", v, "")));
-                              else if(w == 1) insertBlockDialog(new BlockItem("forever", "Вечно", "", ""));
-                              else insertBlockDialog(new BlockItem("end_forever", "Конец вечно", "", ""));
-                          }).show();
+                              if(w == 0){
+                                  openFormulaEditor("Секунды", "1", true,
+                                      v -> insertBlockDialog(new BlockItem("wait", "Ждать", v, "")));
+                              } else if(w == 1){
+                                  insertBlockDialog(new BlockItem("forever", "Вечно", "", ""));
+                              } else {
+                                  insertBlockDialog(new BlockItem("end_forever", "Конец вечно", "", ""));
+                              }
+                          })
+                          .show();
                   } else if("data".equals(cat)){
                       String[] items = {"Установить переменную", "Изменить переменную", "Добавить в список"};
                       new AlertDialog.Builder(this)
                           .setTitle("Данные")
                           .setItems(items, (d,w) -> {
-                              if(w == 0) chooseVariable((name) -> openFormulaEditor("Значение", "10", true, val -> insertBlockDialog(new BlockItem("set_var", "Установить переменную", name, val))));
-                              else if(w == 1) chooseVariable((name) -> openFormulaEditor("Изменить на", "-1", true, val -> insertBlockDialog(new BlockItem("change_var", "Изменить переменную", name, val))));
-                              else chooseList((name) -> openFormulaEditor("Значение", "\"элемент\"", false, val -> insertBlockDialog(new BlockItem("list_add", "Добавить в список", name, val))));
-                          }).show();
+                              if(w == 0){
+                                  chooseVariable(name ->
+                                      openFormulaEditor("Значение", "10", true,
+                                          val -> insertBlockDialog(new BlockItem("set_var", "Установить переменную", name, val)))
+                                  );
+                              } else if(w == 1){
+                                  chooseVariable(name ->
+                                      openFormulaEditor("Изменить на", "-1", true,
+                                          val -> insertBlockDialog(new BlockItem("change_var", "Изменить переменную", name, val)))
+                                  );
+                              } else {
+                                  chooseList(name ->
+                                      openFormulaEditor("Значение", "\"элемент\"", false,
+                                          val -> insertBlockDialog(new BlockItem("list_add", "Добавить в список", name, val)))
+                                  );
+                              }
+                          })
+                          .show();
                   } else if("signal".equals(cat)){
                       String[] items = {"Послать сигнал"};
                       new AlertDialog.Builder(this)
                           .setTitle("Сигналы")
-                          .setItems(items, (d,w) -> openFormulaEditor("Имя сигнала", "сигнал1", false, v -> insertBlockDialog(new BlockItem("signal", "Послать сигнал", v, ""))))
+                          .setItems(items, (d,w) ->
+                              openFormulaEditor("Имя сигнала", "сигнал1", false,
+                                  v -> insertBlockDialog(new BlockItem("signal", "Послать сигнал", v, "")))
+                          )
                           .show();
                   }
               }
@@ -2302,15 +2280,25 @@ jobs:
                       b.setOnClickListener(v -> {
                           if("⌫".equals(k)){
                               if(sb.length() > 0) sb.deleteCharAt(sb.length()-1);
-                          } else if("Очистить".equals(k)){
+                              display.setText(sb.toString());
+                              return;
+                          }
+
+                          if("Очистить".equals(k)){
                               sb.setLength(0);
-                          } else if("Перем.".equals(k)){
+                              display.setText(sb.toString());
+                              return;
+                          }
+
+                          if("Перем.".equals(k)){
                               chooseVariable(name -> {
                                   sb.append(name);
                                   display.setText(sb.toString());
                               });
                               return;
-                          } else if("Текст".equals(k)){
+                          }
+
+                          if("Текст".equals(k)){
                               EditText input = new EditText(this);
                               input.setInputType(InputType.TYPE_CLASS_TEXT);
                               new AlertDialog.Builder(this)
@@ -2323,9 +2311,9 @@ jobs:
                                   .setNegativeButton("Отмена", null)
                                   .show();
                               return;
-                          } else {
-                              sb.append(k);
                           }
+
+                          sb.append(k);
                           display.setText(sb.toString());
                       });
 
@@ -2357,8 +2345,11 @@ jobs:
                   new AlertDialog.Builder(this)
                       .setTitle("Куда вставить блок?")
                       .setItems(opts, (d,w) -> {
-                          if(w == 0) o.blocks.add(block);
-                          else o.blocks.add(w-1, block);
+                          if(w == 0){
+                              o.blocks.add(block);
+                          } else {
+                              o.blocks.add(w-1, block);
+                          }
                           saveAll();
                           renderBlocks();
                       })
@@ -2593,5 +2584,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Pocket_Code_Ultra_RU_v3_APK
+          name: Pocket_Code_Ultra_RU_v3_Fixed_APK
           path: app/build/outputs/apk/debug/app-debug.apk
