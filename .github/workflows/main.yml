@@ -1,4 +1,4 @@
-name: Pocket_Code_Ultra_RU
+name: Pocket_Code_Ultra_RU_v2
 on: [push, workflow_dispatch]
 
 jobs:
@@ -16,7 +16,7 @@ jobs:
 
       - name: Create Project
         run: |
-          mkdir -p app/src/main/java/com/pocketultra/ru
+          mkdir -p app/src/main/java/com/pocketultra/ruv2
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
           mkdir -p app/src/main/res/drawable
@@ -122,19 +122,6 @@ jobs:
           <shape xmlns:android="http://schemas.android.com/apk/res/android">
             <solid android:color="#E1A91A"/>
             <corners android:radius="16dp"/>
-          </shape>
-          EOF
-
-          cat <<EOF > app/src/main/res/drawable/joy_base.xml
-          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
-            <solid android:color="#AA102030"/>
-            <stroke android:width="2dp" android:color="#77BEEB"/>
-          </shape>
-          EOF
-
-          cat <<EOF > app/src/main/res/drawable/joy_stick.xml
-          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
-            <solid android:color="#4C97FF"/>
           </shape>
           EOF
 
@@ -447,23 +434,6 @@ jobs:
                           android:id="@+id/player_stage_layer"
                           android:layout_width="match_parent"
                           android:layout_height="match_parent"/>
-
-                      <FrameLayout
-                          android:id="@+id/joy_base"
-                          android:layout_width="140dp"
-                          android:layout_height="140dp"
-                          android:layout_gravity="bottom|left"
-                          android:layout_marginLeft="20dp"
-                          android:layout_marginBottom="20dp"
-                          android:background="@drawable/joy_base">
-
-                          <View
-                              android:id="@+id/joy_stick"
-                              android:layout_width="60dp"
-                              android:layout_height="60dp"
-                              android:layout_gravity="center"
-                              android:background="@drawable/joy_stick"/>
-                      </FrameLayout>
                   </FrameLayout>
 
                   <Button
@@ -478,8 +448,8 @@ jobs:
           </FrameLayout>
           LAYOUT
 
-          cat <<EOF > app/src/main/java/com/pocketultra/ru/BlockItem.java
-          package com.pocketultra.ru;
+          cat <<EOF > app/src/main/java/com/pocketultra/ruv2/BlockItem.java
+          package com.pocketultra.ruv2;
 
           public class BlockItem {
               public String type;
@@ -496,8 +466,8 @@ jobs:
           }
           EOF
 
-          cat <<EOF > app/src/main/java/com/pocketultra/ru/TextureItem.java
-          package com.pocketultra.ru;
+          cat <<EOF > app/src/main/java/com/pocketultra/ruv2/TextureItem.java
+          package com.pocketultra.ruv2;
 
           public class TextureItem {
               public String id = "";
@@ -506,8 +476,8 @@ jobs:
           }
           EOF
 
-          cat <<EOF > app/src/main/java/com/pocketultra/ru/ObjectItem.java
-          package com.pocketultra.ru;
+          cat <<EOF > app/src/main/java/com/pocketultra/ruv2/ObjectItem.java
+          package com.pocketultra.ruv2;
 
           import java.util.ArrayList;
 
@@ -530,12 +500,12 @@ jobs:
               public boolean visible = true;
               public String say = "";
 
-              public ArrayList<BlockItem> blocks = new ArrayList<>();
+              public java.util.ArrayList<BlockItem> blocks = new java.util.ArrayList<>();
           }
           EOF
 
-          cat <<EOF > app/src/main/java/com/pocketultra/ru/SceneItem.java
-          package com.pocketultra.ru;
+          cat <<EOF > app/src/main/java/com/pocketultra/ruv2/SceneItem.java
+          package com.pocketultra.ruv2;
 
           import java.util.ArrayList;
 
@@ -546,8 +516,8 @@ jobs:
           }
           EOF
 
-          cat <<EOF > app/src/main/java/com/pocketultra/ru/VariableItem.java
-          package com.pocketultra.ru;
+          cat <<EOF > app/src/main/java/com/pocketultra/ruv2/VariableItem.java
+          package com.pocketultra.ruv2;
 
           public class VariableItem {
               public String name = "переменная";
@@ -555,8 +525,8 @@ jobs:
           }
           EOF
 
-          cat <<EOF > app/src/main/java/com/pocketultra/ru/ListItemModel.java
-          package com.pocketultra.ru;
+          cat <<EOF > app/src/main/java/com/pocketultra/ruv2/ListItemModel.java
+          package com.pocketultra.ruv2;
 
           import java.util.ArrayList;
 
@@ -566,8 +536,8 @@ jobs:
           }
           EOF
 
-          cat <<EOF > app/src/main/java/com/pocketultra/ru/ProjectItem.java
-          package com.pocketultra.ru;
+          cat <<EOF > app/src/main/java/com/pocketultra/ruv2/ProjectItem.java
+          package com.pocketultra.ruv2;
 
           import java.util.ArrayList;
 
@@ -580,15 +550,16 @@ jobs:
           }
           EOF
 
-          cat <<'FORMULA' > app/src/main/java/com/pocketultra/ru/FormulaEngine.java
-          package com.pocketultra.ru;
+          cat <<'FORMULA' > app/src/main/java/com/pocketultra/ruv2/FormulaEngine.java
+          package com.pocketultra.ruv2;
 
           public class FormulaEngine {
               public interface Host {
                   ProjectItem project();
                   ObjectItem object();
-                  float joyX();
-                  float joyY();
+                  float touchX();
+                  float touchY();
+                  float touchCount();
               }
 
               public static float eval(Host host, String expr){
@@ -599,8 +570,9 @@ jobs:
 
                   if(expr.equalsIgnoreCase("X")) return host.object() != null ? host.object().x : 0f;
                   if(expr.equalsIgnoreCase("Y")) return host.object() != null ? host.object().y : 0f;
-                  if(expr.equalsIgnoreCase("джойстикX")) return host.joyX();
-                  if(expr.equalsIgnoreCase("джойстикY")) return host.joyY();
+                  if(expr.equalsIgnoreCase("касаниеX")) return host.touchX();
+                  if(expr.equalsIgnoreCase("касаниеY")) return host.touchY();
+                  if(expr.equalsIgnoreCase("колКасаний")) return host.touchCount();
 
                   ProjectItem p = host.project();
                   if(p != null){
@@ -611,21 +583,46 @@ jobs:
                       }
                   }
 
+                  if(expr.startsWith("sin(") && expr.endsWith(")")){
+                      return (float)Math.sin(Math.toRadians(eval(host, inner(expr))));
+                  }
+                  if(expr.startsWith("cos(") && expr.endsWith(")")){
+                      return (float)Math.cos(Math.toRadians(eval(host, inner(expr))));
+                  }
+                  if(expr.startsWith("tan(") && expr.endsWith(")")){
+                      return (float)Math.tan(Math.toRadians(eval(host, inner(expr))));
+                  }
+                  if(expr.startsWith("atan(") && expr.endsWith(")")){
+                      return (float)Math.toDegrees(Math.atan(eval(host, inner(expr))));
+                  }
+                  if(expr.startsWith("sqrt(") && expr.endsWith(")")){
+                      return (float)Math.sqrt(Math.max(0f, eval(host, inner(expr))));
+                  }
+                  if(expr.startsWith("abs(") && expr.endsWith(")")){
+                      return Math.abs(eval(host, inner(expr)));
+                  }
+                  if(expr.startsWith("random(") && expr.endsWith(")")){
+                      String body = inner(expr);
+                      String[] a = body.split(",");
+                      if(a.length == 2){
+                          float x = eval(host, a[0].trim());
+                          float y = eval(host, a[1].trim());
+                          float mn = Math.min(x,y), mx = Math.max(x,y);
+                          return mn + (float)Math.random() * (mx - mn);
+                      }
+                  }
+
                   try{
-                      String[] plus = expr.split("\\+");
-                      if(plus.length > 1){
-                          float sum = 0f;
-                          for(String s : plus) sum += eval(host, s.trim());
-                          return sum;
+                      int plus = expr.lastIndexOf('+');
+                      if(plus > 0){
+                          return eval(host, expr.substring(0, plus).trim()) + eval(host, expr.substring(plus+1).trim());
                       }
                   }catch(Exception ignored){}
 
                   try{
-                      String[] minus = expr.split("-");
-                      if(minus.length > 1){
-                          float r = eval(host, minus[0].trim());
-                          for(int i=1;i<minus.length;i++) r -= eval(host, minus[i].trim());
-                          return r;
+                      int minus = expr.lastIndexOf('-');
+                      if(minus > 0){
+                          return eval(host, expr.substring(0, minus).trim()) - eval(host, expr.substring(minus+1).trim());
                       }
                   }catch(Exception ignored){}
 
@@ -646,11 +643,15 @@ jobs:
                   }
                   return expr;
               }
+
+              private static String inner(String s){
+                  return s.substring(s.indexOf('(')+1, s.lastIndexOf(')')).trim();
+              }
           }
           FORMULA
 
-          cat <<'STORE' > app/src/main/java/com/pocketultra/ru/ProjectStore.java
-          package com.pocketultra.ru;
+          cat <<'STORE' > app/src/main/java/com/pocketultra/ruv2/ProjectStore.java
+          package com.pocketultra.ruv2;
 
           import android.content.Context;
           import org.json.JSONArray;
@@ -660,7 +661,7 @@ jobs:
 
           public class ProjectStore {
               private static File file(Context c){
-                  return new File(c.getFilesDir(), "projects_ultra_ru.json");
+                  return new File(c.getFilesDir(), "projects_ultra_ru_v2.json");
               }
 
               public static ArrayList<ProjectItem> load(Context c){
@@ -765,6 +766,7 @@ jobs:
                                   pr.scenes.add(sc);
                               }
                           }
+
                           out.add(pr);
                       }
                   }catch(Exception ignored){}
@@ -860,21 +862,20 @@ jobs:
           }
           STORE
 
-          cat <<'RUNTIME' > app/src/main/java/com/pocketultra/ru/ScriptRuntime.java
-          package com.pocketultra.ru;
+          cat <<'RUNTIME' > app/src/main/java/com/pocketultra/ruv2/ScriptRuntime.java
+          package com.pocketultra.ruv2;
 
           import android.os.Handler;
           import android.os.Looper;
           import java.util.ArrayList;
-          import java.util.HashMap;
           import java.util.Locale;
-          import java.util.Map;
 
           public class ScriptRuntime {
               public interface Host extends FormulaEngine.Host {
                   void renderPlayerScene();
                   boolean stopped();
                   SceneItem scene();
+                  void goToSceneByName(String name);
               }
 
               public static void runScene(Host host){
@@ -883,9 +884,6 @@ jobs:
 
                   for(ObjectItem o : scene.objects){
                       runStart(host, o);
-                  }
-                  for(ObjectItem o : scene.objects){
-                      runForever(host, o);
                   }
               }
 
@@ -907,7 +905,7 @@ jobs:
                   for(ArrayList<BlockItem> script : scripts){
                       if(!script.isEmpty() && "event_start".equals(script.get(0).type)){
                           found = true;
-                          execute(host, obj, script, 1, false);
+                          execute(host, obj, script, 1);
                       }
                   }
                   if(!found){
@@ -915,23 +913,7 @@ jobs:
                       for(BlockItem b : obj.blocks){
                           if(!b.type.startsWith("event_")) linear.add(b);
                       }
-                      if(!linear.isEmpty()) execute(host, obj, linear, 0, false);
-                  }
-              }
-
-              private static void runForever(Host host, ObjectItem obj){
-                  ArrayList<ArrayList<BlockItem>> scripts = splitScripts(obj.blocks);
-                  for(ArrayList<BlockItem> script : scripts){
-                      if(!script.isEmpty() && "event_start".equals(script.get(0).type)){
-                          for(int i=1;i<script.size();i++){
-                              if("forever".equals(script.get(i).type)){
-                                  ArrayList<BlockItem> body = new ArrayList<>();
-                                  for(int j=i+1;j<script.size();j++) body.add(script.get(j));
-                                  loop(host, obj, body);
-                                  break;
-                              }
-                          }
-                      }
+                      if(!linear.isEmpty()) execute(host, obj, linear, 0);
                   }
               }
 
@@ -939,7 +921,7 @@ jobs:
                   ArrayList<ArrayList<BlockItem>> scripts = splitScripts(obj.blocks);
                   for(ArrayList<BlockItem> script : scripts){
                       if(!script.isEmpty() && type.equals(script.get(0).type)){
-                          execute(host, obj, script, 1, false);
+                          execute(host, obj, script, 1);
                       }
                   }
               }
@@ -950,7 +932,7 @@ jobs:
                       if(!script.isEmpty() && "event_signal".equals(script.get(0).type)){
                           String sig = script.get(0).arg1 == null ? "" : script.get(0).arg1;
                           if(sig.equals(name)){
-                              execute(host, obj, script, 1, false);
+                              execute(host, obj, script, 1);
                           }
                       }
                   }
@@ -975,34 +957,31 @@ jobs:
                   return out;
               }
 
-              private static void loop(Host host, ObjectItem obj, ArrayList<BlockItem> body){
-                  Handler h = new Handler(Looper.getMainLooper());
-                  Runnable[] rr = new Runnable[1];
-                  rr[0] = () -> {
-                      if(host.stopped()) return;
-                      execute(host, obj, body, 0, false);
-                      h.postDelayed(rr[0], 60);
-                  };
-                  h.post(rr[0]);
-              }
-
-              private static void execute(Host host, ObjectItem obj, ArrayList<BlockItem> seq, int startIndex, boolean insideForever){
+              private static void execute(Host host, ObjectItem obj, ArrayList<BlockItem> seq, int startIndex){
                   Handler h = new Handler(Looper.getMainLooper());
                   long delay = 0;
 
                   for(int i=startIndex;i<seq.size();i++){
                       BlockItem b = seq.get(i);
 
-                      if("forever".equals(b.type) && !insideForever){
+                      if("forever".equals(b.type)){
                           ArrayList<BlockItem> body = new ArrayList<>();
-                          for(int j=i+1;j<seq.size();j++) body.add(seq.get(j));
+                          int depth = 1;
+                          for(int j=i+1;j<seq.size();j++){
+                              BlockItem x = seq.get(j);
+                              if("forever".equals(x.type)) depth++;
+                              else if("end_forever".equals(x.type)){
+                                  depth--;
+                                  if(depth == 0) break;
+                              }
+                              if(depth > 0) body.add(x);
+                          }
                           final ArrayList<BlockItem> bodyFinal = body;
-                          h.postDelayed(() -> {
-                              if(host.stopped()) return;
-                              loop(host, obj, bodyFinal);
-                          }, delay);
+                          h.postDelayed(() -> loop(host, obj, bodyFinal), delay);
                           break;
                       }
+
+                      if("end_forever".equals(b.type)) continue;
 
                       switch (b.type){
                           case "move_x": {
@@ -1109,6 +1088,14 @@ jobs:
                               }, delay);
                               break;
                           }
+                          case "goto_scene": {
+                              final String sceneName = FormulaEngine.text(hostFor(host, obj), b.arg1);
+                              h.postDelayed(() -> {
+                                  if(host.stopped()) return;
+                                  host.goToSceneByName(sceneName);
+                              }, delay);
+                              break;
+                          }
                           case "list_add": {
                               final String listName = b.arg1 == null ? "" : b.arg1;
                               final String val = b.arg2 == null ? "" : b.arg2;
@@ -1129,34 +1116,31 @@ jobs:
                   }
               }
 
+              private static void loop(Host host, ObjectItem obj, ArrayList<BlockItem> body){
+                  Handler h = new Handler(Looper.getMainLooper());
+                  Runnable[] rr = new Runnable[1];
+                  rr[0] = () -> {
+                      if(host.stopped()) return;
+                      execute(host, obj, body, 0);
+                      h.postDelayed(rr[0], 60);
+                  };
+                  h.post(rr[0]);
+              }
+
               private static FormulaEngine.Host hostFor(Host h, ObjectItem o){
                   return new FormulaEngine.Host() {
-                      @Override
-                      public ProjectItem project() {
-                          return h.project();
-                      }
-
-                      @Override
-                      public ObjectItem object() {
-                          return o;
-                      }
-
-                      @Override
-                      public float joyX() {
-                          return h.joyX();
-                      }
-
-                      @Override
-                      public float joyY() {
-                          return h.joyY();
-                      }
+                      @Override public ProjectItem project() { return h.project(); }
+                      @Override public ObjectItem object() { return o; }
+                      @Override public float touchX() { return h.touchX(); }
+                      @Override public float touchY() { return h.touchY(); }
+                      @Override public float touchCount() { return h.touchCount(); }
                   };
               }
           }
           RUNTIME
 
-          cat <<'MAINACT' > app/src/main/java/com/pocketultra/ru/MainActivity.java
-          package com.pocketultra.ru;
+          cat <<'MAINACT' > app/src/main/java/com/pocketultra/ruv2/MainActivity.java
+          package com.pocketultra.ruv2;
 
           import android.annotation.SuppressLint;
           import android.app.AlertDialog;
@@ -1184,8 +1168,7 @@ jobs:
           public class MainActivity extends AppCompatActivity implements ScriptRuntime.Host {
               private View screenProjects, screenScenes, screenObjects, screenScripts, screenPlayer;
               private LinearLayout projectsList, scenesList, objectsList, blocksList;
-              private FrameLayout playerStage, playerStageLayer, joyBase;
-              private View joyStick;
+              private FrameLayout playerStage, playerStageLayer;
               private TextView txtProjectTitle, txtSceneTitle, txtObjectTitle;
 
               private final ArrayList<ProjectItem> projects = new ArrayList<>();
@@ -1193,44 +1176,43 @@ jobs:
               private int pendingTextureProject = -1;
               private int pendingAssignProject = -1, pendingAssignScene = -1, pendingAssignObject = -1;
               private boolean stopFlag = false;
-              private float joyX = 0f, joyY = 0f;
+              private float touchX = 0f, touchY = 0f, touchCount = 0f;
 
               private ActivityResultLauncher<Intent> imagePickerTexture;
               private int dragIndex = -1;
 
-              @Override
-              public void renderPlayerScene() {
-                  runOnUiThread(this::drawPlayerScene);
-              }
+              @Override public void renderPlayerScene() { runOnUiThread(this::drawPlayerScene); }
+              @Override public boolean stopped() { return stopFlag; }
+              @Override public SceneItem scene() { return currentScene(); }
+              @Override public ProjectItem project() { return currentProject(); }
+              @Override public ObjectItem object() { return currentObject(); }
+              @Override public float touchX() { return touchX; }
+              @Override public float touchY() { return touchY; }
+              @Override public float touchCount() { return touchCount; }
 
               @Override
-              public boolean stopped() {
-                  return stopFlag;
-              }
-
-              @Override
-              public SceneItem scene() {
-                  return currentScene();
-              }
-
-              @Override
-              public ProjectItem project() {
-                  return currentProject();
-              }
-
-              @Override
-              public ObjectItem object() {
-                  return currentObject();
-              }
-
-              @Override
-              public float joyX() {
-                  return joyX;
-              }
-
-              @Override
-              public float joyY() {
-                  return joyY;
+              public void goToSceneByName(String name) {
+                  ProjectItem p = currentProject();
+                  if(p == null) return;
+                  for(int i=0;i<p.scenes.size();i++){
+                      if(p.scenes.get(i).name.equals(name)){
+                          currentScene = i;
+                          runOnUiThread(() -> {
+                              SceneItem sc = currentScene();
+                              if(sc != null){
+                                  for(ObjectItem o : sc.objects){
+                                      o.x = o.startX;
+                                      o.y = o.startY;
+                                      o.visible = true;
+                                      o.say = "";
+                                  }
+                                  drawPlayerScene();
+                                  ScriptRuntime.runScene(this);
+                              }
+                          });
+                          break;
+                      }
+                  }
               }
 
               @SuppressLint("ClickableViewAccessibility")
@@ -1252,9 +1234,6 @@ jobs:
 
                   playerStage = findViewById(R.id.player_stage);
                   playerStageLayer = findViewById(R.id.player_stage_layer);
-
-                  joyBase = findViewById(R.id.joy_base);
-                  joyStick = findViewById(R.id.joy_stick);
 
                   txtProjectTitle = findViewById(R.id.txt_project_title);
                   txtSceneTitle = findViewById(R.id.txt_scene_title);
@@ -1279,7 +1258,7 @@ jobs:
 
                               if(pendingAssignProject >= 0 && pendingAssignScene >= 0 && pendingAssignObject >= 0){
                                   ProjectItem p = projects.get(pendingAssignProject);
-                                  if(!p.textures.isEmpty()){
+                                  if(!p.textures.isEmpty() && pendingAssignObject < p.scenes.get(pendingAssignScene).objects.size()){
                                       TextureItem last = p.textures.get(p.textures.size()-1);
                                       ObjectItem o = p.scenes.get(pendingAssignScene).objects.get(pendingAssignObject);
                                       o.spriteType = "texture";
@@ -1293,6 +1272,13 @@ jobs:
                               toast("Ошибка импорта");
                           }
                       }
+                  });
+
+                  playerStage.setOnTouchListener((v, e) -> {
+                      touchCount = e.getPointerCount();
+                      touchX = e.getX();
+                      touchY = e.getY();
+                      return false;
                   });
 
                   findViewById(R.id.btn_new_project).setOnClickListener(v -> createProjectDialog());
@@ -1312,40 +1298,12 @@ jobs:
                   findViewById(R.id.btn_add_block).setOnClickListener(v -> showCategoryDialog());
                   findViewById(R.id.btn_formula_manager).setOnClickListener(v -> showFormulaHelp());
 
-                  joyBase.setOnTouchListener((v, e) -> {
-                      float cx = v.getWidth()/2f;
-                      float cy = v.getHeight()/2f;
-                      float dx = e.getX()-cx;
-                      float dy = e.getY()-cy;
-                      float d = (float)Math.sqrt(dx*dx+dy*dy);
-                      float lim = cx - joyStick.getWidth()/2f;
-
-                      if(e.getAction() == MotionEvent.ACTION_MOVE || e.getAction() == MotionEvent.ACTION_DOWN){
-                          if(d > lim){ dx*=lim/d; dy*=lim/d; }
-                          joyStick.setTranslationX(dx);
-                          joyStick.setTranslationY(dy);
-                          joyX = dx/lim;
-                          joyY = dy/lim;
-                      } else if(e.getAction() == MotionEvent.ACTION_UP){
-                          joyStick.setTranslationX(0);
-                          joyStick.setTranslationY(0);
-                          joyX = 0f;
-                          joyY = 0f;
-                      }
-                      return true;
-                  });
-
                   renderProjects();
                   showProjects();
               }
 
-              private void saveAll(){
-                  ProjectStore.save(this, projects);
-              }
-
-              private void toast(String s){
-                  Toast.makeText(this, s, Toast.LENGTH_SHORT).show();
-              }
+              private void saveAll(){ ProjectStore.save(this, projects); }
+              private void toast(String s){ Toast.makeText(this, s, Toast.LENGTH_SHORT).show(); }
 
               private ProjectItem currentProject(){
                   if(currentProject < 0 || currentProject >= projects.size()) return null;
@@ -1551,8 +1509,8 @@ jobs:
                       tv.setPadding(dp(14), dp(10), dp(14), dp(10));
 
                       if(b.type.startsWith("event_")) tv.setBackgroundResource(R.drawable.block_event);
-                      else if(b.type.startsWith("move") || "go_xy".equals(b.type)) tv.setBackgroundResource(R.drawable.block_motion);
-                      else if("wait".equals(b.type) || "forever".equals(b.type)) tv.setBackgroundResource(R.drawable.block_control);
+                      else if(b.type.startsWith("move") || "go_xy".equals(b.type) || "goto_scene".equals(b.type)) tv.setBackgroundResource(R.drawable.block_motion);
+                      else if("wait".equals(b.type) || "forever".equals(b.type) || "end_forever".equals(b.type)) tv.setBackgroundResource(R.drawable.block_control);
                       else if(b.type.startsWith("set_var") || b.type.startsWith("change_var") || b.type.startsWith("list_")) tv.setBackgroundResource(R.drawable.block_data);
                       else if(b.type.startsWith("signal")) tv.setBackgroundResource(R.drawable.block_signal);
                       else tv.setBackgroundResource(R.drawable.block_looks);
@@ -1939,9 +1897,7 @@ jobs:
 
                   String[] items = new String[p.textures.size()+1];
                   items[0] = "+ Импортировать новую";
-                  for(int i=0;i<p.textures.size();i++){
-                      items[i+1] = p.textures.get(i).name;
-                  }
+                  for(int i=0;i<p.textures.size();i++) items[i+1] = p.textures.get(i).name;
 
                   new AlertDialog.Builder(this)
                       .setTitle("Библиотека текстур")
@@ -2084,16 +2040,24 @@ jobs:
 
               private void showFormulaHelp(){
                   String msg =
-                      "Формулы можно писать так:\n\n" +
+                      "Формулы:\n\n" +
                       "10\n" +
                       "X\n" +
                       "Y\n" +
-                      "джойстикX\n" +
-                      "джойстикY\n" +
+                      "касаниеX\n" +
+                      "касаниеY\n" +
+                      "колКасаний\n" +
                       "мояПеременная\n" +
                       "X+10\n" +
-                      "Y-5\n\n" +
-                      "Для текста можно писать:\n" +
+                      "Y-5\n" +
+                      "sin(30)\n" +
+                      "cos(60)\n" +
+                      "tan(45)\n" +
+                      "atan(1)\n" +
+                      "sqrt(25)\n" +
+                      "abs(-5)\n" +
+                      "random(1,10)\n\n" +
+                      "Текст:\n" +
                       "\"Привет\"";
                   new AlertDialog.Builder(this)
                       .setTitle("Редактор формул")
@@ -2128,13 +2092,14 @@ jobs:
                               else askOneArg("Имя сигнала", "сигнал1", v -> insertBlockDialog(new BlockItem("event_signal", "Когда получен сигнал", v, "")));
                           }).show();
                   } else if("motion".equals(cat)){
-                      String[] items = {"Двигаться по X", "Двигаться по Y", "Перейти в X Y"};
+                      String[] items = {"Двигаться по X", "Двигаться по Y", "Перейти в X Y", "Перейти в сцену"};
                       new AlertDialog.Builder(this)
                           .setTitle("Движение")
                           .setItems(items, (d,w) -> {
                               if(w == 0) askOneArg("Формула X", "10", v -> insertBlockDialog(new BlockItem("move_x", "Двигаться по X", v, "")));
                               else if(w == 1) askOneArg("Формула Y", "10", v -> insertBlockDialog(new BlockItem("move_y", "Двигаться по Y", v, "")));
-                              else askTwoArg("Перейти в X Y", "X+10", "Y", (a,b) -> insertBlockDialog(new BlockItem("go_xy", "Перейти в", a, b)));
+                              else if(w == 2) askTwoArg("Перейти в X Y", "X+10", "Y", (a,b) -> insertBlockDialog(new BlockItem("go_xy", "Перейти в", a, b)));
+                              else askOneArg("Имя сцены", "\"Сцена 2\"", v -> insertBlockDialog(new BlockItem("goto_scene", "Перейти в сцену", v, "")));
                           }).show();
                   } else if("looks".equals(cat)){
                       String[] items = {"Сказать", "Скрыть", "Показать", "Текст объекта"};
@@ -2155,12 +2120,13 @@ jobs:
                               });
                           }).show();
                   } else if("control".equals(cat)){
-                      String[] items = {"Ждать", "Вечно"};
+                      String[] items = {"Ждать", "Вечно", "Конец вечно"};
                       new AlertDialog.Builder(this)
                           .setTitle("Управление")
                           .setItems(items, (d,w) -> {
                               if(w == 0) askOneArg("Секунды", "1", v -> insertBlockDialog(new BlockItem("wait", "Ждать", v, "")));
-                              else insertBlockDialog(new BlockItem("forever", "Вечно", "", ""));
+                              else if(w == 1) insertBlockDialog(new BlockItem("forever", "Вечно", "", ""));
+                              else insertBlockDialog(new BlockItem("end_forever", "Конец вечно", "", ""));
                           }).show();
                   } else if("data".equals(cat)){
                       String[] items = {"Установить переменную", "Изменить переменную", "Добавить в список"};
@@ -2215,10 +2181,12 @@ jobs:
               private void askOneArg(String title, String def, OneArg cb){
                   EditText input = new EditText(this);
                   input.setText(def);
+
                   new AlertDialog.Builder(this)
                       .setTitle(title)
                       .setView(input)
                       .setPositiveButton("ОК", (d,w) -> cb.ok(input.getText().toString()))
+                      .setNeutralButton("Переменные", (d,w) -> chooseVariable(cb::ok))
                       .setNegativeButton("Отмена", null)
                       .show();
               }
@@ -2267,14 +2235,29 @@ jobs:
               private void showBlockMenu(int idx){
                   ObjectItem o = currentObject();
                   if(o == null) return;
+                  BlockItem b = o.blocks.get(idx);
 
-                  String[] items = {"Удалить"};
+                  String[] items = {"Удалить", "Изменить Arg1", "Изменить Arg2"};
                   new AlertDialog.Builder(this)
                       .setTitle("Блок")
                       .setItems(items, (d,w) -> {
-                          o.blocks.remove(idx);
-                          saveAll();
-                          renderBlocks();
+                          if(w == 0){
+                              o.blocks.remove(idx);
+                              saveAll();
+                              renderBlocks();
+                          } else if(w == 1){
+                              askOneArg("Arg1", b.arg1 == null ? "" : b.arg1, val -> {
+                                  b.arg1 = val;
+                                  saveAll();
+                                  renderBlocks();
+                              });
+                          } else if(w == 2){
+                              askOneArg("Arg2", b.arg2 == null ? "" : b.arg2, val -> {
+                                  b.arg2 = val;
+                                  saveAll();
+                                  renderBlocks();
+                              });
+                          }
                       })
                       .show();
               }
@@ -2417,7 +2400,7 @@ jobs:
                   android:label="Карманный Код Ультра"
                   android:theme="@style/AppTheme">
                   <activity
-                      android:name="com.pocketultra.ru.MainActivity"
+                      android:name="com.pocketultra.ruv2.MainActivity"
                       android:exported="true">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/>
@@ -2446,11 +2429,11 @@ jobs:
           }
 
           android {
-              namespace 'com.pocketultra.ru'
+              namespace 'com.pocketultra.ruv2'
               compileSdk 34
 
               defaultConfig {
-                  applicationId 'com.pocketultra.ru'
+                  applicationId 'com.pocketultra.ruv2'
                   minSdk 24
                   targetSdk 34
               }
@@ -2473,5 +2456,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Pocket_Code_Ultra_RU_APK
+          name: Pocket_Code_Ultra_RU_v2_APK
           path: app/build/outputs/apk/debug/app-debug.apk
