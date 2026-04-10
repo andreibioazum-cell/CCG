@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Любимой маме с любовью 💕</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Lato:wght@300;400;700&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- counter extra styles -->
+  <style>
+    .counter-row {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .counter-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: linear-gradient(145deg, #fff0f6, #ffe4f0);
+      border: 1px solid rgba(255,150,200,0.4);
+      border-radius: 16px;
+      padding: 14px 20px;
+      min-width: 80px;
+    }
+    .counter-num {
+      font-family: 'Playfair Display', serif;
+      font-size: 2rem;
+      font-weight: 700;
+      color: #d63384;
+      line-height: 1;
+    }
+    .counter-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: #7a3060;
+      margin-top: 4px;
+    }
+    .counter-caption {
+      text-align: center;
+      color: #7a3060;
+      font-size: 0.95rem;
+      font-style: italic;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Фон: падающие лепестки -->
+  <canvas id="petals-canvas"></canvas>
+
+  <!-- Попап-сюрприз -->
+  <div class="popup-overlay" id="popup-overlay">
+    <div class="popup">
+      <span class="pop-emoji">💖</span>
+      <h2>Сюрприз для мамы!</h2>
+      <p class="pop-text">Ты — самый красивый цветок в нашем саду жизни!</p>
+      <button class="btn-close" id="popup-close">Спасибо! 🌸</button>
+    </div>
+  </div>
+
+  <div class="wrapper">
+
+    <!-- ★ ШАПКА ★ -->
+    <header>
+      <div class="ribbon">💌 Специально для тебя</div>
+      <h1>Дорогая <span>Мамочка</span>,<br>с Днём Рождения! 🎂</h1>
+      <p class="subtitle">Сегодня особенный день — твой день!</p>
+      <div class="heart-divider">
+        <span class="heart-icon">💗</span>
+      </div>
+    </header>
+
+    <!-- ★ ЦВЕТОК ★ -->
+    <div class="flower-img-wrap">
+      <img src="flowers.png" alt="Цветы для мамы" />
+    </div>
+
+    <!-- ★ ПОСЛАНИЕ ★ -->
+    <div class="card">
+      <h2 class="card-title"><span class="icon">💌</span> Моей любимой маме</h2>
+      <p>
+        Мамочка, сегодня я хочу сказать тебе, как сильно ты важна для меня.
+        Твои объятия — самое тёплое место на свете, твои слова — лучшая поддержка,
+        а твоя улыбка освещает всё вокруг. Спасибо тебе за бесконечную любовь,
+        терпение и заботу, которые ты дарила мне каждый день.
+        Ты — моя суперсила. Я люблю тебя больше всего на свете! 🌸
+      </p>
+    </div>
+
+    <!-- ★ ПОЖЕЛАНИЯ ★ -->
+    <div class="wishes-grid">
+      <div class="wish-item">
+        <span class="wish-emoji">🌹</span>
+        <h3>Здоровья</h3>
+        <p>Пусть каждое утро дарит тебе бодрость и лёгкость</p>
+      </div>
+      <div class="wish-item">
+        <span class="wish-emoji">✨</span>
+        <h3>Счастья</h3>
+        <p>Пусть жизнь наполняется радостными моментами</p>
+      </div>
+      <div class="wish-item">
+        <span class="wish-emoji">💫</span>
+        <h3>Удачи</h3>
+        <p>Пусть мечты сбываются легко и красиво</p>
+      </div>
+      <div class="wish-item">
+        <span class="wish-emoji">🎀</span>
+        <h3>Любви</h3>
+        <p>Пусть сердце будет наполнено теплом и нежностью</p>
+      </div>
+      <div class="wish-item">
+        <span class="wish-emoji">🍀</span>
+        <h3>Везения</h3>
+        <p>Пусть удача всегда будет на твоей стороне</p>
+      </div>
+      <div class="wish-item">
+        <span class="wish-emoji">🌸</span>
+        <h3>Красоты</h3>
+        <p>Пусть каждый день расцветает как весенний сад</p>
+      </div>
+    </div>
+
+    <!-- ★ ЦИТАТА ★ -->
+    <div class="quote-card">
+      <blockquote>
+        «Мама — это имя Бога на устах и в сердцах маленьких детей.
+        И даже когда мы вырастаем, это не меняется никогда.»
+      </blockquote>
+      <cite>— С бесконечной любовью ❤️</cite>
+    </div>
+
+    <!-- ★ СЧЁТЧИК ★ -->
+    <div class="card">
+      <h2 class="card-title"><span class="icon">⏳</span> Ты радуешь нас уже...</h2>
+      <div id="birthday-counter">
+        <p style="text-align:center; color:#7a3060;">Считаем секунды любви...</p>
+      </div>
+    </div>
+
+    <!-- ★ ФОТО-РАМКИ ★ -->
+    <div class="card">
+      <h2 class="card-title"><span class="icon">📸</span> Наши воспоминания</h2>
+      <p style="margin-bottom:24px; font-size:0.95rem; color:#7a3060;">
+        Каждый момент рядом с тобой — бесценное сокровище в нашей памяти.
+      </p>
+      <div class="photos-row">
+        <div class="photo-frame" title="Воспоминание 1">🌷</div>
+        <div class="photo-frame" title="Воспоминание 2">👩‍👧</div>
+        <div class="photo-frame" title="Воспоминание 3">🎂</div>
+        <div class="photo-frame" title="Воспоминание 4">🌺</div>
+      </div>
+    </div>
+
+    <!-- ★ КНОПКА СЮРПРИЗА ★ -->
+    <div class="btn-wrap">
+      <button class="btn-primary" id="surprise-btn">
+        🎁 &nbsp;Нажми на сюрприз!
+      </button>
+    </div>
+
+  </div><!-- /wrapper -->
+
+  <!-- ★ FOOTER ★ -->
+  <footer>
+    <span class="footer-hearts">💖 💗 💕</span>
+    Сделано с любовью специально для тебя, мамочка &nbsp;🌸
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
