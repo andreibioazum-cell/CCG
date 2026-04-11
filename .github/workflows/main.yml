@@ -1,4 +1,4 @@
-name: Pocket_Code_Ultra_RU_v3_Lite
+name: Enjoer_6.1_Stars
 on: [push, workflow_dispatch]
 
 jobs:
@@ -16,7 +16,7 @@ jobs:
 
       - name: Create Project
         run: |
-          mkdir -p app/src/main/java/com/pocketlite/ru
+          mkdir -p app/src/main/java/com/enjoer/game
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
           mkdir -p app/src/main/res/drawable
@@ -27,109 +27,90 @@ jobs:
           cat <<EOF > app/src/main/res/values/themes.xml
           <resources>
             <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
-              <item name="android:windowBackground">#F2F8FD</item>
+              <item name="android:windowFullscreen">true</item>
             </style>
           </resources>
           EOF
 
-          cat <<EOF > app/src/main/res/drawable/bg_panel.xml
-          <shape xmlns:android="http://schemas.android.com/apk/res/android">
-            <solid android:color="#FFFFFF"/>
-            <corners android:radius="16dp"/>
-            <stroke android:width="1dp" android:color="#D6E6F2"/>
-          </shape>
-          EOF
-
-          cat <<EOF > app/src/main/res/drawable/bg_stage.xml
-          <shape xmlns:android="http://schemas.android.com/apk/res/android">
-            <solid android:color="#D8F0FF"/>
-            <corners android:radius="18dp"/>
-            <stroke android:width="2dp" android:color="#8AC4E8"/>
-          </shape>
-          EOF
-
           cat <<EOF > app/src/main/res/drawable/btn_blue.xml
-          <shape xmlns:android="http://schemas.android.com/apk/res/android">
-            <solid android:color="#4C97FF"/>
-            <corners android:radius="14dp"/>
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+            <corners android:radius="12dp"/>
+            <solid android:color="#101820"/>
+            <stroke android:width="2dp" android:color="#00BFFF"/>
           </shape>
           EOF
 
-          cat <<EOF > app/src/main/res/drawable/btn_green.xml
-          <shape xmlns:android="http://schemas.android.com/apk/res/android">
-            <solid android:color="#5FD36E"/>
-            <corners android:radius="14dp"/>
+          cat <<EOF > app/src/main/res/drawable/btn_blue_filled.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+            <corners android:radius="12dp"/>
+            <solid android:color="#00BFFF"/>
           </shape>
           EOF
 
           cat <<EOF > app/src/main/res/drawable/btn_red.xml
-          <shape xmlns:android="http://schemas.android.com/apk/res/android">
-            <solid android:color="#FF6F6F"/>
-            <corners android:radius="14dp"/>
-          </shape>
-          EOF
-
-          cat <<EOF > app/src/main/res/drawable/btn_orange.xml
-          <shape xmlns:android="http://schemas.android.com/apk/res/android">
-            <solid android:color="#FFAB19"/>
-            <corners android:radius="14dp"/>
-          </shape>
-          EOF
-
-          cat <<EOF > app/src/main/res/drawable/btn_purple.xml
-          <shape xmlns:android="http://schemas.android.com/apk/res/android">
-            <solid android:color="#9966FF"/>
-            <corners android:radius="14dp"/>
-          </shape>
-          EOF
-
-          cat <<EOF > app/src/main/res/drawable/btn_gray.xml
-          <shape xmlns:android="http://schemas.android.com/apk/res/android">
-            <solid android:color="#5F7080"/>
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
             <corners android:radius="12dp"/>
+            <solid android:color="#101820"/>
+            <stroke android:width="2dp" android:color="#FF4444"/>
           </shape>
           EOF
 
-          cat <<EOF > app/src/main/res/drawable/block_event.xml
-          <shape xmlns:android="http://schemas.android.com/apk/res/android">
-            <solid android:color="#FFBF00"/>
-            <corners android:radius="16dp"/>
+          cat <<EOF > app/src/main/res/drawable/btn_green.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+            <corners android:radius="12dp"/>
+            <solid android:color="#44FF44"/>
           </shape>
           EOF
 
-          cat <<EOF > app/src/main/res/drawable/block_motion.xml
-          <shape xmlns:android="http://schemas.android.com/apk/res/android">
-            <solid android:color="#4C97FF"/>
-            <corners android:radius="16dp"/>
+          cat <<EOF > app/src/main/res/drawable/joy_base.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+            <solid android:color="#CC101820"/>
+            <stroke android:width="2dp" android:color="#00BFFF"/>
           </shape>
           EOF
 
-          cat <<EOF > app/src/main/res/drawable/block_looks.xml
-          <shape xmlns:android="http://schemas.android.com/apk/res/android">
-            <solid android:color="#9966FF"/>
-            <corners android:radius="16dp"/>
+          cat <<EOF > app/src/main/res/drawable/joy_stick.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+            <solid android:color="#00BFFF"/>
           </shape>
           EOF
 
-          cat <<EOF > app/src/main/res/drawable/block_control.xml
-          <shape xmlns:android="http://schemas.android.com/apk/res/android">
-            <solid android:color="#FFAB19"/>
-            <corners android:radius="16dp"/>
+          cat <<EOF > app/src/main/res/drawable/panel_bg.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+            <corners android:radius="8dp"/>
+            <solid android:color="#E6101820"/>
+            <stroke android:width="1dp" android:color="#00BFFF"/>
           </shape>
           EOF
 
-          cat <<EOF > app/src/main/res/drawable/block_data.xml
-          <shape xmlns:android="http://schemas.android.com/apk/res/android">
-            <solid android:color="#FF8C1A"/>
-            <corners android:radius="16dp"/>
+          cat <<EOF > app/src/main/res/drawable/color_btn.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+            <solid android:color="#FFFFFF"/>
+            <stroke android:width="2dp" android:color="#00BFFF"/>
           </shape>
           EOF
 
-          cat <<EOF > app/src/main/res/drawable/block_signal.xml
-          <shape xmlns:android="http://schemas.android.com/apk/res/android">
-            <solid android:color="#E1A91A"/>
-            <corners android:radius="16dp"/>
-          </shape>
+          cat <<EOF > app/src/main/res/drawable/crosshair.xml
+          <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+            <item android:gravity="center">
+              <shape android:shape="rectangle">
+                <size android:width="22dp" android:height="2dp"/>
+                <solid android:color="#FF00BFFF"/>
+              </shape>
+            </item>
+            <item android:gravity="center">
+              <shape android:shape="rectangle">
+                <size android:width="2dp" android:height="22dp"/>
+                <solid android:color="#FF00BFFF"/>
+              </shape>
+            </item>
+            <item android:gravity="center">
+              <shape android:shape="oval">
+                <size android:width="4dp" android:height="4dp"/>
+                <solid android:color="#FF7FDBFF"/>
+              </shape>
+            </item>
+          </layer-list>
           EOF
 
           cat <<'LAYOUT' > app/src/main/res/layout/activity_main.xml
@@ -137,1464 +118,1935 @@ jobs:
           <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
               android:layout_width="match_parent"
               android:layout_height="match_parent"
-              android:background="#F2F8FD">
+              android:background="#02050A">
 
-              <LinearLayout
-                  android:id="@+id/screen_projects"
+              <android.opengl.GLSurfaceView
+                  android:id="@+id/gl_view"
+                  android:layout_width="match_parent"
+                  android:layout_height="match_parent"/>
+
+              <RelativeLayout
+                  android:id="@+id/game_ui"
                   android:layout_width="match_parent"
                   android:layout_height="match_parent"
-                  android:orientation="vertical"
-                  android:padding="12dp">
-
-                  <TextView
-                      android:layout_width="match_parent"
-                      android:layout_height="wrap_content"
-                      android:text="Проекты"
-                      android:textSize="26sp"
-                      android:textStyle="bold"
-                      android:textColor="#2D678F"/>
-
-                  <LinearLayout
-                      android:layout_width="match_parent"
-                      android:layout_height="wrap_content"
-                      android:orientation="horizontal"
-                      android:layout_marginTop="10dp">
-
-                      <Button
-                          android:id="@+id/btn_new_project"
-                          android:layout_width="0dp"
-                          android:layout_height="48dp"
-                          android:layout_weight="1"
-                          android:text="+ Новый проект"
-                          android:textColor="#FFFFFF"
-                          android:background="@drawable/btn_blue"/>
-
-                      <Button
-                          android:id="@+id/btn_data_manager"
-                          android:layout_width="0dp"
-                          android:layout_height="48dp"
-                          android:layout_weight="1"
-                          android:layout_marginLeft="8dp"
-                          android:text="Данные"
-                          android:textColor="#FFFFFF"
-                          android:background="@drawable/btn_orange"/>
-                  </LinearLayout>
-
-                  <ScrollView
-                      android:layout_width="match_parent"
-                      android:layout_height="0dp"
-                      android:layout_weight="1"
-                      android:layout_marginTop="10dp">
-
-                      <LinearLayout
-                          android:id="@+id/projects_list"
-                          android:layout_width="match_parent"
-                          android:layout_height="wrap_content"
-                          android:orientation="vertical"/>
-                  </ScrollView>
-              </LinearLayout>
-
-              <LinearLayout
-                  android:id="@+id/screen_scenes"
-                  android:layout_width="match_parent"
-                  android:layout_height="match_parent"
-                  android:orientation="vertical"
-                  android:padding="12dp"
                   android:visibility="gone">
 
-                  <LinearLayout
+                  <View
+                      android:id="@+id/look_zone"
                       android:layout_width="match_parent"
-                      android:layout_height="wrap_content"
-                      android:orientation="horizontal">
-
-                      <Button
-                          android:id="@+id/back_to_projects"
-                          android:layout_width="wrap_content"
-                          android:layout_height="44dp"
-                          android:text="←"
-                          android:textColor="#FFFFFF"
-                          android:background="@drawable/btn_red"/>
-
-                      <TextView
-                          android:id="@+id/txt_project_title"
-                          android:layout_width="0dp"
-                          android:layout_height="wrap_content"
-                          android:layout_weight="1"
-                          android:text="Сцены"
-                          android:textSize="24sp"
-                          android:textStyle="bold"
-                          android:textColor="#2D678F"
-                          android:gravity="center_vertical"
-                          android:paddingLeft="12dp"/>
-                  </LinearLayout>
-
-                  <LinearLayout
-                      android:layout_width="match_parent"
-                      android:layout_height="wrap_content"
-                      android:orientation="horizontal"
-                      android:layout_marginTop="12dp">
-
-                      <Button
-                          android:id="@+id/btn_new_scene"
-                          android:layout_width="0dp"
-                          android:layout_height="48dp"
-                          android:layout_weight="1"
-                          android:text="+ Новая сцена"
-                          android:textColor="#FFFFFF"
-                          android:background="@drawable/btn_purple"/>
-
-                      <Button
-                          android:id="@+id/btn_texture_library"
-                          android:layout_width="0dp"
-                          android:layout_height="48dp"
-                          android:layout_weight="1"
-                          android:layout_marginLeft="8dp"
-                          android:text="Текстуры"
-                          android:textColor="#FFFFFF"
-                          android:background="@drawable/btn_blue"/>
-                  </LinearLayout>
-
-                  <ScrollView
-                      android:layout_width="match_parent"
-                      android:layout_height="0dp"
-                      android:layout_weight="1"
-                      android:layout_marginTop="10dp">
-
-                      <LinearLayout
-                          android:id="@+id/scenes_list"
-                          android:layout_width="match_parent"
-                          android:layout_height="wrap_content"
-                          android:orientation="vertical"/>
-                  </ScrollView>
-              </LinearLayout>
-
-              <LinearLayout
-                  android:id="@+id/screen_objects"
-                  android:layout_width="match_parent"
-                  android:layout_height="match_parent"
-                  android:orientation="vertical"
-                  android:padding="12dp"
-                  android:visibility="gone">
-
-                  <LinearLayout
-                      android:layout_width="match_parent"
-                      android:layout_height="wrap_content"
-                      android:orientation="horizontal">
-
-                      <Button
-                          android:id="@+id/back_to_scenes"
-                          android:layout_width="wrap_content"
-                          android:layout_height="44dp"
-                          android:text="←"
-                          android:textColor="#FFFFFF"
-                          android:background="@drawable/btn_red"/>
-
-                      <TextView
-                          android:id="@+id/txt_scene_title"
-                          android:layout_width="0dp"
-                          android:layout_height="wrap_content"
-                          android:layout_weight="1"
-                          android:text="Объекты"
-                          android:textSize="24sp"
-                          android:textStyle="bold"
-                          android:textColor="#2D678F"
-                          android:gravity="center_vertical"
-                          android:paddingLeft="12dp"/>
-
-                      <Button
-                          android:id="@+id/btn_play_scene"
-                          android:layout_width="wrap_content"
-                          android:layout_height="44dp"
-                          android:text="Запуск"
-                          android:textColor="#FFFFFF"
-                          android:background="@drawable/btn_green"/>
-                  </LinearLayout>
+                      android:layout_height="match_parent"/>
 
                   <Button
-                      android:id="@+id/btn_new_object"
-                      android:layout_width="match_parent"
-                      android:layout_height="48dp"
-                      android:text="+ Новый объект"
-                      android:textColor="#FFFFFF"
+                      android:id="@+id/btn_menu"
+                      android:layout_width="50dp"
+                      android:layout_height="50dp"
+                      android:layout_margin="10dp"
+                      android:text="≡"
+                      android:textSize="24sp"
                       android:background="@drawable/btn_blue"
-                      android:layout_marginTop="12dp"/>
-
-                  <ScrollView
-                      android:layout_width="match_parent"
-                      android:layout_height="0dp"
-                      android:layout_weight="1"
-                      android:layout_marginTop="10dp">
-
-                      <LinearLayout
-                          android:id="@+id/objects_list"
-                          android:layout_width="match_parent"
-                          android:layout_height="wrap_content"
-                          android:orientation="vertical"/>
-                  </ScrollView>
-              </LinearLayout>
-
-              <LinearLayout
-                  android:id="@+id/screen_scripts"
-                  android:layout_width="match_parent"
-                  android:layout_height="match_parent"
-                  android:orientation="vertical"
-                  android:padding="12dp"
-                  android:visibility="gone">
-
-                  <LinearLayout
-                      android:layout_width="match_parent"
-                      android:layout_height="wrap_content"
-                      android:orientation="horizontal">
-
-                      <Button
-                          android:id="@+id/back_to_objects"
-                          android:layout_width="wrap_content"
-                          android:layout_height="44dp"
-                          android:text="←"
-                          android:textColor="#FFFFFF"
-                          android:background="@drawable/btn_red"/>
-
-                      <TextView
-                          android:id="@+id/txt_object_title"
-                          android:layout_width="0dp"
-                          android:layout_height="wrap_content"
-                          android:layout_weight="1"
-                          android:text="Скрипты"
-                          android:textSize="24sp"
-                          android:textStyle="bold"
-                          android:textColor="#2D678F"
-                          android:gravity="center_vertical"
-                          android:paddingLeft="12dp"/>
-
-                      <Button
-                          android:id="@+id/btn_formula_manager"
-                          android:layout_width="wrap_content"
-                          android:layout_height="44dp"
-                          android:text="Формулы"
-                          android:textColor="#FFFFFF"
-                          android:background="@drawable/btn_orange"/>
-                  </LinearLayout>
-
-                  <LinearLayout
-                      android:layout_width="match_parent"
-                      android:layout_height="0dp"
-                      android:layout_weight="1"
-                      android:orientation="vertical"
-                      android:background="@drawable/bg_panel"
-                      android:padding="10dp"
-                      android:layout_marginTop="10dp">
-
-                      <LinearLayout
-                          android:layout_width="match_parent"
-                          android:layout_height="wrap_content"
-                          android:orientation="horizontal">
-
-                          <TextView
-                              android:layout_width="0dp"
-                              android:layout_height="wrap_content"
-                              android:layout_weight="1"
-                              android:text="Блоки"
-                              android:textStyle="bold"
-                              android:textSize="18sp"
-                              android:textColor="#356D99"/>
-
-                          <Button
-                              android:id="@+id/btn_add_block"
-                              android:layout_width="44dp"
-                              android:layout_height="44dp"
-                              android:text="+"
-                              android:textColor="#FFFFFF"
-                              android:textSize="24sp"
-                              android:background="@drawable/btn_blue"/>
-                      </LinearLayout>
-
-                      <ScrollView
-                          android:layout_width="match_parent"
-                          android:layout_height="0dp"
-                          android:layout_weight="1"
-                          android:layout_marginTop="8dp">
-
-                          <LinearLayout
-                              android:id="@+id/blocks_list"
-                              android:layout_width="match_parent"
-                              android:layout_height="wrap_content"
-                              android:orientation="vertical"/>
-                      </ScrollView>
-                  </LinearLayout>
-              </LinearLayout>
-
-              <FrameLayout
-                  android:id="@+id/screen_player"
-                  android:layout_width="match_parent"
-                  android:layout_height="match_parent"
-                  android:visibility="gone"
-                  android:background="#101820">
+                      android:textColor="#00BFFF"/>
 
                   <FrameLayout
-                      android:id="@+id/player_stage"
-                      android:layout_width="match_parent"
-                      android:layout_height="match_parent"
-                      android:layout_margin="12dp"
-                      android:background="@drawable/bg_stage">
+                      android:id="@+id/joy_base"
+                      android:layout_width="140dp"
+                      android:layout_height="140dp"
+                      android:layout_alignParentBottom="true"
+                      android:layout_alignParentLeft="true"
+                      android:layout_marginLeft="40dp"
+                      android:layout_marginBottom="40dp"
+                      android:background="@drawable/joy_base"/>
 
-                      <FrameLayout
-                          android:id="@+id/player_stage_layer"
-                          android:layout_width="match_parent"
-                          android:layout_height="match_parent"/>
-                  </FrameLayout>
+                  <View
+                      android:id="@+id/joy_stick"
+                      android:layout_width="60dp"
+                      android:layout_height="60dp"
+                      android:layout_alignLeft="@id/joy_base"
+                      android:layout_alignTop="@id/joy_base"
+                      android:layout_marginLeft="40dp"
+                      android:layout_marginTop="40dp"
+                      android:background="@drawable/joy_stick"/>
 
                   <Button
-                      android:id="@+id/btn_stop_player"
-                      android:layout_width="80dp"
-                      android:layout_height="48dp"
-                      android:layout_margin="16dp"
-                      android:text="Стоп"
-                      android:textColor="#FFFFFF"
-                      android:background="@drawable/btn_red"/>
-              </FrameLayout>
+                      android:id="@+id/btn_jump"
+                      android:layout_width="90dp"
+                      android:layout_height="90dp"
+                      android:layout_alignParentRight="true"
+                      android:layout_alignParentBottom="true"
+                      android:layout_marginRight="40dp"
+                      android:layout_marginBottom="40dp"
+                      android:text="▲"
+                      android:textSize="28sp"
+                      android:background="@drawable/btn_blue"
+                      android:textColor="#FFF"/>
+
+                  <View
+                      android:id="@+id/crosshair_game"
+                      android:layout_width="22dp"
+                      android:layout_height="22dp"
+                      android:layout_centerInParent="true"
+                      android:background="@drawable/crosshair"/>
+              </RelativeLayout>
+
+              <RelativeLayout
+                  android:id="@+id/engine_ui"
+                  android:layout_width="match_parent"
+                  android:layout_height="match_parent"
+                  android:visibility="gone">
+
+                  <View
+                      android:id="@+id/engine_touch_zone"
+                      android:layout_width="match_parent"
+                      android:layout_height="match_parent"/>
+
+                  <LinearLayout
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:layout_alignParentTop="true"
+                      android:orientation="horizontal"
+                      android:padding="10dp">
+
+                      <Button
+                          android:id="@+id/btn_engine_menu"
+                          android:layout_width="50dp"
+                          android:layout_height="50dp"
+                          android:text="≡"
+                          android:textSize="24sp"
+                          android:background="@drawable/btn_blue"
+                          android:textColor="#00BFFF"/>
+
+                      <View
+                          android:layout_width="0dp"
+                          android:layout_height="1dp"
+                          android:layout_weight="1"/>
+
+                      <Button
+                          android:id="@+id/btn_run_script"
+                          android:layout_width="90dp"
+                          android:layout_height="50dp"
+                          android:text="Script"
+                          android:textSize="12sp"
+                          android:background="@drawable/btn_blue"
+                          android:textColor="#00BFFF"/>
+
+                      <Button
+                          android:id="@+id/btn_save"
+                          android:layout_width="90dp"
+                          android:layout_height="50dp"
+                          android:text="Export"
+                          android:textSize="12sp"
+                          android:background="@drawable/btn_blue"
+                          android:textColor="#00BFFF"
+                          android:layout_marginLeft="8dp"/>
+
+                      <Button
+                          android:id="@+id/btn_play_level"
+                          android:layout_width="50dp"
+                          android:layout_height="50dp"
+                          android:text="▶"
+                          android:textSize="20sp"
+                          android:background="@drawable/btn_green"
+                          android:textColor="#000"
+                          android:layout_marginLeft="10dp"/>
+                  </LinearLayout>
+
+                  <FrameLayout
+                      android:id="@+id/engine_joy_base"
+                      android:layout_width="120dp"
+                      android:layout_height="120dp"
+                      android:layout_alignParentBottom="true"
+                      android:layout_alignParentLeft="true"
+                      android:layout_marginLeft="30dp"
+                      android:layout_marginBottom="30dp"
+                      android:background="@drawable/joy_base"/>
+
+                  <View
+                      android:id="@+id/engine_joy_stick"
+                      android:layout_width="50dp"
+                      android:layout_height="50dp"
+                      android:layout_alignLeft="@id/engine_joy_base"
+                      android:layout_alignTop="@id/engine_joy_base"
+                      android:layout_marginLeft="35dp"
+                      android:layout_marginTop="35dp"
+                      android:background="@drawable/joy_stick"/>
+
+                  <ScrollView
+                      android:id="@+id/tools_scroll"
+                      android:layout_width="210dp"
+                      android:layout_height="match_parent"
+                      android:layout_alignParentRight="true"
+                      android:layout_marginRight="10dp"
+                      android:layout_marginTop="70dp"
+                      android:layout_marginBottom="10dp">
+
+                      <LinearLayout
+                          android:layout_width="match_parent"
+                          android:layout_height="wrap_content"
+                          android:orientation="vertical"
+                          android:background="@drawable/panel_bg"
+                          android:padding="10dp">
+
+                          <TextView
+                              android:layout_width="match_parent"
+                              android:layout_height="wrap_content"
+                              android:text="Shape"
+                              android:textColor="#FFFFFF"
+                              android:textStyle="bold"/>
+
+                          <LinearLayout
+                              android:layout_width="match_parent"
+                              android:layout_height="wrap_content"
+                              android:orientation="horizontal"
+                              android:layout_marginTop="6dp">
+
+                              <Button
+                                  android:id="@+id/shape_square"
+                                  android:layout_width="0dp"
+                                  android:layout_height="36dp"
+                                  android:layout_weight="1"
+                                  android:text="Square"
+                                  android:background="@drawable/btn_blue_filled"
+                                  android:textColor="#000"/>
+
+                              <Button
+                                  android:id="@+id/shape_rectangle"
+                                  android:layout_width="0dp"
+                                  android:layout_height="36dp"
+                                  android:layout_weight="1"
+                                  android:text="Rectangle"
+                                  android:background="@drawable/btn_blue"
+                                  android:textColor="#00BFFF"
+                                  android:layout_marginLeft="4dp"/>
+                          </LinearLayout>
+
+                          <LinearLayout
+                              android:layout_width="match_parent"
+                              android:layout_height="wrap_content"
+                              android:orientation="horizontal"
+                              android:layout_marginTop="4dp">
+
+                              <Button
+                                  android:id="@+id/shape_circle"
+                                  android:layout_width="0dp"
+                                  android:layout_height="36dp"
+                                  android:layout_weight="1"
+                                  android:text="Circle"
+                                  android:background="@drawable/btn_blue"
+                                  android:textColor="#00BFFF"/>
+
+                              <Button
+                                  android:id="@+id/shape_triangle"
+                                  android:layout_width="0dp"
+                                  android:layout_height="36dp"
+                                  android:layout_weight="1"
+                                  android:text="Triangle"
+                                  android:background="@drawable/btn_blue"
+                                  android:textColor="#00BFFF"
+                                  android:layout_marginLeft="4dp"/>
+                          </LinearLayout>
+
+                          <TextView
+                              android:layout_width="match_parent"
+                              android:layout_height="wrap_content"
+                              android:text="Size X / Y / Z"
+                              android:textColor="#FFFFFF"
+                              android:textStyle="bold"
+                              android:layout_marginTop="10dp"/>
+
+                          <LinearLayout
+                              android:layout_width="match_parent"
+                              android:layout_height="wrap_content"
+                              android:orientation="horizontal"
+                              android:layout_marginTop="6dp">
+
+                              <Button
+                                  android:id="@+id/size_x_minus"
+                                  android:layout_width="0dp"
+                                  android:layout_height="36dp"
+                                  android:layout_weight="1"
+                                  android:text="X-"
+                                  android:background="@drawable/btn_blue"
+                                  android:textColor="#00BFFF"/>
+
+                              <Button
+                                  android:id="@+id/size_x_plus"
+                                  android:layout_width="0dp"
+                                  android:layout_height="36dp"
+                                  android:layout_weight="1"
+                                  android:text="X+"
+                                  android:background="@drawable/btn_blue"
+                                  android:textColor="#00BFFF"
+                                  android:layout_marginLeft="4dp"/>
+                          </LinearLayout>
+
+                          <LinearLayout
+                              android:layout_width="match_parent"
+                              android:layout_height="wrap_content"
+                              android:orientation="horizontal"
+                              android:layout_marginTop="4dp">
+
+                              <Button
+                                  android:id="@+id/size_y_minus"
+                                  android:layout_width="0dp"
+                                  android:layout_height="36dp"
+                                  android:layout_weight="1"
+                                  android:text="Y-"
+                                  android:background="@drawable/btn_blue"
+                                  android:textColor="#00BFFF"/>
+
+                              <Button
+                                  android:id="@+id/size_y_plus"
+                                  android:layout_width="0dp"
+                                  android:layout_height="36dp"
+                                  android:layout_weight="1"
+                                  android:text="Y+"
+                                  android:background="@drawable/btn_blue"
+                                  android:textColor="#00BFFF"
+                                  android:layout_marginLeft="4dp"/>
+                          </LinearLayout>
+
+                          <LinearLayout
+                              android:layout_width="match_parent"
+                              android:layout_height="wrap_content"
+                              android:orientation="horizontal"
+                              android:layout_marginTop="4dp">
+
+                              <Button
+                                  android:id="@+id/size_z_minus"
+                                  android:layout_width="0dp"
+                                  android:layout_height="36dp"
+                                  android:layout_weight="1"
+                                  android:text="Z-"
+                                  android:background="@drawable/btn_blue"
+                                  android:textColor="#00BFFF"/>
+
+                              <Button
+                                  android:id="@+id/size_z_plus"
+                                  android:layout_width="0dp"
+                                  android:layout_height="36dp"
+                                  android:layout_weight="1"
+                                  android:text="Z+"
+                                  android:background="@drawable/btn_blue"
+                                  android:textColor="#00BFFF"
+                                  android:layout_marginLeft="4dp"/>
+                          </LinearLayout>
+
+                          <TextView
+                              android:id="@+id/txt_size_info"
+                              android:layout_width="match_parent"
+                              android:layout_height="wrap_content"
+                              android:text="4 x 4 x 4"
+                              android:textColor="#AEEBFF"
+                              android:layout_marginTop="6dp"/>
+
+                          <Button
+                              android:id="@+id/btn_grid"
+                              android:layout_width="match_parent"
+                              android:layout_height="36dp"
+                              android:text="Grid: On"
+                              android:background="@drawable/btn_blue_filled"
+                              android:textColor="#000"
+                              android:layout_marginTop="8dp"/>
+
+                          <LinearLayout
+                              android:layout_width="match_parent"
+                              android:layout_height="wrap_content"
+                              android:orientation="horizontal"
+                              android:gravity="center"
+                              android:layout_marginTop="8dp">
+
+                              <View
+                                  android:id="@+id/color_red"
+                                  android:layout_width="26dp"
+                                  android:layout_height="26dp"
+                                  android:background="@drawable/color_btn"
+                                  android:backgroundTint="#FF2222"/>
+
+                              <View
+                                  android:id="@+id/color_green"
+                                  android:layout_width="26dp"
+                                  android:layout_height="26dp"
+                                  android:background="@drawable/color_btn"
+                                  android:backgroundTint="#22FF22"
+                                  android:layout_marginLeft="5dp"/>
+
+                              <View
+                                  android:id="@+id/color_blue"
+                                  android:layout_width="26dp"
+                                  android:layout_height="26dp"
+                                  android:background="@drawable/color_btn"
+                                  android:backgroundTint="#2288FF"
+                                  android:layout_marginLeft="5dp"/>
+
+                              <View
+                                  android:id="@+id/color_yellow"
+                                  android:layout_width="26dp"
+                                  android:layout_height="26dp"
+                                  android:background="@drawable/color_btn"
+                                  android:backgroundTint="#FFFF22"
+                                  android:layout_marginLeft="5dp"/>
+
+                              <View
+                                  android:id="@+id/color_white"
+                                  android:layout_width="26dp"
+                                  android:layout_height="26dp"
+                                  android:background="@drawable/color_btn"
+                                  android:backgroundTint="#FFFFFF"
+                                  android:layout_marginLeft="5dp"/>
+
+                              <View
+                                  android:id="@+id/color_black"
+                                  android:layout_width="26dp"
+                                  android:layout_height="26dp"
+                                  android:background="@drawable/color_btn"
+                                  android:backgroundTint="#000000"
+                                  android:layout_marginLeft="5dp"/>
+                          </LinearLayout>
+
+                          <LinearLayout
+                              android:layout_width="match_parent"
+                              android:layout_height="wrap_content"
+                              android:orientation="horizontal"
+                              android:layout_marginTop="8dp">
+
+                              <Button
+                                  android:id="@+id/dist_near"
+                                  android:layout_width="0dp"
+                                  android:layout_height="36dp"
+                                  android:layout_weight="1"
+                                  android:text="3"
+                                  android:background="@drawable/btn_blue"
+                                  android:textColor="#00BFFF"/>
+
+                              <Button
+                                  android:id="@+id/dist_mid"
+                                  android:layout_width="0dp"
+                                  android:layout_height="36dp"
+                                  android:layout_weight="1"
+                                  android:text="6"
+                                  android:background="@drawable/btn_blue_filled"
+                                  android:textColor="#000"
+                                  android:layout_marginLeft="4dp"/>
+
+                              <Button
+                                  android:id="@+id/dist_far"
+                                  android:layout_width="0dp"
+                                  android:layout_height="36dp"
+                                  android:layout_weight="1"
+                                  android:text="12"
+                                  android:background="@drawable/btn_blue"
+                                  android:textColor="#00BFFF"
+                                  android:layout_marginLeft="4dp"/>
+                          </LinearLayout>
+
+                          <Button
+                              android:id="@+id/btn_place"
+                              android:layout_width="match_parent"
+                              android:layout_height="44dp"
+                              android:text="+ Place"
+                              android:background="@drawable/btn_blue_filled"
+                              android:textColor="#000"
+                              android:layout_marginTop="12dp"/>
+
+                          <Button
+                              android:id="@+id/btn_block_events"
+                              android:layout_width="match_parent"
+                              android:layout_height="36dp"
+                              android:text="Events"
+                              android:background="@drawable/btn_blue"
+                              android:textColor="#00BFFF"
+                              android:layout_marginTop="8dp"
+                              android:visibility="gone"/>
+
+                          <Button
+                              android:id="@+id/btn_hide"
+                              android:layout_width="match_parent"
+                              android:layout_height="36dp"
+                              android:text="Hide"
+                              android:background="@drawable/btn_blue"
+                              android:textColor="#00BFFF"
+                              android:layout_marginTop="8dp"
+                              android:visibility="gone"/>
+
+                          <Button
+                              android:id="@+id/btn_delete"
+                              android:layout_width="match_parent"
+                              android:layout_height="36dp"
+                              android:text="Delete"
+                              android:background="@drawable/btn_red"
+                              android:textColor="#FF4444"
+                              android:layout_marginTop="8dp"
+                              android:visibility="gone"/>
+
+                          <Button
+                              android:id="@+id/btn_deselect"
+                              android:layout_width="match_parent"
+                              android:layout_height="36dp"
+                              android:text="Deselect"
+                              android:background="@drawable/btn_blue"
+                              android:textColor="#00BFFF"
+                              android:layout_marginTop="8dp"
+                              android:visibility="gone"/>
+                      </LinearLayout>
+                  </ScrollView>
+
+                  <LinearLayout
+                      android:id="@+id/axis_panel"
+                      android:layout_width="wrap_content"
+                      android:layout_height="wrap_content"
+                      android:layout_alignParentBottom="true"
+                      android:layout_centerHorizontal="true"
+                      android:layout_marginBottom="20dp"
+                      android:orientation="horizontal"
+                      android:background="@drawable/panel_bg"
+                      android:padding="6dp"
+                      android:visibility="gone">
+
+                      <Button
+                          android:id="@+id/axis_x_minus"
+                          android:layout_width="44dp"
+                          android:layout_height="44dp"
+                          android:text="X-"
+                          android:background="@drawable/btn_blue"
+                          android:textColor="#FF4444"
+                          android:textSize="12sp"/>
+
+                      <Button
+                          android:id="@+id/axis_x_plus"
+                          android:layout_width="44dp"
+                          android:layout_height="44dp"
+                          android:text="X+"
+                          android:background="@drawable/btn_blue"
+                          android:textColor="#FF4444"
+                          android:textSize="12sp"
+                          android:layout_marginLeft="4dp"/>
+
+                      <Button
+                          android:id="@+id/axis_y_minus"
+                          android:layout_width="44dp"
+                          android:layout_height="44dp"
+                          android:text="Y-"
+                          android:background="@drawable/btn_blue"
+                          android:textColor="#44FF44"
+                          android:textSize="12sp"
+                          android:layout_marginLeft="10dp"/>
+
+                      <Button
+                          android:id="@+id/axis_y_plus"
+                          android:layout_width="44dp"
+                          android:layout_height="44dp"
+                          android:text="Y+"
+                          android:background="@drawable/btn_blue"
+                          android:textColor="#44FF44"
+                          android:textSize="12sp"
+                          android:layout_marginLeft="4dp"/>
+
+                      <Button
+                          android:id="@+id/axis_z_minus"
+                          android:layout_width="44dp"
+                          android:layout_height="44dp"
+                          android:text="Z-"
+                          android:background="@drawable/btn_blue"
+                          android:textColor="#4488FF"
+                          android:textSize="12sp"
+                          android:layout_marginLeft="10dp"/>
+
+                      <Button
+                          android:id="@+id/axis_z_plus"
+                          android:layout_width="44dp"
+                          android:layout_height="44dp"
+                          android:text="Z+"
+                          android:background="@drawable/btn_blue"
+                          android:textColor="#4488FF"
+                          android:textSize="12sp"
+                          android:layout_marginLeft="4dp"/>
+                  </LinearLayout>
+
+                  <View
+                      android:id="@+id/crosshair_engine"
+                      android:layout_width="22dp"
+                      android:layout_height="22dp"
+                      android:layout_centerInParent="true"
+                      android:background="@drawable/crosshair"/>
+              </RelativeLayout>
+
+              <RelativeLayout
+                  android:id="@+id/playtest_ui"
+                  android:layout_width="match_parent"
+                  android:layout_height="match_parent"
+                  android:visibility="gone">
+
+                  <View
+                      android:id="@+id/playtest_look_zone"
+                      android:layout_width="match_parent"
+                      android:layout_height="match_parent"/>
+
+                  <Button
+                      android:id="@+id/btn_stop_playtest"
+                      android:layout_width="50dp"
+                      android:layout_height="50dp"
+                      android:layout_margin="10dp"
+                      android:text="■"
+                      android:textSize="20sp"
+                      android:background="@drawable/btn_red"
+                      android:textColor="#FFF"/>
+
+                  <FrameLayout
+                      android:id="@+id/playtest_joy_base"
+                      android:layout_width="140dp"
+                      android:layout_height="140dp"
+                      android:layout_alignParentBottom="true"
+                      android:layout_alignParentLeft="true"
+                      android:layout_marginLeft="40dp"
+                      android:layout_marginBottom="40dp"
+                      android:background="@drawable/joy_base"/>
+
+                  <View
+                      android:id="@+id/playtest_joy_stick"
+                      android:layout_width="60dp"
+                      android:layout_height="60dp"
+                      android:layout_alignLeft="@id/playtest_joy_base"
+                      android:layout_alignTop="@id/playtest_joy_base"
+                      android:layout_marginLeft="40dp"
+                      android:layout_marginTop="40dp"
+                      android:background="@drawable/joy_stick"/>
+
+                  <Button
+                      android:id="@+id/btn_playtest_jump"
+                      android:layout_width="90dp"
+                      android:layout_height="90dp"
+                      android:layout_alignParentRight="true"
+                      android:layout_alignParentBottom="true"
+                      android:layout_marginRight="40dp"
+                      android:layout_marginBottom="40dp"
+                      android:text="▲"
+                      android:textSize="28sp"
+                      android:background="@drawable/btn_blue"
+                      android:textColor="#FFF"/>
+
+                  <View
+                      android:id="@+id/crosshair_playtest"
+                      android:layout_width="22dp"
+                      android:layout_height="22dp"
+                      android:layout_centerInParent="true"
+                      android:background="@drawable/crosshair"/>
+              </RelativeLayout>
+
+              <LinearLayout
+                  android:id="@+id/menu_ui"
+                  android:layout_width="match_parent"
+                  android:layout_height="match_parent"
+                  android:orientation="vertical"
+                  android:gravity="center"
+                  android:background="#02050A">
+
+                  <TextView
+                      android:layout_width="wrap_content"
+                      android:layout_height="wrap_content"
+                      android:text="ENJOER"
+                      android:textSize="52sp"
+                      android:textColor="#00BFFF"
+                      android:textStyle="bold"/>
+
+                  <TextView
+                      android:layout_width="wrap_content"
+                      android:layout_height="wrap_content"
+                      android:text="ENGINE 6.1"
+                      android:textSize="18sp"
+                      android:textColor="#0088CC"
+                      android:layout_marginBottom="80dp"/>
+
+                  <Button
+                      android:id="@+id/btn_play"
+                      android:layout_width="240dp"
+                      android:layout_height="60dp"
+                      android:text="Play"
+                      android:textSize="18sp"
+                      android:textColor="#000"
+                      android:background="@drawable/btn_blue_filled"
+                      android:layout_marginBottom="16dp"/>
+
+                  <Button
+                      android:id="@+id/btn_engine"
+                      android:layout_width="240dp"
+                      android:layout_height="60dp"
+                      android:text="Editor"
+                      android:textSize="18sp"
+                      android:textColor="#00BFFF"
+                      android:background="@drawable/btn_blue"
+                      android:layout_marginBottom="16dp"/>
+
+                  <Button
+                      android:id="@+id/btn_load_file"
+                      android:layout_width="240dp"
+                      android:layout_height="60dp"
+                      android:text="Import .json"
+                      android:textSize="16sp"
+                      android:textColor="#00BFFF"
+                      android:background="@drawable/btn_blue"/>
+              </LinearLayout>
           </FrameLayout>
           LAYOUT
 
-          cat <<EOF > app/src/main/java/com/pocketlite/ru/BlockItem.java
-          package com.pocketlite.ru;
+          cat <<EOF > app/src/main/java/com/enjoer/game/Block.java
+          package com.enjoer.game;
 
-          public class BlockItem {
-              public String type;
-              public String label;
-              public String arg1;
-              public String arg2;
-
-              public BlockItem(String type, String label, String arg1, String arg2){
-                  this.type = type;
-                  this.label = label;
-                  this.arg1 = arg1;
-                  this.arg2 = arg2;
-              }
-          }
-          EOF
-
-          cat <<EOF > app/src/main/java/com/pocketlite/ru/TextureItem.java
-          package com.pocketlite.ru;
-
-          public class TextureItem {
-              public String id = "";
-              public String name = "";
-              public String uri = "";
-          }
-          EOF
-
-          cat <<EOF > app/src/main/java/com/pocketlite/ru/ObjectItem.java
-          package com.pocketlite.ru;
-
-          public class ObjectItem {
-              public String name = "Объект";
-              public String spriteType = "emoji";
-              public String emoji = "🐱";
-              public String text = "Текст";
-              public String textureId = "";
+          public class Block {
+              public float x, y, z, sx, sy, sz, r, g, b;
+              public boolean hidden = false;
               public String shape = "square";
-              public String color = "#FFFFFF";
 
-              public float startX = 100f;
-              public float startY = 80f;
-              public float x = 100f;
-              public float y = 80f;
-              public float w = 72f;
-              public float h = 72f;
+              public String onStartScript = "";
+              public String onTouchScript = "";
+              public String onTapScript = "";
+              public boolean started = false;
+              public boolean touchingPlayer = false;
 
-              public boolean visible = true;
-              public String say = "";
-
-              public java.util.ArrayList<BlockItem> blocks = new java.util.ArrayList<>();
-          }
-          EOF
-
-          cat <<EOF > app/src/main/java/com/pocketlite/ru/SceneItem.java
-          package com.pocketlite.ru;
-
-          public class SceneItem {
-              public String name = "Сцена";
-              public String bgColor = "#D8F0FF";
-              public java.util.ArrayList<ObjectItem> objects = new java.util.ArrayList<>();
-          }
-          EOF
-
-          cat <<EOF > app/src/main/java/com/pocketlite/ru/VariableItem.java
-          package com.pocketlite.ru;
-
-          public class VariableItem {
-              public String name = "переменная";
-              public String value = "0";
-          }
-          EOF
-
-          cat <<EOF > app/src/main/java/com/pocketlite/ru/ListItemModel.java
-          package com.pocketlite.ru;
-
-          public class ListItemModel {
-              public String name = "список";
-              public java.util.ArrayList<String> items = new java.util.ArrayList<>();
-          }
-          EOF
-
-          cat <<EOF > app/src/main/java/com/pocketlite/ru/ProjectItem.java
-          package com.pocketlite.ru;
-
-          public class ProjectItem {
-              public String name = "Проект";
-              public java.util.ArrayList<SceneItem> scenes = new java.util.ArrayList<>();
-              public java.util.ArrayList<TextureItem> textures = new java.util.ArrayList<>();
-              public java.util.ArrayList<VariableItem> variables = new java.util.ArrayList<>();
-              public java.util.ArrayList<ListItemModel> lists = new java.util.ArrayList<>();
-          }
-          EOF
-
-          cat <<'FORMULA' > app/src/main/java/com/pocketlite/ru/FormulaEngine.java
-          package com.pocketlite.ru;
-
-          public class FormulaEngine {
-              public interface Host {
-                  ProjectItem project();
-                  ObjectItem object();
-                  float touchX();
-                  float touchY();
-                  float touchCount();
+              public Block(float x, float y, float z, float sx, float sy, float sz, float r, float g, float b) {
+                  this.x=x; this.y=y; this.z=z; this.sx=sx; this.sy=sy; this.sz=sz; this.r=r; this.g=g; this.b=b;
               }
 
-              public static float eval(Host host, String expr){
-                  if(expr == null) return 0f;
-                  expr = expr.trim();
-                  if(expr.isEmpty()) return 0f;
+              public float minX(){return x-sx/2f;}
+              public float maxX(){return x+sx/2f;}
+              public float minY(){return y-sy/2f;}
+              public float maxY(){return y+sy/2f;}
+              public float minZ(){return z-sz/2f;}
+              public float maxZ(){return z+sz/2f;}
+          }
+          EOF
 
-                  if(isNumber(expr)) return Float.parseFloat(expr);
+          cat <<'SCRIPT' > app/src/main/java/com/enjoer/game/ScriptEngine.java
+          package com.enjoer.game;
 
-                  if(expr.equalsIgnoreCase("X")) return host.object() != null ? host.object().x : 0f;
-                  if(expr.equalsIgnoreCase("Y")) return host.object() != null ? host.object().y : 0f;
-                  if(expr.equalsIgnoreCase("касаниеX")) return host.touchX();
-                  if(expr.equalsIgnoreCase("касаниеY")) return host.touchY();
-                  if(expr.equalsIgnoreCase("колКасаний")) return host.touchCount();
+          import java.util.Locale;
 
-                  ProjectItem p = host.project();
-                  if(p != null){
-                      for(VariableItem v : p.variables){
-                          if(expr.equals(v.name)){
-                              try { return Float.parseFloat(v.value); } catch(Exception ignored){}
+          public class ScriptEngine {
+              public interface Host {
+                  GameRenderer renderer();
+                  void toast(String text);
+              }
+
+              public static void run(Host host, String script) throws Exception {
+                  if(script == null) return;
+                  String[] lines = script.split("\\r?\\n");
+                  for(String raw : lines){
+                      String line = raw.trim();
+                      if(line.isEmpty()) continue;
+                      if(line.startsWith("//") || line.startsWith("#")) continue;
+                      exec(host, line);
+                  }
+              }
+
+              private static void exec(Host host, String line) throws Exception {
+                  GameRenderer ren = host.renderer();
+
+                  if(line.equals("player.jump")){
+                      ren.vY = 0.55f;
+                      return;
+                  }
+
+                  if(line.equals("block.hide")){
+                      Block b = ren.getSelectedBlock();
+                      if(b != null) b.hidden = true;
+                      return;
+                  }
+
+                  if(line.equals("block.show")){
+                      Block b = ren.getSelectedBlock();
+                      if(b != null) b.hidden = false;
+                      return;
+                  }
+
+                  if(line.equals("block.delete")){
+                      ren.deleteSelected();
+                      return;
+                  }
+
+                  if(line.startsWith("player.teleport(") && line.endsWith(")")){
+                      String[] a = args(line);
+                      if(a.length != 3) throw new Exception("player.teleport requires 3 args");
+                      ren.pX = f(a[0]);
+                      ren.pY = f(a[1]);
+                      ren.pZ = f(a[2]);
+                      ren.vY = 0f;
+                      return;
+                  }
+
+                  if(line.startsWith("player.rotate(") && line.endsWith(")")){
+                      String[] a = args(line);
+                      if(a.length != 2) throw new Exception("player.rotate requires 2 args");
+                      ren.rY = f(a[0]);
+                      ren.rX = f(a[1]);
+                      return;
+                  }
+
+                  if(line.startsWith("phone.toast(") && line.endsWith(")")){
+                      String[] a = argsText(line);
+                      if(a.length != 1) throw new Exception("phone.toast requires 1 arg");
+                      host.toast(stripQuotes(a[0]));
+                      return;
+                  }
+
+                  if(line.startsWith("phone.grid(") && line.endsWith(")")){
+                      String[] a = args(line);
+                      if(a.length != 1) throw new Exception("phone.grid requires 1 arg");
+                      ren.gridEnabled = parseBool(a[0]);
+                      return;
+                  }
+
+                  if(line.startsWith("block.color(") && line.endsWith(")")){
+                      String[] a = args(line);
+                      if(a.length != 3) throw new Exception("block.color requires 3 args");
+                      Block b = ren.getSelectedBlock();
+                      if(b == null) throw new Exception("No selected block");
+                      b.r = clamp01(f(a[0]));
+                      b.g = clamp01(f(a[1]));
+                      b.b = clamp01(f(a[2]));
+                      return;
+                  }
+
+                  if(line.startsWith("block.move(") && line.endsWith(")")){
+                      String[] a = args(line);
+                      if(a.length != 3) throw new Exception("block.move requires 3 args");
+                      ren.moveSelected(f(a[0]), f(a[1]), f(a[2]));
+                      return;
+                  }
+
+                  if(line.startsWith("block.size(") && line.endsWith(")")){
+                      String[] a = args(line);
+                      if(a.length != 3) throw new Exception("block.size requires 3 args");
+                      Block b = ren.getSelectedBlock();
+                      if(b == null) throw new Exception("No selected block");
+                      b.sx = Math.max(0.5f, f(a[0]));
+                      b.sy = Math.max(0.5f, f(a[1]));
+                      b.sz = Math.max(0.5f, f(a[2]));
+                      if(b.y - b.sy / 2f < 0f) b.y = b.sy / 2f;
+                      return;
+                  }
+
+                  if(line.startsWith("block.teleport(") && line.endsWith(")")){
+                      String[] a = args(line);
+                      if(a.length != 3) throw new Exception("block.teleport requires 3 args");
+                      Block b = ren.getSelectedBlock();
+                      if(b == null) throw new Exception("No selected block");
+                      b.x = f(a[0]);
+                      b.y = f(a[1]);
+                      b.z = f(a[2]);
+                      if(b.y - b.sy / 2f < 0f) b.y = b.sy / 2f;
+                      return;
+                  }
+
+                  if(line.startsWith("block.shape(") && line.endsWith(")")){
+                      String[] a = argsText(line);
+                      if(a.length != 1) throw new Exception("block.shape requires 1 arg");
+                      Block b = ren.getSelectedBlock();
+                      if(b == null) throw new Exception("No selected block");
+                      b.shape = stripQuotes(a[0]).toLowerCase(Locale.US);
+                      return;
+                  }
+
+                  if(line.startsWith("world.place(") && line.endsWith(")")){
+                      String[] a = args(line);
+                      if(a.length != 9) throw new Exception("world.place requires 9 args");
+                      Block b = new Block(
+                          f(a[0]), f(a[1]), f(a[2]),
+                          Math.max(0.5f, f(a[3])), Math.max(0.5f, f(a[4])), Math.max(0.5f, f(a[5])),
+                          clamp01(f(a[6])), clamp01(f(a[7])), clamp01(f(a[8]))
+                      );
+                      ren.blocks.add(b);
+                      return;
+                  }
+
+                  throw new Exception("Unknown command: " + line);
+              }
+
+              private static boolean parseBool(String s){
+                  s = s.trim().toLowerCase(Locale.US);
+                  return s.equals("true") || s.equals("1") || s.equals("on");
+              }
+
+              private static String[] args(String line){
+                  int s = line.indexOf('(');
+                  int e = line.lastIndexOf(')');
+                  String body = line.substring(s + 1, e).trim();
+                  if(body.isEmpty()) return new String[0];
+                  String[] arr = body.split(",");
+                  for(int i=0;i<arr.length;i++) arr[i] = arr[i].trim();
+                  return arr;
+              }
+
+              private static String[] argsText(String line){
+                  int s = line.indexOf('(');
+                  int e = line.lastIndexOf(')');
+                  String body = line.substring(s + 1, e).trim();
+                  if(body.isEmpty()) return new String[0];
+                  return new String[]{body};
+              }
+
+              private static String stripQuotes(String s){
+                  s = s.trim();
+                  if((s.startsWith("\"") && s.endsWith("\"")) || (s.startsWith("'") && s.endsWith("'"))){
+                      return s.substring(1, s.length()-1);
+                  }
+                  return s;
+              }
+
+              private static float f(String s){
+                  return Float.parseFloat(s.trim());
+              }
+
+              private static float clamp01(float v){
+                  return Math.max(0f, Math.min(1f, v));
+              }
+          }
+          SCRIPT
+
+          cat <<'RENDERER' > app/src/main/java/com/enjoer/game/GameRenderer.java
+          package com.enjoer.game;
+
+          import android.opengl.GLES30;
+          import android.opengl.GLSurfaceView;
+          import android.opengl.Matrix;
+          import java.nio.*;
+          import java.util.concurrent.CopyOnWriteArrayList;
+          import javax.microedition.khronos.egl.EGLConfig;
+          import javax.microedition.khronos.opengles.GL10;
+
+          public class GameRenderer implements GLSurfaceView.Renderer {
+              public interface EventHost {
+                  void runBlockScript(Block block, String script);
+              }
+
+              private final float[] proj = new float[16], view = new float[16], model = new float[16], vp = new float[16];
+              public float pX = 0, pY = 6, pZ = 15, rY = 0, rX = 0, jX = 0, jY = 0, vY = 0;
+              public boolean isEngineMode = false, isPlayingLevel = false;
+              public boolean gridEnabled = true;
+
+              private int prog, skyProg;
+              private FloatBuffer vBuf, nBuf, skyBuf;
+
+              public float blockR = 0.8f, blockG = 0.3f, blockB = 0.3f, blockSX = 4, blockSY = 4, blockSZ = 4, placeDist = 6f;
+              public String blockShape = "square";
+              public final float gridSize = 2f;
+
+              public CopyOnWriteArrayList<Block> blocks = new CopyOnWriteArrayList<>();
+              public int selectedIndex = -1;
+              public float screenW = 1, screenH = 1;
+              public EventHost eventHost;
+
+              private static final float FLOOR_Y = 0f, PLAYER_HEIGHT = 3.2f, PLAYER_RADIUS = 0.5f;
+
+              public float playerYaw = 0f;
+              private float walkAnim = 0f;
+              private boolean moving = false;
+
+              public Block getSelectedBlock() {
+                  if (selectedIndex >= 0 && selectedIndex < blocks.size()) return blocks.get(selectedIndex);
+                  return null;
+              }
+
+              private float snap(float v) {
+                  if (!gridEnabled) return v;
+                  return Math.round(v / gridSize) * gridSize;
+              }
+
+              public void loadBuiltInLevel() {
+                  blocks.clear();
+                  Block b1 = new Block(0, 2, -10, 6, 4, 6, 0.9f, 0.2f, 0.2f);
+                  b1.shape = "square";
+                  blocks.add(b1);
+              }
+
+              public void runStartScripts() {
+                  for (Block b : blocks) {
+                      if (!b.started) {
+                          b.started = true;
+                          if (eventHost != null && b.onStartScript != null && !b.onStartScript.trim().isEmpty()) {
+                              eventHost.runBlockScript(b, b.onStartScript);
                           }
                       }
                   }
+              }
 
-                  if(expr.startsWith("-") && expr.length() > 1){
-                      if(isNumber(expr)) return Float.parseFloat(expr);
-                  }
-
-                  int plus = findLastTop(expr, '+');
-                  if(plus > 0) return eval(host, expr.substring(0, plus)) + eval(host, expr.substring(plus+1));
-
-                  int minus = findLastTopMinus(expr);
-                  if(minus > 0) return eval(host, expr.substring(0, minus)) - eval(host, expr.substring(minus+1));
-
-                  if(expr.startsWith("sin(") && expr.endsWith(")")) return (float)Math.sin(Math.toRadians(eval(host, inner(expr))));
-                  if(expr.startsWith("cos(") && expr.endsWith(")")) return (float)Math.cos(Math.toRadians(eval(host, inner(expr))));
-                  if(expr.startsWith("tan(") && expr.endsWith(")")) return (float)Math.tan(Math.toRadians(eval(host, inner(expr))));
-                  if(expr.startsWith("atan(") && expr.endsWith(")")) return (float)Math.toDegrees(Math.atan(eval(host, inner(expr))));
-                  if(expr.startsWith("sqrt(") && expr.endsWith(")")) return (float)Math.sqrt(Math.max(0f, eval(host, inner(expr))));
-                  if(expr.startsWith("abs(") && expr.endsWith(")")) return Math.abs(eval(host, inner(expr)));
-
-                  if(expr.startsWith("random(") && expr.endsWith(")")){
-                      String body = inner(expr);
-                      String[] a = body.split(",");
-                      if(a.length == 2){
-                          float x = eval(host, a[0].trim());
-                          float y = eval(host, a[1].trim());
-                          float mn = Math.min(x, y), mx = Math.max(x, y);
-                          return mn + (float)Math.random() * (mx - mn);
+              public void handleTapBlock(int index) {
+                  if (index >= 0 && index < blocks.size()) {
+                      Block b = blocks.get(index);
+                      if (eventHost != null && b.onTapScript != null && !b.onTapScript.trim().isEmpty()) {
+                          eventHost.runBlockScript(b, b.onTapScript);
                       }
                   }
-
-                  return 0f;
               }
 
-              public static String text(Host host, String expr){
-                  if(expr == null) return "";
-                  expr = expr.trim();
-                  if(expr.startsWith("\"") && expr.endsWith("\"") && expr.length() >= 2){
-                      return expr.substring(1, expr.length()-1);
+              public void placeBlock() {
+                  float vx = (float) (Math.sin(Math.toRadians(rY)) * Math.cos(Math.toRadians(rX)));
+                  float vy = (float) Math.sin(Math.toRadians(rX));
+                  float vz = (float) (-Math.cos(Math.toRadians(rY)) * Math.cos(Math.toRadians(rX)));
+                  float nx = pX + vx * placeDist, ny = pY + vy * placeDist, nz = pZ + vz * placeDist;
+                  nx = snap(nx);
+                  ny = snap(ny);
+                  nz = snap(nz);
+                  if (ny - blockSY / 2f < FLOOR_Y) ny = FLOOR_Y + blockSY / 2f;
+                  Block b = new Block(nx, ny, nz, blockSX, blockSY, blockSZ, blockR, blockG, blockB);
+                  b.shape = blockShape;
+                  blocks.add(b);
+              }
+
+              public void deleteSelected() {
+                  if (selectedIndex >= 0 && selectedIndex < blocks.size()) {
+                      blocks.remove(selectedIndex);
+                      selectedIndex = -1;
                   }
-                  ProjectItem p = host.project();
-                  if(p != null){
-                      for(VariableItem v : p.variables){
-                          if(expr.equals(v.name)) return v.value;
+              }
+
+              public void toggleHideSelected() {
+                  if (selectedIndex >= 0 && selectedIndex < blocks.size()) {
+                      blocks.get(selectedIndex).hidden = !blocks.get(selectedIndex).hidden;
+                  }
+              }
+
+              public void moveSelected(float dx, float dy, float dz) {
+                  if (selectedIndex >= 0 && selectedIndex < blocks.size()) {
+                      Block b = blocks.get(selectedIndex);
+                      b.x = snap(b.x + dx);
+                      b.y = snap(b.y + dy);
+                      b.z = snap(b.z + dz);
+                      if (b.y - b.sy / 2f < FLOOR_Y) b.y = FLOOR_Y + b.sy / 2f;
+                  }
+              }
+
+              public int raycastBlock(float tx, float ty) {
+                  float ndcX = (2f * tx / screenW) - 1f, ndcY = 1f - (2f * ty / screenH);
+                  float[] invP = new float[16], invV = new float[16];
+                  Matrix.invertM(invP, 0, proj, 0);
+                  Matrix.invertM(invV, 0, view, 0);
+                  float[] n = {ndcX, ndcY, -1, 1}, f = {ndcX, ndcY, 1, 1}, t = new float[4];
+                  Matrix.multiplyMV(t, 0, invP, 0, n, 0);
+                  for (int i = 0; i < 4; i++) t[i] /= t[3];
+                  float[] nW = new float[4];
+                  Matrix.multiplyMV(nW, 0, invV, 0, t, 0);
+                  Matrix.multiplyMV(t, 0, invP, 0, f, 0);
+                  for (int i = 0; i < 4; i++) t[i] /= t[3];
+                  float[] fW = new float[4];
+                  Matrix.multiplyMV(fW, 0, invV, 0, t, 0);
+                  float dx = fW[0] - nW[0], dy = fW[1] - nW[1], dz = fW[2] - nW[2];
+                  float len = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
+                  dx /= len;
+                  dy /= len;
+                  dz /= len;
+                  int closest = -1;
+                  float cDist = Float.MAX_VALUE;
+
+                  for (int i = 0; i < blocks.size(); i++) {
+                      Block b = blocks.get(i);
+                      float tmin = (b.minX() - nW[0]) / (dx == 0 ? 0.0001f : dx);
+                      float tmax = (b.maxX() - nW[0]) / (dx == 0 ? 0.0001f : dx);
+                      if (tmin > tmax) {
+                          float tmp = tmin;
+                          tmin = tmax;
+                          tmax = tmp;
+                      }
+                      float tymin = (b.minY() - nW[1]) / (dy == 0 ? 0.0001f : dy);
+                      float tymax = (b.maxY() - nW[1]) / (dy == 0 ? 0.0001f : dy);
+                      if (tymin > tymax) {
+                          float tmp = tymin;
+                          tymin = tymax;
+                          tymax = tmp;
+                      }
+                      if (tmin > tymax || tymin > tmax) continue;
+                      if (tymin > tmin) tmin = tymin;
+                      if (tymax < tmax) tmax = tymax;
+                      float tzmin = (b.minZ() - nW[2]) / (dz == 0 ? 0.0001f : dz);
+                      float tzmax = (b.maxZ() - nW[2]) / (dz == 0 ? 0.0001f : dz);
+                      if (tzmin > tzmax) {
+                          float tmp = tzmin;
+                          tzmin = tzmax;
+                          tzmax = tmp;
+                      }
+                      if (tmin > tzmax || tzmin > tmax) continue;
+                      if (tzmin > tmin) tmin = tzmin;
+                      if (tmin > 0 && tmin < cDist) {
+                          cDist = tmin;
+                          closest = i;
                       }
                   }
-                  return expr;
+                  return closest;
               }
 
-              private static boolean isNumber(String s){
-                  try { Float.parseFloat(s); return true; } catch(Exception e){ return false; }
+              @Override
+              public void onSurfaceCreated(GL10 gl, EGLConfig cfg) {
+                  GLES30.glEnable(GLES30.GL_DEPTH_TEST);
+                  GLES30.glDepthFunc(GLES30.GL_LEQUAL);
+
+                  String vs = "#version 300 es\n" +
+                          "layout(location=0)in vec4 aP;layout(location=1)in vec3 aN;" +
+                          "uniform mat4 uMVP,uM;out vec3 vN,vP;" +
+                          "void main(){vP=vec3(uM*aP);vN=normalize(mat3(uM)*aN);gl_Position=uMVP*aP;}";
+
+                  String fs = "#version 300 es\nprecision highp float;" +
+                          "in vec3 vN,vP;uniform vec3 camP;uniform vec4 uC;uniform float uSel,isFloor;out vec4 fC;" +
+                          "void main(){" +
+                          "vec3 n=normalize(vN),vD=normalize(camP-vP),lD=normalize(vec3(.4,1.,.2));" +
+                          "float diff=max(dot(n,lD),0.),ao=clamp(vP.y*.08+.6,.3,1.);" +
+                          "vec3 h=normalize(lD+vD);float spec=pow(max(dot(n,h),0.),48.)*.6;" +
+                          "vec3 col=uC.rgb;if(uSel>.5)col+=vec3(0.,.5,.8);" +
+                          "vec3 amb=vec3(.05,.08,.13)*ao;vec3 fin=col*(diff*vec3(1.,.97,.92)+amb)+spec;" +
+                          "if(isFloor>.5){vec2 g=fract(vP.xz*.2);float ln=step(.97,g.x)+step(.97,g.y);fin=mix(fin,vec3(0.,.4,.8),clamp(ln,0.,1.)*.45);}" +
+                          "float dist=length(camP-vP),fog=1.-exp(-dist*.006);" +
+                          "vec3 fogCol=vec3(.02,.06,.14);" +
+                          "vec3 c=mix(fin,fogCol,clamp(fog,0.,.82));" +
+                          "c=(c*(2.51*c+.03))/(c*(2.43*c+.59)+.14);" +
+                          "fC=vec4(c,uC.a);}";
+
+                  String skyVs = "#version 300 es\n" +
+                          "layout(location=0) in vec3 aP;out vec3 vDir;uniform mat4 uInvVP;" +
+                          "void main(){vec4 p = vec4(aP,1.0);vec4 w = uInvVP * p;vDir = normalize(w.xyz / w.w);gl_Position = p;}";
+
+                  String skyFs = "#version 300 es\nprecision highp float;" +
+                          "in vec3 vDir; out vec4 fC;" +
+                          "float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123);}" +
+                          "void main(){" +
+                          "vec3 d=normalize(vDir);" +
+                          "float t=clamp(d.y*0.5+0.5,0.0,1.0);" +
+                          "vec3 col=mix(vec3(0.005,0.008,0.02), vec3(0.03,0.16,0.36), t);" +
+                          "if(d.y>0.15){" +
+                          "vec2 uv=d.xz/(d.y+0.25);uv*=120.0;vec2 id=floor(uv);vec2 gv=fract(uv)-0.5;" +
+                          "float rnd=hash(id);float star=step(0.992,rnd);float dist=length(gv);" +
+                          "float tw=0.65+0.35*sin(rnd*500.0);" +
+                          "float s=smoothstep(0.16,0.0,dist)*star*tw*2.8;" +
+                          "float glow=smoothstep(0.42,0.0,dist)*star*0.9;" +
+                          "vec3 scol=mix(vec3(1.0,0.95,0.85),vec3(0.8,0.9,1.0),hash(id+4.3));" +
+                          "col += scol*(s+glow);}fC=vec4(col,1.0);}";
+
+                  prog = mkProg(vs, fs);
+                  skyProg = mkProg(skyVs, skyFs);
+
+                  float[] vc = {
+                          -.5f, .5f, .5f, -.5f, -.5f, .5f, .5f, .5f, .5f, .5f, -.5f, .5f,
+                          -.5f, .5f, -.5f, -.5f, -.5f, -.5f, .5f, .5f, -.5f, .5f, -.5f, -.5f,
+                          -.5f, .5f, -.5f, -.5f, .5f, .5f, .5f, .5f, -.5f, .5f, .5f, .5f,
+                          -.5f, -.5f, -.5f, -.5f, -.5f, .5f, .5f, -.5f, -.5f, .5f, -.5f, .5f,
+                          -.5f, .5f, -.5f, -.5f, -.5f, -.5f, -.5f, .5f, .5f, -.5f, -.5f, .5f,
+                          .5f, .5f, -.5f, .5f, -.5f, -.5f, .5f, .5f, .5f, .5f, -.5f, .5f
+                  };
+                  float[] nc = {
+                          0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1,
+                          0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1,
+                          0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0,
+                          0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0,
+                          -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0,
+                          1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0
+                  };
+                  float[] skyQuad = {-1f, -1f, 1f, 1f, -1f, 1f, -1f, 1f, 1f, 1f, 1f, 1f};
+
+                  vBuf = ByteBuffer.allocateDirect(vc.length * 4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(vc);
+                  vBuf.position(0);
+                  nBuf = ByteBuffer.allocateDirect(nc.length * 4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(nc);
+                  nBuf.position(0);
+                  skyBuf = ByteBuffer.allocateDirect(skyQuad.length * 4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(skyQuad);
+                  skyBuf.position(0);
+
+                  loadBuiltInLevel();
               }
 
-              private static String inner(String s){
-                  return s.substring(s.indexOf('(')+1, s.lastIndexOf(')')).trim();
+              @Override
+              public void onSurfaceChanged(GL10 gl, int w, int h) {
+                  GLES30.glViewport(0, 0, w, h);
+                  Matrix.perspectiveM(proj, 0, 55, (float) w / h, .1f, 500f);
+                  screenW = w;
+                  screenH = h;
               }
 
-              private static int findLastTop(String s, char op){
-                  int depth = 0;
-                  for(int i=s.length()-1;i>=0;i--){
-                      char c = s.charAt(i);
-                      if(c==')') depth++;
-                      else if(c=='(') depth--;
-                      else if(depth==0 && c==op) return i;
+              @Override
+              public void onDrawFrame(GL10 gl) {
+                  update();
+                  GLES30.glClearColor(.01f, .015f, .03f, 1f);
+                  GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
+
+                  float lookX = (float) (Math.sin(Math.toRadians(rY)) * Math.cos(Math.toRadians(rX)));
+                  float lookZ = (float) (-Math.cos(Math.toRadians(rY)) * Math.cos(Math.toRadians(rX)));
+
+                  float camDist = 10f;
+                  float camHeight = 6f;
+
+                  float camX = pX - lookX * camDist;
+                  float camY = pY + camHeight;
+                  float camZ = pZ - lookZ * camDist;
+
+                  Matrix.setLookAtM(view, 0, camX, camY, camZ, pX, pY + 1.8f, pZ, 0, 1, 0);
+                  Matrix.multiplyMM(vp, 0, proj, 0, view, 0);
+
+                  drawSky();
+                  drawWorld(lookX, 0f, lookZ);
+
+                  if (!isEngineMode || isPlayingLevel) {
+                      drawPlayer();
                   }
-                  return -1;
               }
 
-              private static int findLastTopMinus(String s){
-                  int depth = 0;
-                  for(int i=s.length()-1;i>=1;i--){
-                      char c = s.charAt(i);
-                      if(c==')') depth++;
-                      else if(c=='(') depth--;
-                      else if(depth==0 && c=='-'){
-                          char prev = s.charAt(i-1);
-                          if(prev=='+' || prev=='-' || prev=='*' || prev=='/' || prev=='(') continue;
-                          return i;
+              private void drawSky() {
+                  GLES30.glDepthMask(false);
+                  GLES30.glUseProgram(skyProg);
+                  float[] invVP = new float[16];
+                  Matrix.invertM(invVP, 0, vp, 0);
+                  int uInvVP = GLES30.glGetUniformLocation(skyProg, "uInvVP");
+                  GLES30.glUniformMatrix4fv(uInvVP, 1, false, invVP, 0);
+                  GLES30.glVertexAttribPointer(0, 3, GLES30.GL_FLOAT, false, 0, skyBuf);
+                  GLES30.glEnableVertexAttribArray(0);
+                  GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4);
+                  GLES30.glDepthMask(true);
+              }
+
+              private void drawWorld(float vx, float vy, float vz) {
+                  GLES30.glUseProgram(prog);
+                  int uMVP = GLES30.glGetUniformLocation(prog, "uMVP"), uM = GLES30.glGetUniformLocation(prog, "uM"), uC = GLES30.glGetUniformLocation(prog, "uC");
+                  int uSel = GLES30.glGetUniformLocation(prog, "uSel"), uFloor = GLES30.glGetUniformLocation(prog, "isFloor");
+                  GLES30.glUniform3f(GLES30.glGetUniformLocation(prog, "camP"), pX, pY, pZ);
+                  GLES30.glVertexAttribPointer(0, 3, GLES30.GL_FLOAT, false, 0, vBuf);
+                  GLES30.glEnableVertexAttribArray(0);
+                  GLES30.glVertexAttribPointer(1, 3, GLES30.GL_FLOAT, false, 0, nBuf);
+                  GLES30.glEnableVertexAttribArray(1);
+
+                  Matrix.setIdentityM(model, 0);
+                  Matrix.translateM(model, 0, 0, -.05f, 0);
+                  Matrix.scaleM(model, 0, 800, .1f, 800);
+                  GLES30.glUniform1f(uSel, 0f);
+                  GLES30.glUniform1f(uFloor, 1f);
+                  draw(uM, uMVP, uC, .05f, .07f, .11f, 1f);
+
+                  GLES30.glUniform1f(uFloor, 0f);
+                  for (int i = 0; i < blocks.size(); i++) {
+                      Block b = blocks.get(i);
+                      if (b.hidden) continue;
+                      Matrix.setIdentityM(model, 0);
+                      Matrix.translateM(model, 0, b.x, b.y, b.z);
+                      Matrix.scaleM(model, 0, b.sx, b.sy, b.sz);
+                      GLES30.glUniform1f(uSel, (i == selectedIndex && isEngineMode && !isPlayingLevel) ? 1f : 0f);
+                      draw(uM, uMVP, uC, b.r, b.g, b.b, 1f);
+                  }
+
+                  if (isEngineMode && !isPlayingLevel && selectedIndex < 0) {
+                      float px = pX + vx * placeDist, py = pY + vy * placeDist, pz = pZ + vz * placeDist;
+                      px = snap(px);
+                      py = snap(py);
+                      pz = snap(pz);
+                      if (py - blockSY / 2f < FLOOR_Y) py = FLOOR_Y + blockSY / 2f;
+                      Matrix.setIdentityM(model, 0);
+                      Matrix.translateM(model, 0, px, py, pz);
+                      Matrix.scaleM(model, 0, blockSX, blockSY, blockSZ);
+                      GLES30.glEnable(GLES30.GL_BLEND);
+                      GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
+                      GLES30.glUniform1f(uSel, 0f);
+                      draw(uM, uMVP, uC, blockR, blockG, blockB, .4f);
+                      GLES30.glDisable(GLES30.GL_BLEND);
+                  }
+              }
+
+              private void drawPlayer() {
+                  GLES30.glUseProgram(prog);
+                  int uMVP = GLES30.glGetUniformLocation(prog, "uMVP"), uM = GLES30.glGetUniformLocation(prog, "uM"), uC = GLES30.glGetUniformLocation(prog, "uC");
+                  int uSel = GLES30.glGetUniformLocation(prog, "uSel"), uFloor = GLES30.glGetUniformLocation(prog, "isFloor");
+
+                  GLES30.glUniform3f(GLES30.glGetUniformLocation(prog, "camP"), pX, pY, pZ);
+                  GLES30.glVertexAttribPointer(0, 3, GLES30.GL_FLOAT, false, 0, vBuf);
+                  GLES30.glEnableVertexAttribArray(0);
+                  GLES30.glVertexAttribPointer(1, 3, GLES30.GL_FLOAT, false, 0, nBuf);
+                  GLES30.glEnableVertexAttribArray(1);
+
+                  GLES30.glUniform1f(uSel, 0f);
+                  GLES30.glUniform1f(uFloor, 0f);
+
+                  float baseY = pY - PLAYER_HEIGHT;
+
+                  float armSwing = moving ? (float) Math.sin(walkAnim) * 25f : 0f;
+                  float legSwing = moving ? (float) Math.sin(walkAnim) * 25f : 0f;
+
+                  if (!isOnGround()) {
+                      armSwing = -20f;
+                      legSwing = 15f;
+                  }
+
+                  drawPart(uM, uMVP, uC, pX, baseY + 4.3f, pZ, 1.2f, 1.2f, 1.2f, playerYaw, 0, 0, 1f, 0.9f, 0.7f, 1f);
+                  drawPart(uM, uMVP, uC, pX, baseY + 2.7f, pZ, 1.7f, 2.0f, 1.0f, playerYaw, 0, 0, 0.12f, 0.45f, 1f, 1f);
+
+                  drawPart(uM, uMVP, uC, pX - 1.25f, baseY + 2.7f, pZ, 0.65f, 1.8f, 0.65f, playerYaw, 0, armSwing, 1f, 0.9f, 0.7f, 1f);
+                  drawPart(uM, uMVP, uC, pX + 1.25f, baseY + 2.7f, pZ, 0.65f, 1.8f, 0.65f, playerYaw, 0, -armSwing, 1f, 0.9f, 0.7f, 1f);
+
+                  drawPart(uM, uMVP, uC, pX - 0.45f, baseY + 0.8f, pZ, 0.75f, 1.8f, 0.75f, playerYaw, 0, -legSwing, 0.15f, 0.15f, 0.2f, 1f);
+                  drawPart(uM, uMVP, uC, pX + 0.45f, baseY + 0.8f, pZ, 0.75f, 1.8f, 0.75f, playerYaw, 0, legSwing, 0.15f, 0.15f, 0.2f, 1f);
+              }
+
+              private void drawPart(int uM, int uMVP, int uC,
+                                    float x, float y, float z,
+                                    float sx, float sy, float sz,
+                                    float rotY, float rotZ, float rotX,
+                                    float r, float g, float b, float a) {
+                  Matrix.setIdentityM(model, 0);
+                  Matrix.translateM(model, 0, x, y, z);
+                  Matrix.rotateM(model, 0, rotY, 0, 1, 0);
+                  Matrix.rotateM(model, 0, rotZ, 0, 0, 1);
+                  Matrix.rotateM(model, 0, rotX, 1, 0, 0);
+                  Matrix.scaleM(model, 0, sx, sy, sz);
+                  draw(uM, uMVP, uC, r, g, b, a);
+              }
+
+              private void update() {
+                  float s = .35f, rad = (float) Math.toRadians(rY), pitch = (float) Math.toRadians(rX);
+
+                  if (isEngineMode && !isPlayingLevel) {
+                      float fx = (float) Math.sin(rad), fz = (float) -Math.cos(rad), fy = (float) Math.sin(pitch);
+                      pX += (fx * -jY + (float) Math.cos(rad) * jX) * s;
+                      pZ += (fz * -jY + (float) Math.sin(rad) * jX) * s;
+                      pY += (fy * -jY) * s;
+                  } else {
+                      float mX = ((float) Math.sin(rad) * -jY + (float) Math.cos(rad) * jX) * s;
+                      float mZ = ((float) -Math.cos(rad) * -jY + (float) Math.sin(rad) * jX) * s;
+
+                      moving = Math.abs(jX) > 0.05f || Math.abs(jY) > 0.05f;
+                      if (moving) {
+                          playerYaw = (float) Math.toDegrees(Math.atan2(mX, -mZ));
+                          walkAnim += 0.22f;
                       }
+
+                      vY -= .025f;
+
+                      float nX = pX + mX, nY = pY + vY, nZ = pZ + mZ, fY = nY - PLAYER_HEIGHT, hY = nY;
+                      if (fY < FLOOR_Y) {
+                          nY = FLOOR_Y + PLAYER_HEIGHT;
+                          vY = 0;
+                      }
+
+                      for (Block b : blocks) {
+                          boolean overlapXZ = nX + PLAYER_RADIUS > b.minX() && nX - PLAYER_RADIUS < b.maxX() &&
+                                  nZ + PLAYER_RADIUS > b.minZ() && nZ - PLAYER_RADIUS < b.maxZ();
+                          boolean overlapY = fY < b.maxY() - .1f && hY > b.minY() + .1f;
+                          boolean touching = overlapXZ && (overlapY || Math.abs((nY - PLAYER_HEIGHT) - b.maxY()) < .2f);
+
+                          if (touching && !b.touchingPlayer) {
+                              b.touchingPlayer = true;
+                              if (eventHost != null && b.onTouchScript != null && !b.onTouchScript.trim().isEmpty()) {
+                                  eventHost.runBlockScript(b, b.onTouchScript);
+                              }
+                          } else if (!touching) {
+                              b.touchingPlayer = false;
+                          }
+
+                          if (overlapXZ) {
+                              if (pY - PLAYER_HEIGHT >= b.maxY() - .15f && fY < b.maxY()) {
+                                  nY = b.maxY() + PLAYER_HEIGHT;
+                                  vY = 0;
+                              } else if (pY < b.minY() && hY > b.minY()) {
+                                  nY = b.minY();
+                                  vY = 0;
+                              } else if (overlapY) {
+                                  float oX1 = (nX + PLAYER_RADIUS) - b.minX();
+                                  float oX2 = b.maxX() - (nX - PLAYER_RADIUS);
+                                  float oZ1 = (nZ + PLAYER_RADIUS) - b.minZ();
+                                  float oZ2 = b.maxZ() - (nZ - PLAYER_RADIUS);
+                                  float minO = Math.min(Math.min(oX1, oX2), Math.min(oZ1, oZ2));
+                                  if (minO == oX1) nX = b.minX() - PLAYER_RADIUS;
+                                  else if (minO == oX2) nX = b.maxX() + PLAYER_RADIUS;
+                                  else if (minO == oZ1) nZ = b.minZ() - PLAYER_RADIUS;
+                                  else nZ = b.maxZ() + PLAYER_RADIUS;
+                              }
+                          }
+                      }
+
+                      pX = nX;
+                      pY = nY;
+                      pZ = nZ;
                   }
-                  return -1;
+              }
+
+              public boolean isOnGround() {
+                  if (pY - PLAYER_HEIGHT <= FLOOR_Y + .1f) return true;
+                  for (Block b : blocks) {
+                      if (pX + PLAYER_RADIUS > b.minX() && pX - PLAYER_RADIUS < b.maxX() &&
+                              pZ + PLAYER_RADIUS > b.minZ() && pZ - PLAYER_RADIUS < b.maxZ() &&
+                              Math.abs((pY - PLAYER_HEIGHT) - b.maxY()) < .15f)
+                          return true;
+                  }
+                  return false;
+              }
+
+              private void draw(int uM, int uMVP, int uC, float r, float g, float b, float a) {
+                  GLES30.glUniformMatrix4fv(uM, 1, false, model, 0);
+                  float[] res = new float[16];
+                  Matrix.multiplyMM(res, 0, proj, 0, view, 0);
+                  Matrix.multiplyMM(res, 0, res, 0, model, 0);
+                  GLES30.glUniformMatrix4fv(uMVP, 1, false, res, 0);
+                  GLES30.glUniform4f(uC, r, g, b, a);
+                  for (int i = 0; i < 6; i++) GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, i * 4, 4);
+              }
+
+              private int mkProg(String v, String f) {
+                  int p = GLES30.glCreateProgram();
+                  GLES30.glAttachShader(p, mkSh(35633, v));
+                  GLES30.glAttachShader(p, mkSh(35632, f));
+                  GLES30.glLinkProgram(p);
+                  return p;
+              }
+
+              private int mkSh(int t, String s) {
+                  int sh = GLES30.glCreateShader(t);
+                  GLES30.glShaderSource(sh, s);
+                  GLES30.glCompileShader(sh);
+                  return sh;
               }
           }
-          FORMULA
+          RENDERER
 
-          cat <<'STORE' > app/src/main/java/com/pocketlite/ru/ProjectStore.java
-          package com.pocketlite.ru;
+          cat <<'MAINACT' > app/src/main/java/com/enjoer/game/MainActivity.java
+          package com.enjoer.game;
 
-          import android.content.Context;
+          import android.annotation.SuppressLint;
+          import android.app.AlertDialog;
+          import android.content.Intent;
+          import android.content.pm.ActivityInfo;
+          import android.graphics.drawable.GradientDrawable;
+          import android.os.Bundle;
+          import android.os.Handler;
+          import android.os.Looper;
+          import android.text.InputType;
+          import android.view.MotionEvent;
+          import android.view.View;
+          import android.widget.Button;
+          import android.widget.EditText;
+          import android.widget.LinearLayout;
+          import android.widget.TextView;
+          import android.widget.Toast;
+          import androidx.activity.result.ActivityResultLauncher;
+          import androidx.activity.result.contract.ActivityResultContracts;
+          import androidx.appcompat.app.AppCompatActivity;
           import org.json.JSONArray;
           import org.json.JSONObject;
           import java.io.*;
-          import java.util.ArrayList;
 
-          public class ProjectStore {
-              private static File file(Context c){
-                  return new File(c.getFilesDir(), "projects_lite_ru.json");
-              }
-
-              public static ArrayList<ProjectItem> load(Context c){
-                  ArrayList<ProjectItem> out = new ArrayList<>();
-                  try{
-                      File f = file(c);
-                      if(!f.exists()) return out;
-
-                      BufferedReader rd = new BufferedReader(new FileReader(f));
-                      StringBuilder sb = new StringBuilder();
-                      String line;
-                      while((line = rd.readLine()) != null) sb.append(line);
-                      rd.close();
-
-                      JSONArray arr = new JSONArray(sb.toString());
-                      for(int i=0;i<arr.length();i++){
-                          JSONObject p = arr.getJSONObject(i);
-                          ProjectItem pr = new ProjectItem();
-                          pr.name = p.optString("name", "Проект");
-
-                          JSONArray tex = p.optJSONArray("textures");
-                          if(tex != null){
-                              for(int t=0;t<tex.length();t++){
-                                  JSONObject o = tex.getJSONObject(t);
-                                  TextureItem tx = new TextureItem();
-                                  tx.id = o.optString("id");
-                                  tx.name = o.optString("name");
-                                  tx.uri = o.optString("uri");
-                                  pr.textures.add(tx);
-                              }
-                          }
-
-                          JSONArray vars = p.optJSONArray("variables");
-                          if(vars != null){
-                              for(int v=0;v<vars.length();v++){
-                                  JSONObject o = vars.getJSONObject(v);
-                                  VariableItem vi = new VariableItem();
-                                  vi.name = o.optString("name");
-                                  vi.value = o.optString("value");
-                                  pr.variables.add(vi);
-                              }
-                          }
-
-                          JSONArray lists = p.optJSONArray("lists");
-                          if(lists != null){
-                              for(int l=0;l<lists.length();l++){
-                                  JSONObject o = lists.getJSONObject(l);
-                                  ListItemModel li = new ListItemModel();
-                                  li.name = o.optString("name");
-                                  JSONArray its = o.optJSONArray("items");
-                                  if(its != null){
-                                      for(int z=0;z<its.length();z++) li.items.add(its.optString(z));
-                                  }
-                                  pr.lists.add(li);
-                              }
-                          }
-
-                          JSONArray scenes = p.optJSONArray("scenes");
-                          if(scenes != null){
-                              for(int j=0;j<scenes.length();j++){
-                                  JSONObject s = scenes.getJSONObject(j);
-                                  SceneItem sc = new SceneItem();
-                                  sc.name = s.optString("name", "Сцена");
-                                  sc.bgColor = s.optString("bgColor", "#D8F0FF");
-
-                                  JSONArray objs = s.optJSONArray("objects");
-                                  if(objs != null){
-                                      for(int k=0;k<objs.length();k++){
-                                          JSONObject o = objs.getJSONObject(k);
-                                          ObjectItem ob = new ObjectItem();
-                                          ob.name = o.optString("name", "Объект");
-                                          ob.spriteType = o.optString("spriteType", "emoji");
-                                          ob.emoji = o.optString("emoji", "🐱");
-                                          ob.text = o.optString("text", "Текст");
-                                          ob.textureId = o.optString("textureId", "");
-                                          ob.shape = o.optString("shape", "square");
-                                          ob.color = o.optString("color", "#FFFFFF");
-                                          ob.startX = (float)o.optDouble("startX", 100);
-                                          ob.startY = (float)o.optDouble("startY", 80);
-                                          ob.x = ob.startX;
-                                          ob.y = ob.startY;
-                                          ob.w = (float)o.optDouble("w", 72);
-                                          ob.h = (float)o.optDouble("h", 72);
-                                          ob.visible = o.optBoolean("visible", true);
-                                          ob.say = o.optString("say", "");
-
-                                          JSONArray blocks = o.optJSONArray("blocks");
-                                          if(blocks != null){
-                                              for(int z=0;z<blocks.length();z++){
-                                                  JSONObject b = blocks.getJSONObject(z);
-                                                  ob.blocks.add(new BlockItem(
-                                                      b.optString("type"),
-                                                      b.optString("label"),
-                                                      b.optString("arg1"),
-                                                      b.optString("arg2")
-                                                  ));
-                                              }
-                                          }
-                                          sc.objects.add(ob);
-                                      }
-                                  }
-                                  pr.scenes.add(sc);
-                              }
-                          }
-
-                          out.add(pr);
-                      }
-                  }catch(Exception ignored){}
-                  return out;
-              }
-
-              public static void save(Context c, ArrayList<ProjectItem> projects){
-                  try{
-                      JSONArray arr = new JSONArray();
-
-                      for(ProjectItem pr : projects){
-                          JSONObject p = new JSONObject();
-                          p.put("name", pr.name);
-
-                          JSONArray tex = new JSONArray();
-                          for(TextureItem t : pr.textures){
-                              JSONObject o = new JSONObject();
-                              o.put("id", t.id);
-                              o.put("name", t.name);
-                              o.put("uri", t.uri);
-                              tex.put(o);
-                          }
-                          p.put("textures", tex);
-
-                          JSONArray vars = new JSONArray();
-                          for(VariableItem v : pr.variables){
-                              JSONObject o = new JSONObject();
-                              o.put("name", v.name);
-                              o.put("value", v.value);
-                              vars.put(o);
-                          }
-                          p.put("variables", vars);
-
-                          JSONArray lists = new JSONArray();
-                          for(ListItemModel li : pr.lists){
-                              JSONObject o = new JSONObject();
-                              o.put("name", li.name);
-                              JSONArray its = new JSONArray();
-                              for(String s : li.items) its.put(s);
-                              o.put("items", its);
-                              lists.put(o);
-                          }
-                          p.put("lists", lists);
-
-                          JSONArray scenes = new JSONArray();
-                          for(SceneItem sc : pr.scenes){
-                              JSONObject s = new JSONObject();
-                              s.put("name", sc.name);
-                              s.put("bgColor", sc.bgColor);
-
-                              JSONArray objs = new JSONArray();
-                              for(ObjectItem ob : sc.objects){
-                                  JSONObject o = new JSONObject();
-                                  o.put("name", ob.name);
-                                  o.put("spriteType", ob.spriteType);
-                                  o.put("emoji", ob.emoji);
-                                  o.put("text", ob.text);
-                                  o.put("textureId", ob.textureId);
-                                  o.put("shape", ob.shape);
-                                  o.put("color", ob.color);
-                                  o.put("startX", ob.startX);
-                                  o.put("startY", ob.startY);
-                                  o.put("w", ob.w);
-                                  o.put("h", ob.h);
-                                  o.put("visible", ob.visible);
-                                  o.put("say", ob.say);
-
-                                  JSONArray bl = new JSONArray();
-                                  for(BlockItem b : ob.blocks){
-                                      JSONObject bb = new JSONObject();
-                                      bb.put("type", b.type);
-                                      bb.put("label", b.label);
-                                      bb.put("arg1", b.arg1);
-                                      bb.put("arg2", b.arg2);
-                                      bl.put(bb);
-                                  }
-                                  o.put("blocks", bl);
-                                  objs.put(o);
-                              }
-                              s.put("objects", objs);
-                              scenes.put(s);
-                          }
-                          p.put("scenes", scenes);
-
-                          arr.put(p);
-                      }
-
-                      FileWriter wr = new FileWriter(file(c));
-                      wr.write(arr.toString());
-                      wr.close();
-                  }catch(Exception ignored){}
-              }
-          }
-          STORE
-
-          cat <<'RUNTIME' > app/src/main/java/com/pocketlite/ru/ScriptRuntime.java
-          package com.pocketlite.ru;
-
-          import android.os.Handler;
-          import android.os.Looper;
-          import java.util.ArrayList;
-          import java.util.Locale;
-
-          public class ScriptRuntime {
-              public interface Host extends FormulaEngine.Host {
-                  void renderPlayerScene();
-                  boolean stopped();
-                  SceneItem scene();
-                  void goToSceneByName(String name);
-              }
-
-              public static void runScene(Host host){
-                  SceneItem scene = host.scene();
-                  if(scene == null) return;
-                  for(ObjectItem o : scene.objects){
-                      runStart(host, o);
-                  }
-              }
-
-              public static void tapped(Host host, ObjectItem obj){
-                  runEvent(host, obj, "event_tap");
-              }
-
-              public static void signal(Host host, String name){
-                  SceneItem scene = host.scene();
-                  if(scene == null) return;
-                  for(ObjectItem o : scene.objects){
-                      runSignal(host, o, name);
-                  }
-              }
-
-              private static void runStart(Host host, ObjectItem obj){
-                  ArrayList<ArrayList<BlockItem>> scripts = splitScripts(obj.blocks);
-                  boolean hasHeaders = false;
-                  for(ArrayList<BlockItem> s : scripts){
-                      if(!s.isEmpty() && s.get(0).type.startsWith("event_")) hasHeaders = true;
-                  }
-
-                  boolean foundStart = false;
-                  for(ArrayList<BlockItem> script : scripts){
-                      if(!script.isEmpty() && "event_start".equals(script.get(0).type)){
-                          foundStart = true;
-                          execute(host, obj, script, 1);
-                      }
-                  }
-
-                  if(!hasHeaders && !foundStart){
-                      ArrayList<BlockItem> linear = new ArrayList<>();
-                      for(BlockItem b : obj.blocks){
-                          if(!b.type.startsWith("event_")) linear.add(b);
-                      }
-                      if(!linear.isEmpty()) execute(host, obj, linear, 0);
-                  }
-              }
-
-              private static void runEvent(Host host, ObjectItem obj, String type){
-                  ArrayList<ArrayList<BlockItem>> scripts = splitScripts(obj.blocks);
-                  for(ArrayList<BlockItem> script : scripts){
-                      if(!script.isEmpty() && type.equals(script.get(0).type)){
-                          execute(host, obj, script, 1);
-                      }
-                  }
-              }
-
-              private static void runSignal(Host host, ObjectItem obj, String name){
-                  ArrayList<ArrayList<BlockItem>> scripts = splitScripts(obj.blocks);
-                  for(ArrayList<BlockItem> script : scripts){
-                      if(!script.isEmpty() && "event_signal".equals(script.get(0).type)){
-                          String sig = script.get(0).arg1 == null ? "" : script.get(0).arg1;
-                          if(sig.equals(name)){
-                              execute(host, obj, script, 1);
-                          }
-                      }
-                  }
-              }
-
-              private static ArrayList<ArrayList<BlockItem>> splitScripts(ArrayList<BlockItem> blocks){
-                  ArrayList<ArrayList<BlockItem>> out = new ArrayList<>();
-                  ArrayList<BlockItem> cur = null;
-                  for(BlockItem b : blocks){
-                      if(b.type.startsWith("event_")){
-                          cur = new ArrayList<>();
-                          cur.add(b);
-                          out.add(cur);
-                      } else {
-                          if(cur == null){
-                              cur = new ArrayList<>();
-                              out.add(cur);
-                          }
-                          cur.add(b);
-                      }
-                  }
-                  return out;
-              }
-
-              private static void execute(Host host, ObjectItem obj, ArrayList<BlockItem> seq, int startIndex){
-                  Handler h = new Handler(Looper.getMainLooper());
-                  long delay = 0;
-
-                  for(int i=startIndex;i<seq.size();i++){
-                      BlockItem b = seq.get(i);
-
-                      if("forever".equals(b.type)){
-                          ArrayList<BlockItem> body = new ArrayList<>();
-                          int depth = 1;
-                          for(int j=i+1;j<seq.size();j++){
-                              BlockItem x = seq.get(j);
-                              if("forever".equals(x.type)) depth++;
-                              else if("end_forever".equals(x.type)){
-                                  depth--;
-                                  if(depth == 0) break;
-                              }
-                              if(depth > 0) body.add(x);
-                          }
-                          final ArrayList<BlockItem> bodyFinal = body;
-                          h.postDelayed(() -> loop(host, obj, bodyFinal), delay);
-                          break;
-                      }
-
-                      if("end_forever".equals(b.type)) continue;
-
-                      switch (b.type){
-                          case "move_x": {
-                              final float dx = FormulaEngine.eval(hostFor(host, obj), b.arg1);
-                              h.postDelayed(() -> {
-                                  if(host.stopped()) return;
-                                  obj.x += dx;
-                                  host.renderPlayerScene();
-                              }, delay);
-                              break;
-                          }
-                          case "move_y": {
-                              final float dy = FormulaEngine.eval(hostFor(host, obj), b.arg1);
-                              h.postDelayed(() -> {
-                                  if(host.stopped()) return;
-                                  obj.y += dy;
-                                  host.renderPlayerScene();
-                              }, delay);
-                              break;
-                          }
-                          case "go_xy": {
-                              final float x = FormulaEngine.eval(hostFor(host, obj), b.arg1);
-                              final float y = FormulaEngine.eval(hostFor(host, obj), b.arg2);
-                              h.postDelayed(() -> {
-                                  if(host.stopped()) return;
-                                  obj.x = x;
-                                  obj.y = y;
-                                  host.renderPlayerScene();
-                              }, delay);
-                              break;
-                          }
-                          case "say": {
-                              final String txt = FormulaEngine.text(hostFor(host, obj), b.arg1);
-                              h.postDelayed(() -> {
-                                  if(host.stopped()) return;
-                                  obj.say = txt;
-                                  host.renderPlayerScene();
-                              }, delay);
-                              break;
-                          }
-                          case "hide": {
-                              h.postDelayed(() -> {
-                                  if(host.stopped()) return;
-                                  obj.visible = false;
-                                  host.renderPlayerScene();
-                              }, delay);
-                              break;
-                          }
-                          case "show": {
-                              h.postDelayed(() -> {
-                                  if(host.stopped()) return;
-                                  obj.visible = true;
-                                  host.renderPlayerScene();
-                              }, delay);
-                              break;
-                          }
-                          case "wait": {
-                              delay += (long)(Math.max(0f, FormulaEngine.eval(hostFor(host, obj), b.arg1)) * 1000f);
-                              break;
-                          }
-                          case "set_var": {
-                              final String n = b.arg1 == null ? "" : b.arg1;
-                              final String valExpr = b.arg2 == null ? "0" : b.arg2;
-                              h.postDelayed(() -> {
-                                  if(host.stopped()) return;
-                                  ProjectItem p = host.project();
-                                  if(p != null){
-                                      for(VariableItem v : p.variables){
-                                          if(v.name.equals(n)){
-                                              float r = FormulaEngine.eval(hostFor(host, obj), valExpr);
-                                              v.value = String.format(Locale.US, "%.2f", r);
-                                              break;
-                                          }
-                                      }
-                                  }
-                              }, delay);
-                              break;
-                          }
-                          case "change_var": {
-                              final String n = b.arg1 == null ? "" : b.arg1;
-                              final String valExpr = b.arg2 == null ? "0" : b.arg2;
-                              h.postDelayed(() -> {
-                                  if(host.stopped()) return;
-                                  ProjectItem p = host.project();
-                                  if(p != null){
-                                      for(VariableItem v : p.variables){
-                                          if(v.name.equals(n)){
-                                              float oldv = 0f;
-                                              try { oldv = Float.parseFloat(v.value); } catch(Exception ignored){}
-                                              float add = FormulaEngine.eval(hostFor(host, obj), valExpr);
-                                              v.value = String.format(Locale.US, "%.2f", oldv + add);
-                                              break;
-                                          }
-                                      }
-                                  }
-                              }, delay);
-                              break;
-                          }
-                          case "signal": {
-                              final String sig = b.arg1 == null ? "" : b.arg1;
-                              h.postDelayed(() -> {
-                                  if(host.stopped()) return;
-                                  signal(host, sig);
-                              }, delay);
-                              break;
-                          }
-                          case "goto_scene": {
-                              final String sceneName = FormulaEngine.text(hostFor(host, obj), b.arg1).replace("\"", "");
-                              h.postDelayed(() -> {
-                                  if(host.stopped()) return;
-                                  host.goToSceneByName(sceneName);
-                              }, delay);
-                              break;
-                          }
-                          case "list_add": {
-                              final String listName = b.arg1 == null ? "" : b.arg1;
-                              final String val = b.arg2 == null ? "" : b.arg2;
-                              h.postDelayed(() -> {
-                                  ProjectItem p = host.project();
-                                  if(p != null){
-                                      for(ListItemModel li : p.lists){
-                                          if(li.name.equals(listName)){
-                                              li.items.add(FormulaEngine.text(hostFor(host, obj), val));
-                                              break;
-                                          }
-                                      }
-                                  }
-                              }, delay);
-                              break;
-                          }
-                      }
-                  }
-              }
-
-              private static void loop(Host host, ObjectItem obj, ArrayList<BlockItem> body){
-                  Handler h = new Handler(Looper.getMainLooper());
-                  Runnable[] rr = new Runnable[1];
-                  rr[0] = () -> {
-                      if(host.stopped()) return;
-                      execute(host, obj, body, 0);
-                      h.postDelayed(rr[0], 60);
-                  };
-                  h.post(rr[0]);
-              }
-
-              private static FormulaEngine.Host hostFor(Host h, ObjectItem o){
-                  return new FormulaEngine.Host() {
-                      @Override public ProjectItem project() { return h.project(); }
-                      @Override public ObjectItem object() { return o; }
-                      @Override public float touchX() { return h.touchX(); }
-                      @Override public float touchY() { return h.touchY(); }
-                      @Override public float touchCount() { return h.touchCount(); }
-                  };
-              }
-          }
-          RUNTIME
-
-          cat <<'MAIN' > app/src/main/java/com/pocketlite/ru/MainActivity.java
-          package com.pocketlite.ru;
-
-          import android.content.Context;
-          import android.content.DialogInterface;
-          import android.graphics.Color;
-          import android.os.Bundle;
-          import android.text.InputType;
-          import android.view.*;
-          import android.widget.*;
-          import androidx.appcompat.app.AlertDialog;
-          import androidx.appcompat.app.AppCompatActivity;
-          import java.util.ArrayList;
-
-          public class MainActivity extends AppCompatActivity {
-              private ArrayList<ProjectItem> projects = new ArrayList<>();
-              private ProjectItem currentProject = null;
-              private SceneItem currentScene = null;
-              private ObjectItem currentObject = null;
-
-              private FrameLayout screenProjects, screenScenes, screenObjects, screenScripts, screenPlayer;
-              private LinearLayout projectsList, scenesList, objectsList, blocksList;
-              private FrameLayout playerStageLayer;
-              private float touchX = 0f, touchY = 0f;
-              private boolean isPlaying = false;
+          public class MainActivity extends AppCompatActivity implements ScriptEngine.Host, GameRenderer.EventHost {
+              private GameRenderer ren;
+              private float lx,ly;
+              private Button[] shapeBtn,distBtn;
+              private View[] colorBtn;
+              private View axisPanel,menuUI,gameUI,engineUI,playtestUI;
+              private Button btnDeselect, btnHide, btnDelete, btnEvents, btnGrid;
+              private TextView txtSizeInfo;
+              private ActivityResultLauncher<Intent> saveLauncher,loadLauncher;
+              private Handler handler = new Handler(Looper.getMainLooper());
+              private int pendingMode = 0;
 
               @Override
-              protected void onCreate(Bundle savedInstanceState) {
+              public GameRenderer renderer() {
+                  return ren;
+              }
+
+              @Override
+              public void toast(String text) {
+                  runOnUiThread(() -> Toast.makeText(this, text, Toast.LENGTH_SHORT).show());
+              }
+
+              @Override
+              public void runBlockScript(Block block, String script) {
+                  runOnUiThread(() -> {
+                      int old = ren.selectedIndex;
+                      int idx = ren.blocks.indexOf(block);
+                      if(idx >= 0) ren.selectedIndex = idx;
+                      try {
+                          ScriptEngine.run(this, script);
+                      } catch (Exception e) {
+                          Toast.makeText(this, e.getMessage(), Toast.LENGTH_LONG).show();
+                      }
+                      ren.selectedIndex = old;
+                      updAxis();
+                  });
+              }
+
+              @SuppressLint("ClickableViewAccessibility")
+              @Override protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
                   setContentView(R.layout.activity_main);
 
-                  projects = ProjectStore.load(this);
+                  android.opengl.GLSurfaceView gv=findViewById(R.id.gl_view);
+                  gv.setEGLContextClientVersion(3);
+                  ren=new GameRenderer();
+                  ren.eventHost = this;
+                  gv.setRenderer(ren);
 
-                  screenProjects = findViewById(R.id.screen_projects);
-                  screenScenes = findViewById(R.id.screen_scenes);
-                  screenObjects = findViewById(R.id.screen_objects);
-                  screenScripts = findViewById(R.id.screen_scripts);
-                  screenPlayer = findViewById(R.id.screen_player);
+                  menuUI=findViewById(R.id.menu_ui);
+                  gameUI=findViewById(R.id.game_ui);
+                  engineUI=findViewById(R.id.engine_ui);
+                  playtestUI=findViewById(R.id.playtest_ui);
+                  axisPanel=findViewById(R.id.axis_panel);
+                  btnDeselect=findViewById(R.id.btn_deselect);
+                  btnHide=findViewById(R.id.btn_hide);
+                  btnDelete=findViewById(R.id.btn_delete);
+                  btnEvents=findViewById(R.id.btn_block_events);
+                  btnGrid=findViewById(R.id.btn_grid);
+                  txtSizeInfo=findViewById(R.id.txt_size_info);
 
-                  projectsList = findViewById(R.id.projects_list);
-                  scenesList = findViewById(R.id.scenes_list);
-                  objectsList = findViewById(R.id.objects_list);
-                  blocksList = findViewById(R.id.blocks_list);
-
-                  playerStageLayer = findViewById(R.id.player_stage_layer);
-
-                  findViewById(R.id.btn_new_project).setOnClickListener(v -> onNewProject());
-                  findViewById(R.id.btn_new_scene).setOnClickListener(v -> onNewScene());
-                  findViewById(R.id.btn_new_object).setOnClickListener(v -> onNewObject());
-                  findViewById(R.id.btn_add_block).setOnClickListener(v -> onAddBlock());
-
-                  findViewById(R.id.back_to_projects).setOnClickListener(v -> goToProjects());
-                  findViewById(R.id.back_to_scenes).setOnClickListener(v -> goToScenes());
-                  findViewById(R.id.back_to_objects).setOnClickListener(v -> goToObjects());
-                  findViewById(R.id.btn_play_scene).setOnClickListener(v -> onPlayScene());
-                  findViewById(R.id.btn_stop_player).setOnClickListener(v -> onStopPlayer());
-
-                  findViewById(R.id.btn_data_manager).setOnClickListener(v -> onDataManager());
-                  findViewById(R.id.btn_texture_library).setOnClickListener(v -> onTextureLibrary());
-                  findViewById(R.id.btn_formula_manager).setOnClickListener(v -> onFormulaManager());
-
-                  playerStageLayer.setOnTouchListener((v, e) -> {
-                      if(e.getAction() == MotionEvent.ACTION_DOWN){
-                          touchX = e.getX();
-                          touchY = e.getY();
-                          if(currentScene != null){
-                              for(ObjectItem o : currentScene.objects){
-                                  if(o.visible && hitTest(o, touchX, touchY)){
-                                      ScriptRuntime.tapped(runtimeHost(), o);
-                                  }
+                  saveLauncher=registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),res->{
+                      if(res.getResultCode()==RESULT_OK&&res.getData()!=null){
+                          try{
+                              OutputStream out=getContentResolver().openOutputStream(res.getData().getData());
+                              JSONArray arr=new JSONArray();
+                              for(Block b:ren.blocks){
+                                  JSONObject o=new JSONObject();
+                                  o.put("x",b.x); o.put("y",b.y); o.put("z",b.z);
+                                  o.put("sx",b.sx); o.put("sy",b.sy); o.put("sz",b.sz);
+                                  o.put("r",b.r); o.put("g",b.g); o.put("b",b.b);
+                                  o.put("hidden",b.hidden);
+                                  o.put("shape",b.shape);
+                                  o.put("onStartScript", b.onStartScript);
+                                  o.put("onTouchScript", b.onTouchScript);
+                                  o.put("onTapScript", b.onTapScript);
+                                  arr.put(o);
                               }
+                              JSONObject root=new JSONObject();
+                              root.put("blocks",arr);
+                              root.put("gridEnabled", ren.gridEnabled);
+                              out.write(root.toString().getBytes());
+                              out.close();
+                              Toast.makeText(this,"Exported!",Toast.LENGTH_SHORT).show();
+                          }catch(Exception e){
+                              Toast.makeText(this,"Error",Toast.LENGTH_SHORT).show();
                           }
+                      }
+                  });
+
+                  loadLauncher=registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),res->{
+                      if(res.getResultCode()==RESULT_OK&&res.getData()!=null){
+                          try{
+                              InputStream in=getContentResolver().openInputStream(res.getData().getData());
+                              BufferedReader rd=new BufferedReader(new InputStreamReader(in));
+                              StringBuilder sb=new StringBuilder();
+                              String ln;
+                              while((ln=rd.readLine())!=null) sb.append(ln);
+                              in.close();
+
+                              JSONObject root=new JSONObject(sb.toString());
+                              JSONArray arr=root.getJSONArray("blocks");
+                              ren.blocks.clear();
+                              for(int i=0;i<arr.length();i++){
+                                  JSONObject o=arr.getJSONObject(i);
+                                  Block b = new Block(
+                                      (float)o.getDouble("x"),
+                                      (float)o.getDouble("y"),
+                                      (float)o.getDouble("z"),
+                                      (float)o.getDouble("sx"),
+                                      (float)o.getDouble("sy"),
+                                      (float)o.getDouble("sz"),
+                                      (float)o.getDouble("r"),
+                                      (float)o.getDouble("g"),
+                                      (float)o.getDouble("b")
+                                  );
+                                  b.hidden = o.optBoolean("hidden", false);
+                                  b.shape = o.optString("shape", "square");
+                                  b.onStartScript = o.optString("onStartScript", "");
+                                  b.onTouchScript = o.optString("onTouchScript", "");
+                                  b.onTapScript = o.optString("onTapScript", "");
+                                  ren.blocks.add(b);
+                              }
+                              ren.gridEnabled = root.optBoolean("gridEnabled", true);
+                              updGridButton();
+                              pendingMode = 1;
+                              ren.isEngineMode=false;
+                              ren.isPlayingLevel=false;
+                              resetP();
+                              menuUI.setVisibility(View.GONE);
+                              gameUI.setVisibility(View.VISIBLE);
+                              setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+                              ren.runStartScripts();
+                              Toast.makeText(this,"Loaded!",Toast.LENGTH_SHORT).show();
+                          }catch(Exception e){
+                              Toast.makeText(this,"Invalid file",Toast.LENGTH_SHORT).show();
+                          }
+                      }
+                  });
+
+                  findViewById(R.id.btn_play).setOnClickListener(v->{
+                      pendingMode = 1;
+                      ren.isEngineMode=false;
+                      ren.isPlayingLevel=false;
+                      ren.loadBuiltInLevel();
+                      resetP();
+                      ren.selectedIndex=-1;
+                      menuUI.setVisibility(View.GONE);
+                      gameUI.setVisibility(View.VISIBLE);
+                      engineUI.setVisibility(View.GONE);
+                      playtestUI.setVisibility(View.GONE);
+                      ren.runStartScripts();
+                      handler.postDelayed(() -> setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE), 50);
+                  });
+
+                  findViewById(R.id.btn_engine).setOnClickListener(v->{
+                      pendingMode = 2;
+                      ren.isEngineMode=true;
+                      ren.isPlayingLevel=false;
+                      ren.blocks.clear();
+                      ren.pX=0;ren.pY=20;ren.pZ=35;
+                      ren.selectedIndex=-1;
+                      menuUI.setVisibility(View.GONE);
+                      gameUI.setVisibility(View.GONE);
+                      engineUI.setVisibility(View.VISIBLE);
+                      playtestUI.setVisibility(View.GONE);
+                      updAxis();
+                      updSizeInfo();
+                      updGridButton();
+                      handler.postDelayed(() -> setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE), 50);
+                  });
+
+                  findViewById(R.id.btn_load_file).setOnClickListener(v->{
+                      Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                      i.addCategory(Intent.CATEGORY_OPENABLE);
+                      i.setType("*/*");
+                      loadLauncher.launch(i);
+                  });
+
+                  View.OnClickListener back=v->{
+                      pendingMode = 0;
+                      ren.isPlayingLevel=false;
+                      gameUI.setVisibility(View.GONE);
+                      engineUI.setVisibility(View.GONE);
+                      playtestUI.setVisibility(View.GONE);
+                      menuUI.setVisibility(View.VISIBLE);
+                      setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+                  };
+                  findViewById(R.id.btn_menu).setOnClickListener(back);
+                  findViewById(R.id.btn_engine_menu).setOnClickListener(back);
+
+                  findViewById(R.id.btn_play_level).setOnClickListener(v->{
+                      ren.isPlayingLevel=true;
+                      resetP();
+                      ren.selectedIndex=-1;
+                      engineUI.setVisibility(View.GONE);
+                      playtestUI.setVisibility(View.VISIBLE);
+                      ren.runStartScripts();
+                  });
+
+                  findViewById(R.id.btn_stop_playtest).setOnClickListener(v->{
+                      ren.isPlayingLevel=false;
+                      ren.pX=0;ren.pY=20;ren.pZ=35;
+                      playtestUI.setVisibility(View.GONE);
+                      engineUI.setVisibility(View.VISIBLE);
+                      updAxis();
+                  });
+
+                  findViewById(R.id.btn_save).setOnClickListener(v->{
+                      Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                      i.addCategory(Intent.CATEGORY_OPENABLE);
+                      i.setType("application/json");
+                      i.putExtra(Intent.EXTRA_TITLE,"level.json");
+                      saveLauncher.launch(i);
+                  });
+
+                  findViewById(R.id.btn_run_script).setOnClickListener(v->showScriptDialog());
+
+                  btnGrid.setOnClickListener(v->{
+                      ren.gridEnabled = !ren.gridEnabled;
+                      updGridButton();
+                  });
+
+                  findViewById(R.id.btn_jump).setOnTouchListener((v,e)->{
+                      if(e.getAction()==MotionEvent.ACTION_DOWN&&ren.isOnGround())ren.vY=.55f;
+                      return true;
+                  });
+                  findViewById(R.id.btn_playtest_jump).setOnTouchListener((v,e)->{
+                      if(e.getAction()==MotionEvent.ACTION_DOWN&&ren.isOnGround())ren.vY=.55f;
+                      return true;
+                  });
+
+                  findViewById(R.id.btn_place).setOnClickListener(v->{ if(ren.selectedIndex<0) ren.placeBlock(); });
+                  btnDelete.setOnClickListener(v->{ ren.deleteSelected(); updAxis(); });
+                  btnDeselect.setOnClickListener(v->{ ren.selectedIndex=-1; updAxis(); });
+                  btnHide.setOnClickListener(v->{
+                      if(ren.selectedIndex>=0){
+                          ren.toggleHideSelected();
+                          updAxis();
+                      }
+                  });
+                  btnEvents.setOnClickListener(v->showBlockEventsDialog());
+
+                  axisBtn(R.id.axis_x_plus,1,0,0); axisBtn(R.id.axis_x_minus,-1,0,0);
+                  axisBtn(R.id.axis_y_plus,0,1,0); axisBtn(R.id.axis_y_minus,0,-1,0);
+                  axisBtn(R.id.axis_z_plus,0,0,1); axisBtn(R.id.axis_z_minus,0,0,-1);
+
+                  shapeBtn=new Button[]{
+                      findViewById(R.id.shape_square),
+                      findViewById(R.id.shape_rectangle),
+                      findViewById(R.id.shape_circle),
+                      findViewById(R.id.shape_triangle)
+                  };
+
+                  findViewById(R.id.shape_square).setOnClickListener(v->{ setShapePreset("square",4,4,4,0); });
+                  findViewById(R.id.shape_rectangle).setOnClickListener(v->{ setShapePreset("rectangle",8,4,4,1); });
+                  findViewById(R.id.shape_circle).setOnClickListener(v->{ setShapePreset("circle",4,4,4,2); });
+                  findViewById(R.id.shape_triangle).setOnClickListener(v->{ setShapePreset("triangle",4,4,4,3); });
+
+                  findViewById(R.id.size_x_minus).setOnClickListener(v->{ ren.blockSX=Math.max(0.5f, ren.blockSX-0.5f); updSizeInfo(); });
+                  findViewById(R.id.size_x_plus).setOnClickListener(v->{ ren.blockSX+=0.5f; updSizeInfo(); });
+                  findViewById(R.id.size_y_minus).setOnClickListener(v->{ ren.blockSY=Math.max(0.5f, ren.blockSY-0.5f); updSizeInfo(); });
+                  findViewById(R.id.size_y_plus).setOnClickListener(v->{ ren.blockSY+=0.5f; updSizeInfo(); });
+                  findViewById(R.id.size_z_minus).setOnClickListener(v->{ ren.blockSZ=Math.max(0.5f, ren.blockSZ-0.5f); updSizeInfo(); });
+                  findViewById(R.id.size_z_plus).setOnClickListener(v->{ ren.blockSZ+=0.5f; updSizeInfo(); });
+
+                  distBtn=new Button[]{findViewById(R.id.dist_near),findViewById(R.id.dist_mid),findViewById(R.id.dist_far)};
+                  float[] dists={3f,6f,12f};
+                  for(int i=0;i<3;i++){
+                      final int idx=i;
+                      distBtn[i].setOnClickListener(v->{ ren.placeDist=dists[idx]; updBtnGrp(distBtn,idx); });
+                  }
+
+                  colorBtn=new View[]{
+                      findViewById(R.id.color_red),
+                      findViewById(R.id.color_green),
+                      findViewById(R.id.color_blue),
+                      findViewById(R.id.color_yellow),
+                      findViewById(R.id.color_white),
+                      findViewById(R.id.color_black)
+                  };
+
+                  float[][] colors={
+                      {1f,.2f,.2f},
+                      {.2f,1f,.2f},
+                      {.2f,.5f,1f},
+                      {1f,1f,.2f},
+                      {1f,1f,1f},
+                      {0f,0f,0f}
+                  };
+
+                  for(int i=0;i<colors.length;i++){
+                      final int idx=i;
+                      colorBtn[i].setOnClickListener(v->{
+                          ren.blockR=colors[idx][0];
+                          ren.blockG=colors[idx][1];
+                          ren.blockB=colors[idx][2];
+                          if(ren.selectedIndex>=0&&ren.selectedIndex<ren.blocks.size()){
+                              Block b=ren.blocks.get(ren.selectedIndex);
+                              b.r=ren.blockR; b.g=ren.blockG; b.b=ren.blockB;
+                          }
+                          updColSel(idx);
+                      });
+                  }
+
+                  setupJoy(findViewById(R.id.joy_base),findViewById(R.id.joy_stick));
+                  setupJoy(findViewById(R.id.engine_joy_base),findViewById(R.id.engine_joy_stick));
+                  setupJoy(findViewById(R.id.playtest_joy_base),findViewById(R.id.playtest_joy_stick));
+                  setupLook(findViewById(R.id.look_zone));
+                  setupLook(findViewById(R.id.playtest_look_zone));
+
+                  findViewById(R.id.engine_touch_zone).setOnTouchListener((v,e)->{
+                      if(e.getAction()==MotionEvent.ACTION_DOWN){
+                          lx=e.getX();ly=e.getY();
+                      } else if(e.getAction()==MotionEvent.ACTION_UP){
+                          if(Math.abs(e.getX()-lx)<25&&Math.abs(e.getY()-ly)<25){
+                              int hit = ren.raycastBlock(e.getX(),e.getY());
+                              ren.selectedIndex = hit;
+                              if(hit>=0){
+                                  Block b = ren.blocks.get(hit);
+                                  ren.blockR=b.r; ren.blockG=b.g; ren.blockB=b.b;
+                                  ren.blockSX=b.sx; ren.blockSY=b.sy; ren.blockSZ=b.sz;
+                                  ren.blockShape=b.shape;
+                                  ren.handleTapBlock(hit);
+                                  updSizeInfo();
+                              }
+                              updAxis();
+                          }
+                      } else if(e.getAction()==MotionEvent.ACTION_MOVE){
+                          ren.rY+=(e.getX()-lx)*.2f;
+                          ren.rX=Math.max(-55,Math.min(55,ren.rX-(e.getY()-ly)*.2f));
+                          lx=e.getX();ly=e.getY();
                       }
                       return true;
                   });
 
-                  showProjects();
+                  updSizeInfo();
+                  updAxis();
+                  updGridButton();
               }
 
-              private void showProjects(){
-                  screenProjects.setVisibility(View.VISIBLE);
-                  screenScenes.setVisibility(View.GONE);
-                  screenObjects.setVisibility(View.GONE);
-                  screenScripts.setVisibility(View.GONE);
-                  screenPlayer.setVisibility(View.GONE);
-
-                  projectsList.removeAllViews();
-                  for(ProjectItem p : projects){
-                      Button btn = new Button(this);
-                      btn.setText(p.name);
-                      btn.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 56));
-                      btn.setBackgroundResource(R.drawable.btn_blue);
-                      btn.setTextColor(Color.WHITE);
-                      btn.setOnClickListener(v -> openProject(p));
-                      projectsList.addView(btn);
-                  }
+              @Override
+              protected void onSaveInstanceState(Bundle outState) {
+                  super.onSaveInstanceState(outState);
+                  outState.putInt("mode", pendingMode);
               }
 
-              private void onNewProject(){
-                  AlertDialog.Builder b = new AlertDialog.Builder(this);
-                  b.setTitle("Новый проект");
-                  final EditText e = new EditText(this);
-                  e.setText("Проект");
-                  b.setView(e);
-                  b.setPositiveButton("Создать", (d, w) -> {
-                      ProjectItem p = new ProjectItem();
-                      p.name = e.getText().toString();
-                      projects.add(p);
-                      ProjectStore.save(this, projects);
-                      showProjects();
-                  });
-                  b.show();
-              }
+              private void showScriptDialog(){
+                  EditText input = new EditText(this);
+                  input.setMinLines(10);
+                  input.setText(
+                      "phone.toast(\"Hello\")\n" +
+                      "player.teleport(0, 8, 10)\n" +
+                      "player.jump\n"
+                  );
+                  input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
 
-              private void openProject(ProjectItem p){
-                  currentProject = p;
-                  showScenes();
-              }
-
-              private void goToProjects(){
-                  currentProject = null;
-                  currentScene = null;
-                  currentObject = null;
-                  ProjectStore.save(this, projects);
-                  showProjects();
-              }
-
-              private void showScenes(){
-                  screenProjects.setVisibility(View.GONE);
-                  screenScenes.setVisibility(View.VISIBLE);
-                  screenObjects.setVisibility(View.GONE);
-                  screenScripts.setVisibility(View.GONE);
-                  screenPlayer.setVisibility(View.GONE);
-
-                  ((TextView)findViewById(R.id.txt_project_title)).setText("Проект: " + currentProject.name);
-
-                  scenesList.removeAllViews();
-                  for(SceneItem s : currentProject.scenes){
-                      Button btn = new Button(this);
-                      btn.setText(s.name);
-                      btn.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 56));
-                      btn.setBackgroundResource(R.drawable.btn_purple);
-                      btn.setTextColor(Color.WHITE);
-                      btn.setOnClickListener(v -> openScene(s));
-                      scenesList.addView(btn);
-                  }
-              }
-
-              private void onNewScene(){
-                  AlertDialog.Builder b = new AlertDialog.Builder(this);
-                  b.setTitle("Новая сцена");
-                  final EditText e = new EditText(this);
-                  e.setText("Сцена");
-                  b.setView(e);
-                  b.setPositiveButton("Создать", (d, w) -> {
-                      SceneItem s = new SceneItem();
-                      s.name = e.getText().toString();
-                      currentProject.scenes.add(s);
-                      ProjectStore.save(this, projects);
-                      showScenes();
-                  });
-                  b.show();
-              }
-
-              private void openScene(SceneItem s){
-                  currentScene = s;
-                  showObjects();
-              }
-
-              private void goToScenes(){
-                  currentScene = null;
-                  currentObject = null;
-                  ProjectStore.save(this, projects);
-                  showScenes();
-              }
-
-              private void showObjects(){
-                  screenProjects.setVisibility(View.GONE);
-                  screenScenes.setVisibility(View.GONE);
-                  screenObjects.setVisibility(View.VISIBLE);
-                  screenScripts.setVisibility(View.GONE);
-                  screenPlayer.setVisibility(View.GONE);
-
-                  ((TextView)findViewById(R.id.txt_scene_title)).setText("Сцена: " + currentScene.name);
-
-                  objectsList.removeAllViews();
-                  for(ObjectItem o : currentScene.objects){
-                      Button btn = new Button(this);
-                      btn.setText(o.name);
-                      btn.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 56));
-                      btn.setBackgroundResource(R.drawable.btn_green);
-                      btn.setTextColor(Color.WHITE);
-                      btn.setOnClickListener(v -> openObject(o));
-                      objectsList.addView(btn);
-                  }
-              }
-
-              private void onNewObject(){
-                  AlertDialog.Builder b = new AlertDialog.Builder(this);
-                  b.setTitle("Новый объект");
-                  final EditText e = new EditText(this);
-                  e.setText("Объект");
-                  b.setView(e);
-                  b.setPositiveButton("Создать", (d, w) -> {
-                      ObjectItem o = new ObjectItem();
-                      o.name = e.getText().toString();
-                      currentScene.objects.add(o);
-                      ProjectStore.save(this, projects);
-                      showObjects();
-                  });
-                  b.show();
-              }
-
-              private void openObject(ObjectItem o){
-                  currentObject = o;
-                  showScripts();
-              }
-
-              private void goToObjects(){
-                  currentObject = null;
-                  ProjectStore.save(this, projects);
-                  showObjects();
-              }
-
-              private void showScripts(){
-                  screenProjects.setVisibility(View.GONE);
-                  screenScenes.setVisibility(View.GONE);
-                  screenObjects.setVisibility(View.GONE);
-                  screenScripts.setVisibility(View.VISIBLE);
-                  screenPlayer.setVisibility(View.GONE);
-
-                  ((TextView)findViewById(R.id.txt_object_title)).setText("Объект: " + currentObject.name);
-
-                  blocksList.removeAllViews();
-                  for(BlockItem b : currentObject.blocks){
-                      addBlockView(b);
-                  }
-              }
-
-              private void addBlockView(BlockItem b){
-                  LinearLayout item = new LinearLayout(this);
-                  item.setOrientation(LinearLayout.HORIZONTAL);
-                  item.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-                  item.setPadding(4, 4, 4, 4);
-
-                  Button btnBlock = new Button(this);
-                  btnBlock.setText(b.label);
-                  btnBlock.setLayoutParams(new LinearLayout.LayoutParams(0, 48, 1f));
-                  btnBlock.setBackgroundResource(getBlockDrawable(b.type));
-                  btnBlock.setTextColor(Color.WHITE);
-                  btnBlock.setOnClickListener(v -> editBlock(b));
-                  item.addView(btnBlock);
-
-                  Button btnDel = new Button(this);
-                  btnDel.setText("✕");
-                  btnDel.setLayoutParams(new LinearLayout.LayoutParams(48, 48));
-                  btnDel.setBackgroundResource(R.drawable.btn_red);
-                  btnDel.setTextColor(Color.WHITE);
-                  btnDel.setOnClickListener(v -> {
-                      currentObject.blocks.remove(b);
-                      ProjectStore.save(this, projects);
-                      showScripts();
-                  });
-                  item.addView(btnDel);
-
-                  blocksList.addView(item);
-              }
-
-              private void onAddBlock(){
-                  String[] types = {"event_start", "event_tap", "move_x", "move_y", "go_xy", "say", "hide", "show", "wait", "set_var", "change_var", "signal", "goto_scene", "list_add"};
-                  String[] labels = {"Начало", "При клике", "Движение на X", "Движение на Y", "Перейти на X,Y", "Сказать", "Скрыть", "Показать", "Ждать", "Установить переменную", "Изменить переменную", "Сигнал", "Перейти на сцену", "Добавить в список"};
-
-                  AlertDialog.Builder b = new AlertDialog.Builder(this);
-                  b.setTitle("Добавить блок");
-                  b.setItems(labels, (d, idx) -> {
-                      BlockItem bi = new BlockItem(types[idx], labels[idx], "", "");
-                      currentObject.blocks.add(bi);
-                      ProjectStore.save(this, projects);
-                      showScripts();
-                  });
-                  b.show();
-              }
-
-              private void editBlock(BlockItem b){
-                  AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                  builder.setTitle("Редактировать: " + b.label);
-
-                  LinearLayout ll = new LinearLayout(this);
-                  ll.setOrientation(LinearLayout.VERTICAL);
-                  ll.setPadding(16, 16, 16, 16);
-
-                  TextView t1 = new TextView(this);
-                  t1.setText("Параметр 1:");
-                  t1.setTextColor(Color.BLACK);
-                  ll.addView(t1);
-
-                  EditText e1 = new EditText(this);
-                  e1.setText(b.arg1 != null ? b.arg1 : "");
-                  ll.addView(e1);
-
-                  TextView t2 = new TextView(this);
-                  t2.setText("Параметр 2:");
-                  t2.setTextColor(Color.BLACK);
-                  ll.addView(t2);
-
-                  EditText e2 = new EditText(this);
-                  e2.setText(b.arg2 != null ? b.arg2 : "");
-                  ll.addView(e2);
-
-                  builder.setView(ll);
-                  builder.setPositiveButton("Сохранить", (d, w) -> {
-                      b.arg1 = e1.getText().toString();
-                      b.arg2 = e2.getText().toString();
-                      ProjectStore.save(MainActivity.this, projects);
-                      showScripts();
-                  });
-                  builder.setNegativeButton("Отмена", null);
-                  builder.show();
-              }
-
-              private void onPlayScene(){
-                  if(currentScene == null) return;
-                  isPlaying = true;
-                  screenPlayer.setVisibility(View.VISIBLE);
-                  playerStageLayer.removeAllViews();
-
-                  for(ObjectItem o : currentScene.objects){
-                      o.x = o.startX;
-                      o.y = o.startY;
-                      o.say = "";
-                      o.visible = true;
-                  }
-
-                  renderPlayerScene();
-                  ScriptRuntime.runScene(runtimeHost());
-              }
-
-              private void onStopPlayer(){
-                  isPlaying = false;
-                  screenScripts.setVisibility(View.VISIBLE);
-                  screenPlayer.setVisibility(View.GONE);
-                  showScripts();
-              }
-
-              private void renderPlayerScene(){
-                  if(!isPlaying) return;
-
-                  playerStageLayer.removeAllViews();
-
-                  if(currentScene != null){
-                      for(ObjectItem o : currentScene.objects){
-                          if(!o.visible) continue;
-
-                          FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams((int)o.w, (int)o.h);
-                          lp.leftMargin = (int)o.x;
-                          lp.topMargin = (int)o.y;
-
-                          FrameLayout container = new FrameLayout(this);
-                          container.setLayoutParams(lp);
-
-                          TextView tv = new TextView(this);
-                          tv.setLayoutParams(new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-                          tv.setText(o.emoji);
-                          tv.setTextSize(32);
-                          tv.setGravity(Gravity.CENTER);
-                          container.addView(tv);
-
-                          if(!o.say.isEmpty()){
-                              TextView sayText = new TextView(this);
-                              sayText.setLayoutParams(new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT));
-                              sayText.setText(o.say);
-                              sayText.setBackgroundColor(Color.parseColor("#FFFACD"));
-                              sayText.setTextColor(Color.BLACK);
-                              sayText.setPadding(4, 2, 4, 2);
-                              sayText.setGravity(Gravity.CENTER);
-                              FrameLayout.LayoutParams sayLp = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT);
-                              sayLp.topMargin = -(int)o.h/2;
-                              sayText.setLayoutParams(sayLp);
-                              container.addView(sayText);
+                  new AlertDialog.Builder(this)
+                      .setTitle("Script")
+                      .setView(input)
+                      .setPositiveButton("Run", (d,w)->{
+                          try{
+                              ScriptEngine.run(this, input.getText().toString());
+                              updAxis();
+                              updSizeInfo();
+                              updGridButton();
+                              Toast.makeText(this,"Script done",Toast.LENGTH_SHORT).show();
+                          }catch(Exception ex){
+                              Toast.makeText(this, ex.getMessage(), Toast.LENGTH_LONG).show();
                           }
+                      })
+                      .setNegativeButton("Close", null)
+                      .show();
+              }
 
-                          playerStageLayer.addView(container);
+              private void showBlockEventsDialog(){
+                  if(ren.selectedIndex < 0 || ren.selectedIndex >= ren.blocks.size()) return;
+                  Block b = ren.blocks.get(ren.selectedIndex);
+
+                  LinearLayout root = new LinearLayout(this);
+                  root.setOrientation(LinearLayout.VERTICAL);
+                  int pad = (int)(12 * getResources().getDisplayMetrics().density);
+                  root.setPadding(pad,pad,pad,pad);
+
+                  TextView t1 = new TextView(this); t1.setText("On Start");
+                  EditText e1 = new EditText(this); e1.setMinLines(4); e1.setText(b.onStartScript);
+                  TextView t2 = new TextView(this); t2.setText("On Player Touch");
+                  EditText e2 = new EditText(this); e2.setMinLines(4); e2.setText(b.onTouchScript);
+                  TextView t3 = new TextView(this); t3.setText("On Block Tap");
+                  EditText e3 = new EditText(this); e3.setMinLines(4); e3.setText(b.onTapScript);
+
+                  root.addView(t1); root.addView(e1);
+                  root.addView(t2); root.addView(e2);
+                  root.addView(t3); root.addView(e3);
+
+                  new AlertDialog.Builder(this)
+                      .setTitle("Block Events")
+                      .setView(root)
+                      .setPositiveButton("Save", (d,w)->{
+                          b.onStartScript = e1.getText().toString();
+                          b.onTouchScript = e2.getText().toString();
+                          b.onTapScript = e3.getText().toString();
+                          Toast.makeText(this,"Events saved",Toast.LENGTH_SHORT).show();
+                      })
+                      .setNegativeButton("Close", null)
+                      .show();
+              }
+
+              private void setShapePreset(String shape,float sx,float sy,float sz,int idx){
+                  ren.blockShape=shape;
+                  ren.blockSX=sx;
+                  ren.blockSY=sy;
+                  ren.blockSZ=sz;
+                  updBtnGrp(shapeBtn,idx);
+                  updSizeInfo();
+              }
+
+              private void resetP(){ ren.pX=0; ren.pY=7; ren.pZ=15; ren.vY=0; }
+
+              private void axisBtn(int id,float dx,float dy,float dz){
+                  findViewById(id).setOnTouchListener((v,e)->{
+                      if(e.getAction()==MotionEvent.ACTION_DOWN||e.getAction()==MotionEvent.ACTION_MOVE){
+                          float step = ren.gridEnabled ? ren.gridSize : 0.5f;
+                          ren.moveSelected(dx*step,dy*step,dz*step);
+                      }
+                      return true;
+                  });
+              }
+
+              private void updAxis(){
+                  runOnUiThread(()->{
+                      boolean sel = ren.selectedIndex>=0;
+                      axisPanel.setVisibility(sel?View.VISIBLE:View.GONE);
+                      btnDeselect.setVisibility(sel?View.VISIBLE:View.GONE);
+                      btnHide.setVisibility(sel?View.VISIBLE:View.GONE);
+                      btnDelete.setVisibility(sel?View.VISIBLE:View.GONE);
+                      btnEvents.setVisibility(sel?View.VISIBLE:View.GONE);
+                      if(sel){
+                          Block b = ren.blocks.get(ren.selectedIndex);
+                          btnHide.setText(b.hidden ? "Show" : "Hide");
+                      }
+                  });
+              }
+
+              private void updSizeInfo(){
+                  runOnUiThread(() -> txtSizeInfo.setText(
+                      String.format(java.util.Locale.US, "%.1f x %.1f x %.1f", ren.blockSX, ren.blockSY, ren.blockSZ)
+                  ));
+              }
+
+              private void updGridButton(){
+                  runOnUiThread(() -> {
+                      if(ren.gridEnabled){
+                          btnGrid.setText("Grid: On");
+                          btnGrid.setBackgroundResource(R.drawable.btn_blue_filled);
+                          btnGrid.setTextColor(0xFF000000);
+                      }else{
+                          btnGrid.setText("Grid: Off");
+                          btnGrid.setBackgroundResource(R.drawable.btn_blue);
+                          btnGrid.setTextColor(0xFF00BFFF);
+                      }
+                  });
+              }
+
+              private void setupJoy(View base,View stick){
+                  base.setOnTouchListener((v,e)->{
+                      float cx=v.getWidth()/2f,cy=v.getHeight()/2f;
+                      if(e.getAction()==MotionEvent.ACTION_MOVE||e.getAction()==MotionEvent.ACTION_DOWN){
+                          float dx=e.getX()-cx,dy=e.getY()-cy,d=(float)Math.sqrt(dx*dx+dy*dy),lim=cx-stick.getWidth()/2f;
+                          if(d>lim){dx*=lim/d;dy*=lim/d;}
+                          stick.setTranslationX(dx);stick.setTranslationY(dy);
+                          ren.jX=dx/lim;ren.jY=dy/lim;
+                      }else if(e.getAction()==MotionEvent.ACTION_UP){
+                          stick.setTranslationX(0);stick.setTranslationY(0);
+                          ren.jX=0;ren.jY=0;
+                      }
+                      return true;
+                  });
+              }
+
+              private void setupLook(View z){
+                  z.setOnTouchListener((v,e)->{
+                      if(e.getAction()==MotionEvent.ACTION_DOWN){
+                          lx=e.getX();ly=e.getY();
+                      }else if(e.getAction()==MotionEvent.ACTION_MOVE){
+                          ren.rY+=(e.getX()-lx)*.25f;
+                          ren.rX=Math.max(-55,Math.min(55,ren.rX-(e.getY()-ly)*.25f));
+                          lx=e.getX();ly=e.getY();
+                      }
+                      return true;
+                  });
+              }
+
+              private void updBtnGrp(Button[] btns,int sel){
+                  for(int i=0;i<btns.length;i++){
+                      if(i==sel){
+                          btns[i].setBackgroundResource(R.drawable.btn_blue_filled);
+                          btns[i].setTextColor(0xFF000000);
+                      }else{
+                          btns[i].setBackgroundResource(R.drawable.btn_blue);
+                          btns[i].setTextColor(0xFF00BFFF);
                       }
                   }
               }
 
-              private boolean hitTest(ObjectItem o, float tx, float ty){
-                  return tx >= o.x && tx <= o.x + o.w && ty >= o.y && ty <= o.y + o.h;
-              }
-
-              private int getBlockDrawable(String type){
-                  if(type.startsWith("event_")) return R.drawable.block_event;
-                  if(type.startsWith("move_") || type.equals("go_xy")) return R.drawable.block_motion;
-                  if(type.equals("say") || type.equals("hide") || type.equals("show")) return R.drawable.block_looks;
-                  if(type.equals("wait") || type.equals("forever")) return R.drawable.block_control;
-                  if(type.startsWith("set_") || type.startsWith("change_") || type.equals("list_add")) return R.drawable.block_data;
-                  return R.drawable.block_signal;
-              }
-
-              private void onDataManager(){}
-              private void onTextureLibrary(){}
-              private void onFormulaManager(){}
-
-              private ScriptRuntime.Host runtimeHost(){
-                  return new ScriptRuntime.Host() {
-                      @Override public ProjectItem project() { return currentProject; }
-                      @Override public ObjectItem object() { return currentObject; }
-                      @Override public float touchX() { return touchX; }
-                      @Override public float touchY() { return touchY; }
-                      @Override public float touchCount() { return 1f; }
-                      @Override public void renderPlayerScene() { MainActivity.this.renderPlayerScene(); }
-                      @Override public boolean stopped() { return !isPlaying; }
-                      @Override public SceneItem scene() { return currentScene; }
-                      @Override public void goToSceneByName(String name) {
-                          for(SceneItem s : currentProject.scenes){
-                              if(s.name.equals(name)){
-                                  currentScene = s;
-                                  onPlayScene();
-                                  return;
-                              }
-                          }
-                      }
-                  };
+              private void updColSel(int sel){
+                  for(int i=0;i<colorBtn.length;i++){
+                      try{
+                          GradientDrawable bg=(GradientDrawable)colorBtn[i].getBackground();
+                          if(i==sel) bg.setStroke(6,0xFFFFFFFF);
+                          else bg.setStroke(2,0xFF00BFFF);
+                      }catch(Exception ignored){}
+                  }
               }
           }
-          MAIN
+          MAINACT
 
           cat <<EOF > app/src/main/AndroidManifest.xml
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <application
-                  android:label="Карманный Код Lite"
+                  android:label="Enjoer 6.1"
                   android:theme="@style/AppTheme">
                   <activity
-                      android:name="com.pocketlite.ru.MainActivity"
-                      android:exported="true">
+                      android:name="com.enjoer.game.MainActivity"
+                      android:exported="true"
+                      android:configChanges="orientation|screenSize|keyboardHidden">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/>
                           <category android:name="android.intent.category.LAUNCHER"/>
@@ -1622,11 +2074,11 @@ jobs:
           }
 
           android {
-              namespace 'com.pocketlite.ru'
+              namespace 'com.enjoer.game'
               compileSdk 34
 
               defaultConfig {
-                  applicationId 'com.pocketlite.ru'
+                  applicationId 'com.enjoer.game'
                   minSdk 24
                   targetSdk 34
               }
@@ -1649,5 +2101,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Pocket_Code_Ultra_RU_v3_Lite_APK
+          name: Enjoer_6.1_Stars
           path: app/build/outputs/apk/debug/app-debug.apk
