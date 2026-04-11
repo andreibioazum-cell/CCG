@@ -1,0 +1,3023 @@
+name: Pocket_Code_Ultra_RU_v2
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Create Project
+        run: |
+          mkdir -p app/src/main/java/com/pocketultra/ruv2
+          mkdir -p app/src/main/res/layout
+          mkdir -p app/src/main/res/values
+          mkdir -p app/src/main/res/drawable
+
+          echo "android.useAndroidX=true" > gradle.properties
+          echo "android.enableJetifier=true" >> gradle.properties
+
+          cat <<EOF > app/src/main/res/values/themes.xml
+          <resources>
+            <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+              <item name="android:windowBackground">#F2F8FD</item>
+            </style>
+          </resources>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/bg_panel.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android">
+            <solid android:color="#FFFFFF"/>
+            <corners android:radius="16dp"/>
+            <stroke android:width="1dp" android:color="#D6E6F2"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/bg_stage.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android">
+            <solid android:color="#D8F0FF"/>
+            <corners android:radius="18dp"/>
+            <stroke android:width="2dp" android:color="#8AC4E8"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/btn_blue.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android">
+            <solid android:color="#4C97FF"/>
+            <corners android:radius="14dp"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/btn_green.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android">
+            <solid android:color="#5FD36E"/>
+            <corners android:radius="14dp"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/btn_red.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android">
+            <solid android:color="#FF6F6F"/>
+            <corners android:radius="14dp"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/btn_orange.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android">
+            <solid android:color="#FFAB19"/>
+            <corners android:radius="14dp"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/btn_purple.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android">
+            <solid android:color="#9966FF"/>
+            <corners android:radius="14dp"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/btn_dark.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android">
+            <solid android:color="#3A3A4A"/>
+            <corners android:radius="10dp"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/btn_numpad.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android">
+            <solid android:color="#E8EEF4"/>
+            <corners android:radius="10dp"/>
+            <stroke android:width="1dp" android:color="#C0D0E0"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/btn_func.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android">
+            <solid android:color="#6C5CE7"/>
+            <corners android:radius="10dp"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/btn_op.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android">
+            <solid android:color="#00B894"/>
+            <corners android:radius="10dp"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/btn_var.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android">
+            <solid android:color="#FF7675"/>
+            <corners android:radius="10dp"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/btn_sensor.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android">
+            <solid android:color="#0984E3"/>
+            <corners android:radius="10dp"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/block_event.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android">
+            <solid android:color="#FFBF00"/>
+            <corners android:radius="16dp"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/block_motion.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android">
+            <solid android:color="#4C97FF"/>
+            <corners android:radius="16dp"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/block_looks.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android">
+            <solid android:color="#9966FF"/>
+            <corners android:radius="16dp"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/block_control.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android">
+            <solid android:color="#FFAB19"/>
+            <corners android:radius="16dp"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/block_data.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android">
+            <solid android:color="#FF8C1A"/>
+            <corners android:radius="16dp"/>
+          </shape>
+          EOF
+
+          cat <<EOF > app/src/main/res/drawable/block_signal.xml
+          <shape xmlns:android="http://schemas.android.com/apk/res/android">
+            <solid android:color="#E1A91A"/>
+            <corners android:radius="16dp"/>
+          </shape>
+          EOF
+
+          cat <<'LAYOUT' > app/src/main/res/layout/activity_main.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:background="#F2F8FD">
+
+              <LinearLayout
+                  android:id="@+id/screen_projects"
+                  android:layout_width="match_parent"
+                  android:layout_height="match_parent"
+                  android:orientation="vertical"
+                  android:padding="12dp">
+
+                  <TextView
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:text="Проекты"
+                      android:textSize="26sp"
+                      android:textStyle="bold"
+                      android:textColor="#2D678F"/>
+
+                  <LinearLayout
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:orientation="horizontal"
+                      android:layout_marginTop="10dp">
+
+                      <Button
+                          android:id="@+id/btn_new_project"
+                          android:layout_width="0dp"
+                          android:layout_height="48dp"
+                          android:layout_weight="1"
+                          android:text="+ Новый проект"
+                          android:textColor="#FFFFFF"
+                          android:background="@drawable/btn_blue"/>
+
+                      <Button
+                          android:id="@+id/btn_data_manager"
+                          android:layout_width="0dp"
+                          android:layout_height="48dp"
+                          android:layout_weight="1"
+                          android:layout_marginLeft="8dp"
+                          android:text="Данные"
+                          android:textColor="#FFFFFF"
+                          android:background="@drawable/btn_orange"/>
+                  </LinearLayout>
+
+                  <ScrollView
+                      android:layout_width="match_parent"
+                      android:layout_height="0dp"
+                      android:layout_weight="1"
+                      android:layout_marginTop="10dp">
+
+                      <LinearLayout
+                          android:id="@+id/projects_list"
+                          android:layout_width="match_parent"
+                          android:layout_height="wrap_content"
+                          android:orientation="vertical"/>
+                  </ScrollView>
+              </LinearLayout>
+
+              <LinearLayout
+                  android:id="@+id/screen_scenes"
+                  android:layout_width="match_parent"
+                  android:layout_height="match_parent"
+                  android:orientation="vertical"
+                  android:padding="12dp"
+                  android:visibility="gone">
+
+                  <LinearLayout
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:orientation="horizontal">
+
+                      <Button
+                          android:id="@+id/back_to_projects"
+                          android:layout_width="wrap_content"
+                          android:layout_height="44dp"
+                          android:text="←"
+                          android:textColor="#FFFFFF"
+                          android:background="@drawable/btn_red"/>
+
+                      <TextView
+                          android:id="@+id/txt_project_title"
+                          android:layout_width="0dp"
+                          android:layout_height="wrap_content"
+                          android:layout_weight="1"
+                          android:text="Сцены"
+                          android:textSize="24sp"
+                          android:textStyle="bold"
+                          android:textColor="#2D678F"
+                          android:gravity="center_vertical"
+                          android:paddingLeft="12dp"/>
+                  </LinearLayout>
+
+                  <LinearLayout
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:orientation="horizontal"
+                      android:layout_marginTop="12dp">
+
+                      <Button
+                          android:id="@+id/btn_new_scene"
+                          android:layout_width="0dp"
+                          android:layout_height="48dp"
+                          android:layout_weight="1"
+                          android:text="+ Новая сцена"
+                          android:textColor="#FFFFFF"
+                          android:background="@drawable/btn_purple"/>
+
+                      <Button
+                          android:id="@+id/btn_texture_library"
+                          android:layout_width="0dp"
+                          android:layout_height="48dp"
+                          android:layout_weight="1"
+                          android:layout_marginLeft="8dp"
+                          android:text="Текстуры"
+                          android:textColor="#FFFFFF"
+                          android:background="@drawable/btn_blue"/>
+                  </LinearLayout>
+
+                  <ScrollView
+                      android:layout_width="match_parent"
+                      android:layout_height="0dp"
+                      android:layout_weight="1"
+                      android:layout_marginTop="10dp">
+
+                      <LinearLayout
+                          android:id="@+id/scenes_list"
+                          android:layout_width="match_parent"
+                          android:layout_height="wrap_content"
+                          android:orientation="vertical"/>
+                  </ScrollView>
+              </LinearLayout>
+
+              <LinearLayout
+                  android:id="@+id/screen_objects"
+                  android:layout_width="match_parent"
+                  android:layout_height="match_parent"
+                  android:orientation="vertical"
+                  android:padding="12dp"
+                  android:visibility="gone">
+
+                  <LinearLayout
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:orientation="horizontal">
+
+                      <Button
+                          android:id="@+id/back_to_scenes"
+                          android:layout_width="wrap_content"
+                          android:layout_height="44dp"
+                          android:text="←"
+                          android:textColor="#FFFFFF"
+                          android:background="@drawable/btn_red"/>
+
+                      <TextView
+                          android:id="@+id/txt_scene_title"
+                          android:layout_width="0dp"
+                          android:layout_height="wrap_content"
+                          android:layout_weight="1"
+                          android:text="Объекты"
+                          android:textSize="24sp"
+                          android:textStyle="bold"
+                          android:textColor="#2D678F"
+                          android:gravity="center_vertical"
+                          android:paddingLeft="12dp"/>
+
+                      <Button
+                          android:id="@+id/btn_play_scene"
+                          android:layout_width="wrap_content"
+                          android:layout_height="44dp"
+                          android:text="Запуск"
+                          android:textColor="#FFFFFF"
+                          android:background="@drawable/btn_green"/>
+                  </LinearLayout>
+
+                  <Button
+                      android:id="@+id/btn_new_object"
+                      android:layout_width="match_parent"
+                      android:layout_height="48dp"
+                      android:text="+ Новый объект"
+                      android:textColor="#FFFFFF"
+                      android:background="@drawable/btn_blue"
+                      android:layout_marginTop="12dp"/>
+
+                  <ScrollView
+                      android:layout_width="match_parent"
+                      android:layout_height="0dp"
+                      android:layout_weight="1"
+                      android:layout_marginTop="10dp">
+
+                      <LinearLayout
+                          android:id="@+id/objects_list"
+                          android:layout_width="match_parent"
+                          android:layout_height="wrap_content"
+                          android:orientation="vertical"/>
+                  </ScrollView>
+              </LinearLayout>
+
+              <LinearLayout
+                  android:id="@+id/screen_scripts"
+                  android:layout_width="match_parent"
+                  android:layout_height="match_parent"
+                  android:orientation="vertical"
+                  android:padding="12dp"
+                  android:visibility="gone">
+
+                  <LinearLayout
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:orientation="horizontal">
+
+                      <Button
+                          android:id="@+id/back_to_objects"
+                          android:layout_width="wrap_content"
+                          android:layout_height="44dp"
+                          android:text="←"
+                          android:textColor="#FFFFFF"
+                          android:background="@drawable/btn_red"/>
+
+                      <TextView
+                          android:id="@+id/txt_object_title"
+                          android:layout_width="0dp"
+                          android:layout_height="wrap_content"
+                          android:layout_weight="1"
+                          android:text="Скрипты"
+                          android:textSize="24sp"
+                          android:textStyle="bold"
+                          android:textColor="#2D678F"
+                          android:gravity="center_vertical"
+                          android:paddingLeft="12dp"/>
+
+                      <Button
+                          android:id="@+id/btn_formula_manager"
+                          android:layout_width="wrap_content"
+                          android:layout_height="44dp"
+                          android:text="Формулы"
+                          android:textColor="#FFFFFF"
+                          android:background="@drawable/btn_orange"/>
+                  </LinearLayout>
+
+                  <LinearLayout
+                      android:layout_width="match_parent"
+                      android:layout_height="0dp"
+                      android:layout_weight="1"
+                      android:orientation="vertical"
+                      android:background="@drawable/bg_panel"
+                      android:padding="10dp"
+                      android:layout_marginTop="10dp">
+
+                      <LinearLayout
+                          android:layout_width="match_parent"
+                          android:layout_height="wrap_content"
+                          android:orientation="horizontal">
+
+                          <TextView
+                              android:layout_width="0dp"
+                              android:layout_height="wrap_content"
+                              android:layout_weight="1"
+                              android:text="Блоки"
+                              android:textStyle="bold"
+                              android:textSize="18sp"
+                              android:textColor="#356D99"/>
+
+                          <Button
+                              android:id="@+id/btn_add_block"
+                              android:layout_width="44dp"
+                              android:layout_height="44dp"
+                              android:text="+"
+                              android:textColor="#FFFFFF"
+                              android:textSize="24sp"
+                              android:background="@drawable/btn_blue"/>
+                      </LinearLayout>
+
+                      <ScrollView
+                          android:layout_width="match_parent"
+                          android:layout_height="0dp"
+                          android:layout_weight="1"
+                          android:layout_marginTop="8dp">
+
+                          <LinearLayout
+                              android:id="@+id/blocks_list"
+                              android:layout_width="match_parent"
+                              android:layout_height="wrap_content"
+                              android:orientation="vertical"/>
+                      </ScrollView>
+                  </LinearLayout>
+              </LinearLayout>
+
+              <FrameLayout
+                  android:id="@+id/screen_player"
+                  android:layout_width="match_parent"
+                  android:layout_height="match_parent"
+                  android:visibility="gone"
+                  android:background="#101820">
+
+                  <FrameLayout
+                      android:id="@+id/player_stage"
+                      android:layout_width="match_parent"
+                      android:layout_height="match_parent"
+                      android:layout_margin="12dp"
+                      android:background="@drawable/bg_stage">
+
+                      <FrameLayout
+                          android:id="@+id/player_stage_layer"
+                          android:layout_width="match_parent"
+                          android:layout_height="match_parent"/>
+                  </FrameLayout>
+
+                  <Button
+                      android:id="@+id/btn_stop_player"
+                      android:layout_width="80dp"
+                      android:layout_height="48dp"
+                      android:layout_margin="16dp"
+                      android:text="Стоп"
+                      android:textColor="#FFFFFF"
+                      android:background="@drawable/btn_red"/>
+              </FrameLayout>
+          </FrameLayout>
+          LAYOUT
+
+          cat <<EOF > app/src/main/java/com/pocketultra/ruv2/BlockItem.java
+          package com.pocketultra.ruv2;
+
+          public class BlockItem {
+              public String type;
+              public String label;
+              public String arg1;
+              public String arg2;
+
+              public BlockItem(String type, String label, String arg1, String arg2){
+                  this.type = type;
+                  this.label = label;
+                  this.arg1 = arg1;
+                  this.arg2 = arg2;
+              }
+          }
+          EOF
+
+          cat <<EOF > app/src/main/java/com/pocketultra/ruv2/TextureItem.java
+          package com.pocketultra.ruv2;
+
+          public class TextureItem {
+              public String id = "";
+              public String name = "";
+              public String uri = "";
+          }
+          EOF
+
+          cat <<EOF > app/src/main/java/com/pocketultra/ruv2/ObjectItem.java
+          package com.pocketultra.ruv2;
+
+          import java.util.ArrayList;
+
+          public class ObjectItem {
+              public String name = "Объект";
+              public String spriteType = "emoji";
+              public String emoji = "🐱";
+              public String text = "Текст";
+              public String textureId = "";
+              public String shape = "square";
+              public String color = "#FFFFFF";
+
+              public float startX = 100f;
+              public float startY = 80f;
+              public float x = 100f;
+              public float y = 80f;
+              public float w = 72f;
+              public float h = 72f;
+
+              public boolean visible = true;
+              public String say = "";
+
+              public java.util.ArrayList<BlockItem> blocks = new java.util.ArrayList<>();
+          }
+          EOF
+
+          cat <<EOF > app/src/main/java/com/pocketultra/ruv2/SceneItem.java
+          package com.pocketultra.ruv2;
+
+          import java.util.ArrayList;
+
+          public class SceneItem {
+              public String name = "Сцена";
+              public String bgColor = "#D8F0FF";
+              public ArrayList<ObjectItem> objects = new ArrayList<>();
+          }
+          EOF
+
+          cat <<EOF > app/src/main/java/com/pocketultra/ruv2/VariableItem.java
+          package com.pocketultra.ruv2;
+
+          public class VariableItem {
+              public String name = "переменная";
+              public String value = "0";
+          }
+          EOF
+
+          cat <<EOF > app/src/main/java/com/pocketultra/ruv2/ListItemModel.java
+          package com.pocketultra.ruv2;
+
+          import java.util.ArrayList;
+
+          public class ListItemModel {
+              public String name = "список";
+              public ArrayList<String> items = new ArrayList<>();
+          }
+          EOF
+
+          cat <<EOF > app/src/main/java/com/pocketultra/ruv2/ProjectItem.java
+          package com.pocketultra.ruv2;
+
+          import java.util.ArrayList;
+
+          public class ProjectItem {
+              public String name = "Проект";
+              public ArrayList<SceneItem> scenes = new ArrayList<>();
+              public ArrayList<TextureItem> textures = new ArrayList<>();
+              public ArrayList<VariableItem> variables = new ArrayList<>();
+              public ArrayList<ListItemModel> lists = new ArrayList<>();
+          }
+          EOF
+
+          cat <<'FORMULA' > app/src/main/java/com/pocketultra/ruv2/FormulaEngine.java
+          package com.pocketultra.ruv2;
+
+          import java.util.ArrayList;
+          import java.util.List;
+
+          public class FormulaEngine {
+              public interface Host {
+                  ProjectItem project();
+                  ObjectItem object();
+                  float touchX();
+                  float touchY();
+                  float touchCount();
+              }
+
+              public static float eval(Host host, String expr){
+                  if(expr == null || expr.trim().isEmpty()) return 0f;
+                  expr = expr.trim();
+
+                  try { return Float.parseFloat(expr); } catch(Exception ignored){}
+
+                  if(expr.equalsIgnoreCase("X")) return host.object() != null ? host.object().x : 0f;
+                  if(expr.equalsIgnoreCase("Y")) return host.object() != null ? host.object().y : 0f;
+                  if(expr.equalsIgnoreCase("касаниеX")) return host.touchX();
+                  if(expr.equalsIgnoreCase("касаниеY")) return host.touchY();
+                  if(expr.equalsIgnoreCase("колКасаний")) return host.touchCount();
+
+                  ProjectItem p = host.project();
+                  if(p != null){
+                      for(VariableItem v : p.variables){
+                          if(expr.equals(v.name)){
+                              try { return Float.parseFloat(v.value); } catch(Exception ignored){}
+                          }
+                      }
+                  }
+
+                  if(expr.startsWith("sin(") && expr.endsWith(")")){
+                      return (float)Math.sin(Math.toRadians(eval(host, inner(expr))));
+                  }
+                  if(expr.startsWith("cos(") && expr.endsWith(")")){
+                      return (float)Math.cos(Math.toRadians(eval(host, inner(expr))));
+                  }
+                  if(expr.startsWith("tan(") && expr.endsWith(")")){
+                      return (float)Math.tan(Math.toRadians(eval(host, inner(expr))));
+                  }
+                  if(expr.startsWith("atan(") && expr.endsWith(")")){
+                      return (float)Math.toDegrees(Math.atan(eval(host, inner(expr))));
+                  }
+                  if(expr.startsWith("sqrt(") && expr.endsWith(")")){
+                      return (float)Math.sqrt(Math.max(0f, eval(host, inner(expr))));
+                  }
+                  if(expr.startsWith("abs(") && expr.endsWith(")")){
+                      return Math.abs(eval(host, inner(expr)));
+                  }
+                  if(expr.startsWith("random(") && expr.endsWith(")")){
+                      String body = inner(expr);
+                      String[] a = body.split(",");
+                      if(a.length == 2){
+                          float x = eval(host, a[0].trim());
+                          float y = eval(host, a[1].trim());
+                          float mn = Math.min(x,y), mx = Math.max(x,y);
+                          return mn + (float)Math.random() * (mx - mn);
+                      }
+                  }
+
+                  // Tokenize and evaluate with proper operator precedence
+                  try {
+                      return evalTokenized(host, expr);
+                  } catch(Exception ignored){}
+
+                  return 0f;
+              }
+
+              private static float evalTokenized(Host host, String expr) {
+                  List<String> tokens = tokenize(expr);
+                  if(tokens.size() == 1) return 0f;
+
+                  // Find last + or - at top level (not inside parens)
+                  int depth = 0;
+                  int lastAdd = -1;
+                  for(int i = tokens.size()-1; i >= 0; i--){
+                      String t = tokens.get(i);
+                      if(t.equals(")")) depth++;
+                      else if(t.equals("(")) depth--;
+                      else if(depth == 0 && (t.equals("+") || t.equals("-"))){
+                          // Make sure it's binary, not unary
+                          if(i > 0){
+                              String prev = tokens.get(i-1);
+                              if(!prev.equals("+") && !prev.equals("-") && !prev.equals("*") && !prev.equals("/") && !prev.equals("(")){
+                                  lastAdd = i;
+                                  break;
+                              }
+                          }
+                      }
+                  }
+
+                  if(lastAdd > 0){
+                      String left = joinTokens(tokens, 0, lastAdd);
+                      String right = joinTokens(tokens, lastAdd+1, tokens.size());
+                      String op = tokens.get(lastAdd);
+                      if(op.equals("+")) return eval(host, left) + eval(host, right);
+                      else return eval(host, left) - eval(host, right);
+                  }
+
+                  // Find last * or /
+                  depth = 0;
+                  int lastMul = -1;
+                  for(int i = tokens.size()-1; i >= 0; i--){
+                      String t = tokens.get(i);
+                      if(t.equals(")")) depth++;
+                      else if(t.equals("(")) depth--;
+                      else if(depth == 0 && (t.equals("*") || t.equals("/"))){
+                          if(i > 0){
+                              lastMul = i;
+                              break;
+                          }
+                      }
+                  }
+
+                  if(lastMul > 0){
+                      String left = joinTokens(tokens, 0, lastMul);
+                      String right = joinTokens(tokens, lastMul+1, tokens.size());
+                      String op = tokens.get(lastMul);
+                      if(op.equals("*")) return eval(host, left) * eval(host, right);
+                      else {
+                          float r = eval(host, right);
+                          return r != 0 ? eval(host, left) / r : 0f;
+                      }
+                  }
+
+                  // Handle parentheses
+                  if(tokens.size() >= 2 && tokens.get(0).equals("(") && tokens.get(tokens.size()-1).equals(")")){
+                      return eval(host, joinTokens(tokens, 1, tokens.size()-1));
+                  }
+
+                  // Unary minus
+                  if(tokens.size() >= 2 && tokens.get(0).equals("-")){
+                      return -eval(host, joinTokens(tokens, 1, tokens.size()));
+                  }
+
+                  return 0f;
+              }
+
+              private static List<String> tokenize(String expr){
+                  List<String> tokens = new ArrayList<>();
+                  int i = 0;
+                  while(i < expr.length()){
+                      char c = expr.charAt(i);
+                      if(Character.isWhitespace(c)){ i++; continue; }
+                      if(c == '+' || c == '-' || c == '*' || c == '/' || c == '(' || c == ')'){
+                          tokens.add(String.valueOf(c));
+                          i++;
+                      } else {
+                          StringBuilder sb = new StringBuilder();
+                          while(i < expr.length()){
+                              char cc = expr.charAt(i);
+                              if(cc == '+' || cc == '-' || cc == '*' || cc == '/' || cc == '(' || cc == ')' || Character.isWhitespace(cc)) break;
+                              sb.append(cc);
+                              i++;
+                          }
+                          tokens.add(sb.toString());
+                      }
+                  }
+                  return tokens;
+              }
+
+              private static String joinTokens(List<String> tokens, int from, int to){
+                  StringBuilder sb = new StringBuilder();
+                  for(int i = from; i < to; i++){
+                      if(i > from) sb.append(' ');
+                      sb.append(tokens.get(i));
+                  }
+                  return sb.toString();
+              }
+
+              public static String text(Host host, String expr){
+                  if(expr == null) return "";
+                  expr = expr.trim();
+                  if(expr.startsWith("\"") && expr.endsWith("\"") && expr.length() >= 2){
+                      return expr.substring(1, expr.length()-1);
+                  }
+                  ProjectItem p = host.project();
+                  if(p != null){
+                      for(VariableItem v : p.variables){
+                          if(expr.equals(v.name)) return v.value;
+                      }
+                  }
+                  return expr;
+              }
+
+              private static String inner(String s){
+                  return s.substring(s.indexOf('(')+1, s.lastIndexOf(')')).trim();
+              }
+          }
+          FORMULA
+
+          cat <<'STORE' > app/src/main/java/com/pocketultra/ruv2/ProjectStore.java
+          package com.pocketultra.ruv2;
+
+          import android.content.Context;
+          import org.json.JSONArray;
+          import org.json.JSONObject;
+          import java.io.*;
+          import java.util.ArrayList;
+
+          public class ProjectStore {
+              private static File file(Context c){
+                  return new File(c.getFilesDir(), "projects_ultra_ru_v2.json");
+              }
+
+              public static ArrayList<ProjectItem> load(Context c){
+                  ArrayList<ProjectItem> out = new ArrayList<>();
+                  try{
+                      File f = file(c);
+                      if(!f.exists()) return out;
+
+                      BufferedReader rd = new BufferedReader(new FileReader(f));
+                      StringBuilder sb = new StringBuilder();
+                      String line;
+                      while((line = rd.readLine()) != null) sb.append(line);
+                      rd.close();
+
+                      JSONArray arr = new JSONArray(sb.toString());
+                      for(int i=0;i<arr.length();i++){
+                          JSONObject p = arr.getJSONObject(i);
+                          ProjectItem pr = new ProjectItem();
+                          pr.name = p.optString("name", "Проект");
+
+                          JSONArray tex = p.optJSONArray("textures");
+                          if(tex != null){
+                              for(int t=0;t<tex.length();t++){
+                                  JSONObject o = tex.getJSONObject(t);
+                                  TextureItem tx = new TextureItem();
+                                  tx.id = o.optString("id");
+                                  tx.name = o.optString("name");
+                                  tx.uri = o.optString("uri");
+                                  pr.textures.add(tx);
+                              }
+                          }
+
+                          JSONArray vars = p.optJSONArray("variables");
+                          if(vars != null){
+                              for(int v=0;v<vars.length();v++){
+                                  JSONObject o = vars.getJSONObject(v);
+                                  VariableItem vi = new VariableItem();
+                                  vi.name = o.optString("name");
+                                  vi.value = o.optString("value");
+                                  pr.variables.add(vi);
+                              }
+                          }
+
+                          JSONArray lists = p.optJSONArray("lists");
+                          if(lists != null){
+                              for(int l=0;l<lists.length();l++){
+                                  JSONObject o = lists.getJSONObject(l);
+                                  ListItemModel li = new ListItemModel();
+                                  li.name = o.optString("name");
+                                  JSONArray its = o.optJSONArray("items");
+                                  if(its != null){
+                                      for(int z=0;z<its.length();z++) li.items.add(its.optString(z));
+                                  }
+                                  pr.lists.add(li);
+                              }
+                          }
+
+                          JSONArray scenes = p.optJSONArray("scenes");
+                          if(scenes != null){
+                              for(int j=0;j<scenes.length();j++){
+                                  JSONObject s = scenes.getJSONObject(j);
+                                  SceneItem sc = new SceneItem();
+                                  sc.name = s.optString("name", "Сцена");
+                                  sc.bgColor = s.optString("bgColor", "#D8F0FF");
+
+                                  JSONArray objs = s.optJSONArray("objects");
+                                  if(objs != null){
+                                      for(int k=0;k<objs.length();k++){
+                                          JSONObject o = objs.getJSONObject(k);
+                                          ObjectItem ob = new ObjectItem();
+                                          ob.name = o.optString("name", "Объект");
+                                          ob.spriteType = o.optString("spriteType", "emoji");
+                                          ob.emoji = o.optString("emoji", "🐱");
+                                          ob.text = o.optString("text", "Текст");
+                                          ob.textureId = o.optString("textureId", "");
+                                          ob.shape = o.optString("shape", "square");
+                                          ob.color = o.optString("color", "#FFFFFF");
+                                          ob.startX = (float)o.optDouble("startX", 100);
+                                          ob.startY = (float)o.optDouble("startY", 80);
+                                          ob.x = ob.startX;
+                                          ob.y = ob.startY;
+                                          ob.w = (float)o.optDouble("w", 72);
+                                          ob.h = (float)o.optDouble("h", 72);
+                                          ob.visible = o.optBoolean("visible", true);
+                                          ob.say = o.optString("say", "");
+
+                                          JSONArray blocks = o.optJSONArray("blocks");
+                                          if(blocks != null){
+                                              for(int z=0;z<blocks.length();z++){
+                                                  JSONObject b = blocks.getJSONObject(z);
+                                                  ob.blocks.add(new BlockItem(
+                                                      b.optString("type"),
+                                                      b.optString("label"),
+                                                      b.optString("arg1"),
+                                                      b.optString("arg2")
+                                                  ));
+                                              }
+                                          }
+                                          sc.objects.add(ob);
+                                      }
+                                  }
+                                  pr.scenes.add(sc);
+                              }
+                          }
+
+                          out.add(pr);
+                      }
+                  }catch(Exception ignored){}
+                  return out;
+              }
+
+              public static void save(Context c, ArrayList<ProjectItem> projects){
+                  try{
+                      JSONArray arr = new JSONArray();
+
+                      for(ProjectItem pr : projects){
+                          JSONObject p = new JSONObject();
+                          p.put("name", pr.name);
+
+                          JSONArray tex = new JSONArray();
+                          for(TextureItem t : pr.textures){
+                              JSONObject o = new JSONObject();
+                              o.put("id", t.id);
+                              o.put("name", t.name);
+                              o.put("uri", t.uri);
+                              tex.put(o);
+                          }
+                          p.put("textures", tex);
+
+                          JSONArray vars = new JSONArray();
+                          for(VariableItem v : pr.variables){
+                              JSONObject o = new JSONObject();
+                              o.put("name", v.name);
+                              o.put("value", v.value);
+                              vars.put(o);
+                          }
+                          p.put("variables", vars);
+
+                          JSONArray lists = new JSONArray();
+                          for(ListItemModel li : pr.lists){
+                              JSONObject o = new JSONObject();
+                              o.put("name", li.name);
+                              JSONArray its = new JSONArray();
+                              for(String s : li.items) its.put(s);
+                              o.put("items", its);
+                              lists.put(o);
+                          }
+                          p.put("lists", lists);
+
+                          JSONArray scenes = new JSONArray();
+                          for(SceneItem sc : pr.scenes){
+                              JSONObject s = new JSONObject();
+                              s.put("name", sc.name);
+                              s.put("bgColor", sc.bgColor);
+
+                              JSONArray objs = new JSONArray();
+                              for(ObjectItem ob : sc.objects){
+                                  JSONObject o = new JSONObject();
+                                  o.put("name", ob.name);
+                                  o.put("spriteType", ob.spriteType);
+                                  o.put("emoji", ob.emoji);
+                                  o.put("text", ob.text);
+                                  o.put("textureId", ob.textureId);
+                                  o.put("shape", ob.shape);
+                                  o.put("color", ob.color);
+                                  o.put("startX", ob.startX);
+                                  o.put("startY", ob.startY);
+                                  o.put("w", ob.w);
+                                  o.put("h", ob.h);
+                                  o.put("visible", ob.visible);
+                                  o.put("say", ob.say);
+
+                                  JSONArray bl = new JSONArray();
+                                  for(BlockItem b : ob.blocks){
+                                      JSONObject bb = new JSONObject();
+                                      bb.put("type", b.type);
+                                      bb.put("label", b.label);
+                                      bb.put("arg1", b.arg1);
+                                      bb.put("arg2", b.arg2);
+                                      bl.put(bb);
+                                  }
+                                  o.put("blocks", bl);
+                                  objs.put(o);
+                              }
+                              s.put("objects", objs);
+                              scenes.put(s);
+                          }
+                          p.put("scenes", scenes);
+
+                          arr.put(p);
+                      }
+
+                      FileWriter wr = new FileWriter(file(c));
+                      wr.write(arr.toString());
+                      wr.close();
+                  }catch(Exception ignored){}
+              }
+          }
+          STORE
+
+          cat <<'RUNTIME' > app/src/main/java/com/pocketultra/ruv2/ScriptRuntime.java
+          package com.pocketultra.ruv2;
+
+          import android.os.Handler;
+          import android.os.Looper;
+          import java.util.ArrayList;
+          import java.util.Locale;
+
+          public class ScriptRuntime {
+              public interface Host extends FormulaEngine.Host {
+                  void renderPlayerScene();
+                  boolean stopped();
+                  SceneItem scene();
+                  void goToSceneByName(String name);
+              }
+
+              public static void runScene(Host host){
+                  SceneItem scene = host.scene();
+                  if(scene == null) return;
+
+                  for(ObjectItem o : scene.objects){
+                      runStart(host, o);
+                  }
+              }
+
+              public static void tapped(Host host, ObjectItem obj){
+                  runEvent(host, obj, "event_tap");
+              }
+
+              public static void signal(Host host, String name){
+                  SceneItem scene = host.scene();
+                  if(scene == null) return;
+                  for(ObjectItem o : scene.objects){
+                      runSignal(host, o, name);
+                  }
+              }
+
+              private static void runStart(Host host, ObjectItem obj){
+                  ArrayList<ArrayList<BlockItem>> scripts = splitScripts(obj.blocks);
+                  for(ArrayList<BlockItem> script : scripts){
+                      if(!script.isEmpty() && "event_start".equals(script.get(0).type)){
+                          execute(host, obj, script, 1);
+                      }
+                  }
+                  // Only run non-event blocks if there are NO event blocks at all
+                  boolean hasAnyEvent = false;
+                  for(BlockItem b : obj.blocks){
+                      if(b.type.startsWith("event_")){
+                          hasAnyEvent = true;
+                          break;
+                      }
+                  }
+                  if(!hasAnyEvent && !obj.blocks.isEmpty()){
+                      execute(host, obj, obj.blocks, 0);
+                  }
+              }
+
+              private static void runEvent(Host host, ObjectItem obj, String type){
+                  ArrayList<ArrayList<BlockItem>> scripts = splitScripts(obj.blocks);
+                  for(ArrayList<BlockItem> script : scripts){
+                      if(!script.isEmpty() && type.equals(script.get(0).type)){
+                          execute(host, obj, script, 1);
+                      }
+                  }
+              }
+
+              private static void runSignal(Host host, ObjectItem obj, String name){
+                  ArrayList<ArrayList<BlockItem>> scripts = splitScripts(obj.blocks);
+                  for(ArrayList<BlockItem> script : scripts){
+                      if(!script.isEmpty() && "event_signal".equals(script.get(0).type)){
+                          String sig = script.get(0).arg1 == null ? "" : script.get(0).arg1;
+                          if(sig.equals(name)){
+                              execute(host, obj, script, 1);
+                          }
+                      }
+                  }
+              }
+
+              private static ArrayList<ArrayList<BlockItem>> splitScripts(ArrayList<BlockItem> blocks){
+                  ArrayList<ArrayList<BlockItem>> out = new ArrayList<>();
+                  ArrayList<BlockItem> cur = null;
+                  for(BlockItem b : blocks){
+                      if(b.type.startsWith("event_")){
+                          cur = new ArrayList<>();
+                          cur.add(b);
+                          out.add(cur);
+                      } else {
+                          if(cur == null){
+                              // This block is NOT part of any event - skip it in split
+                              // It will be handled by runStart's fallback
+                          } else {
+                              cur.add(b);
+                          }
+                      }
+                  }
+                  return out;
+              }
+
+              private static void execute(Host host, ObjectItem obj, ArrayList<BlockItem> seq, int startIndex){
+                  Handler h = new Handler(Looper.getMainLooper());
+                  long delay = 0;
+
+                  for(int i=startIndex;i<seq.size();i++){
+                      BlockItem b = seq.get(i);
+
+                      // Stop if we hit another event block (means a new script starts)
+                      if(i > startIndex && b.type.startsWith("event_")){
+                          break;
+                      }
+
+                      if("forever".equals(b.type)){
+                          ArrayList<BlockItem> body = new ArrayList<>();
+                          int depth = 1;
+                          for(int j=i+1;j<seq.size();j++){
+                              BlockItem x = seq.get(j);
+                              if("forever".equals(x.type)) depth++;
+                              else if("end_forever".equals(x.type)){
+                                  depth--;
+                                  if(depth == 0) break;
+                              }
+                              if(depth > 0) body.add(x);
+                          }
+                          final ArrayList<BlockItem> bodyFinal = body;
+                          h.postDelayed(() -> loop(host, obj, bodyFinal), delay);
+                          break;
+                      }
+
+                      if("end_forever".equals(b.type)) continue;
+
+                      switch (b.type){
+                          case "move_x": {
+                              final String argExpr = b.arg1;
+                              final long d = delay;
+                              h.postDelayed(() -> {
+                                  if(host.stopped()) return;
+                                  float dx = FormulaEngine.eval(hostFor(host, obj), argExpr);
+                                  obj.x += dx;
+                                  host.renderPlayerScene();
+                              }, delay);
+                              break;
+                          }
+                          case "move_y": {
+                              final String argExpr = b.arg1;
+                              h.postDelayed(() -> {
+                                  if(host.stopped()) return;
+                                  float dy = FormulaEngine.eval(hostFor(host, obj), argExpr);
+                                  obj.y += dy;
+                                  host.renderPlayerScene();
+                              }, delay);
+                              break;
+                          }
+                          case "go_xy": {
+                              final String xExpr = b.arg1;
+                              final String yExpr = b.arg2;
+                              h.postDelayed(() -> {
+                                  if(host.stopped()) return;
+                                  obj.x = FormulaEngine.eval(hostFor(host, obj), xExpr);
+                                  obj.y = FormulaEngine.eval(hostFor(host, obj), yExpr);
+                                  host.renderPlayerScene();
+                              }, delay);
+                              break;
+                          }
+                          case "say": {
+                              final String argExpr = b.arg1;
+                              h.postDelayed(() -> {
+                                  if(host.stopped()) return;
+                                  obj.say = FormulaEngine.text(hostFor(host, obj), argExpr);
+                                  host.renderPlayerScene();
+                              }, delay);
+                              break;
+                          }
+                          case "hide": {
+                              h.postDelayed(() -> {
+                                  if(host.stopped()) return;
+                                  obj.visible = false;
+                                  host.renderPlayerScene();
+                              }, delay);
+                              break;
+                          }
+                          case "show": {
+                              h.postDelayed(() -> {
+                                  if(host.stopped()) return;
+                                  obj.visible = true;
+                                  host.renderPlayerScene();
+                              }, delay);
+                              break;
+                          }
+                          case "wait": {
+                              final String argExpr = b.arg1;
+                              // Evaluate wait time now to capture the delay
+                              float waitSec = Math.max(0f, FormulaEngine.eval(hostFor(host, obj), argExpr));
+                              delay += (long)(waitSec * 1000f);
+                              break;
+                          }
+                          case "set_var": {
+                              final String n = b.arg1 == null ? "" : b.arg1;
+                              final String valExpr = b.arg2 == null ? "0" : b.arg2;
+                              h.postDelayed(() -> {
+                                  if(host.stopped()) return;
+                                  ProjectItem p = host.project();
+                                  if(p != null){
+                                      for(VariableItem v : p.variables){
+                                          if(v.name.equals(n)){
+                                              float r = FormulaEngine.eval(hostFor(host, obj), valExpr);
+                                              v.value = String.format(Locale.US, "%.2f", r);
+                                              break;
+                                          }
+                                      }
+                                  }
+                              }, delay);
+                              break;
+                          }
+                          case "change_var": {
+                              final String n = b.arg1 == null ? "" : b.arg1;
+                              final String valExpr = b.arg2 == null ? "0" : b.arg2;
+                              h.postDelayed(() -> {
+                                  if(host.stopped()) return;
+                                  ProjectItem p = host.project();
+                                  if(p != null){
+                                      for(VariableItem v : p.variables){
+                                          if(v.name.equals(n)){
+                                              float oldv = 0f;
+                                              try { oldv = Float.parseFloat(v.value); } catch(Exception ignored){}
+                                              float add = FormulaEngine.eval(hostFor(host, obj), valExpr);
+                                              v.value = String.format(Locale.US, "%.2f", oldv + add);
+                                              break;
+                                          }
+                                      }
+                                  }
+                              }, delay);
+                              break;
+                          }
+                          case "signal": {
+                              final String sig = b.arg1 == null ? "" : b.arg1;
+                              h.postDelayed(() -> {
+                                  if(host.stopped()) return;
+                                  signal(host, sig);
+                              }, delay);
+                              break;
+                          }
+                          case "goto_scene": {
+                              final String argExpr = b.arg1;
+                              h.postDelayed(() -> {
+                                  if(host.stopped()) return;
+                                  String sceneName = FormulaEngine.text(hostFor(host, obj), argExpr);
+                                  host.goToSceneByName(sceneName);
+                              }, delay);
+                              break;
+                          }
+                          case "list_add": {
+                              final String listName = b.arg1 == null ? "" : b.arg1;
+                              final String val = b.arg2 == null ? "" : b.arg2;
+                              h.postDelayed(() -> {
+                                  if(host.stopped()) return;
+                                  ProjectItem p = host.project();
+                                  if(p != null){
+                                      for(ListItemModel li : p.lists){
+                                          if(li.name.equals(listName)){
+                                              li.items.add(FormulaEngine.text(hostFor(host, obj), val));
+                                              break;
+                                          }
+                                      }
+                                  }
+                              }, delay);
+                              break;
+                          }
+                      }
+                  }
+              }
+
+              private static void loop(Host host, ObjectItem obj, ArrayList<BlockItem> body){
+                  Handler h = new Handler(Looper.getMainLooper());
+                  Runnable[] rr = new Runnable[1];
+                  rr[0] = () -> {
+                      if(host.stopped()) return;
+                      execute(host, obj, body, 0);
+                      h.postDelayed(rr[0], 60);
+                  };
+                  h.post(rr[0]);
+              }
+
+              private static FormulaEngine.Host hostFor(Host h, ObjectItem o){
+                  return new FormulaEngine.Host() {
+                      @Override public ProjectItem project() { return h.project(); }
+                      @Override public ObjectItem object() { return o; }
+                      @Override public float touchX() { return h.touchX(); }
+                      @Override public float touchY() { return h.touchY(); }
+                      @Override public float touchCount() { return h.touchCount(); }
+                  };
+              }
+          }
+          RUNTIME
+
+          cat <<'MAINACT' > app/src/main/java/com/pocketultra/ruv2/MainActivity.java
+          package com.pocketultra.ruv2;
+
+          import android.annotation.SuppressLint;
+          import android.app.AlertDialog;
+          import android.content.Intent;
+          import android.graphics.Color;
+          import android.graphics.Typeface;
+          import android.graphics.drawable.GradientDrawable;
+          import android.net.Uri;
+          import android.os.Bundle;
+          import android.text.InputType;
+          import android.view.Gravity;
+          import android.view.MotionEvent;
+          import android.view.View;
+          import android.widget.Button;
+          import android.widget.EditText;
+          import android.widget.FrameLayout;
+          import android.widget.GridLayout;
+          import android.widget.HorizontalScrollView;
+          import android.widget.ImageView;
+          import android.widget.LinearLayout;
+          import android.widget.ScrollView;
+          import android.widget.TextView;
+          import android.widget.Toast;
+          import androidx.activity.result.ActivityResultLauncher;
+          import androidx.activity.result.contract.ActivityResultContracts;
+          import androidx.appcompat.app.AppCompatActivity;
+          import java.util.ArrayList;
+          import java.util.UUID;
+
+          public class MainActivity extends AppCompatActivity implements ScriptRuntime.Host {
+              private View screenProjects, screenScenes, screenObjects, screenScripts, screenPlayer;
+              private LinearLayout projectsList, scenesList, objectsList, blocksList;
+              private FrameLayout playerStage, playerStageLayer;
+              private TextView txtProjectTitle, txtSceneTitle, txtObjectTitle;
+
+              private final ArrayList<ProjectItem> projects = new ArrayList<>();
+              private int currentProject = -1, currentScene = -1, currentObject = -1;
+              private int pendingTextureProject = -1;
+              private int pendingAssignProject = -1, pendingAssignScene = -1, pendingAssignObject = -1;
+              private boolean stopFlag = false;
+              private float touchX = 0f, touchY = 0f, touchCount = 0f;
+
+              private ActivityResultLauncher<Intent> imagePickerTexture;
+              private int dragIndex = -1;
+
+              @Override public void renderPlayerScene() { runOnUiThread(this::drawPlayerScene); }
+              @Override public boolean stopped() { return stopFlag; }
+              @Override public SceneItem scene() { return currentScene(); }
+              @Override public ProjectItem project() { return currentProject(); }
+              @Override public ObjectItem object() { return currentObject(); }
+              @Override public float touchX() { return touchX; }
+              @Override public float touchY() { return touchY; }
+              @Override public float touchCount() { return touchCount; }
+
+              @Override
+              public void goToSceneByName(String name) {
+                  ProjectItem p = currentProject();
+                  if(p == null) return;
+                  for(int i=0;i<p.scenes.size();i++){
+                      if(p.scenes.get(i).name.equals(name)){
+                          currentScene = i;
+                          runOnUiThread(() -> {
+                              SceneItem sc = currentScene();
+                              if(sc != null){
+                                  for(ObjectItem o : sc.objects){
+                                      o.x = o.startX;
+                                      o.y = o.startY;
+                                      o.visible = true;
+                                      o.say = "";
+                                  }
+                                  drawPlayerScene();
+                                  ScriptRuntime.runScene(this);
+                              }
+                          });
+                          break;
+                      }
+                  }
+              }
+
+              @SuppressLint("ClickableViewAccessibility")
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  setContentView(R.layout.activity_main);
+
+                  screenProjects = findViewById(R.id.screen_projects);
+                  screenScenes = findViewById(R.id.screen_scenes);
+                  screenObjects = findViewById(R.id.screen_objects);
+                  screenScripts = findViewById(R.id.screen_scripts);
+                  screenPlayer = findViewById(R.id.screen_player);
+
+                  projectsList = findViewById(R.id.projects_list);
+                  scenesList = findViewById(R.id.scenes_list);
+                  objectsList = findViewById(R.id.objects_list);
+                  blocksList = findViewById(R.id.blocks_list);
+
+                  playerStage = findViewById(R.id.player_stage);
+                  playerStageLayer = findViewById(R.id.player_stage_layer);
+
+                  txtProjectTitle = findViewById(R.id.txt_project_title);
+                  txtSceneTitle = findViewById(R.id.txt_scene_title);
+                  txtObjectTitle = findViewById(R.id.txt_object_title);
+
+                  projects.addAll(ProjectStore.load(this));
+
+                  imagePickerTexture = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), res -> {
+                      if(res.getResultCode() == RESULT_OK && res.getData() != null && res.getData().getData() != null){
+                          try{
+                              Uri uri = res.getData().getData();
+                              getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+                              if(pendingTextureProject >= 0 && pendingTextureProject < projects.size()){
+                                  TextureItem t = new TextureItem();
+                                  t.id = UUID.randomUUID().toString();
+                                  t.name = "Текстура " + (projects.get(pendingTextureProject).textures.size()+1);
+                                  t.uri = uri.toString();
+                                  projects.get(pendingTextureProject).textures.add(t);
+                                  saveAll();
+                              }
+
+                              if(pendingAssignProject >= 0 && pendingAssignScene >= 0 && pendingAssignObject >= 0){
+                                  ProjectItem p = projects.get(pendingAssignProject);
+                                  if(!p.textures.isEmpty() && pendingAssignScene < p.scenes.size()
+                                      && pendingAssignObject < p.scenes.get(pendingAssignScene).objects.size()){
+                                      TextureItem last = p.textures.get(p.textures.size()-1);
+                                      ObjectItem o = p.scenes.get(pendingAssignScene).objects.get(pendingAssignObject);
+                                      o.spriteType = "texture";
+                                      o.textureId = last.id;
+                                      saveAll();
+                                  }
+                              }
+
+                              renderObjects();
+                          }catch(Exception e){
+                              toast("Ошибка импорта");
+                          }
+                      }
+                  });
+
+                  playerStage.setOnTouchListener((v, e) -> {
+                      touchCount = e.getPointerCount();
+                      touchX = e.getX();
+                      touchY = e.getY();
+                      return false;
+                  });
+
+                  findViewById(R.id.btn_new_project).setOnClickListener(v -> createProjectDialog());
+                  findViewById(R.id.btn_data_manager).setOnClickListener(v -> showDataManager());
+
+                  findViewById(R.id.back_to_projects).setOnClickListener(v -> showProjects());
+                  findViewById(R.id.back_to_scenes).setOnClickListener(v -> showScenes());
+                  findViewById(R.id.back_to_objects).setOnClickListener(v -> showObjects());
+
+                  findViewById(R.id.btn_new_scene).setOnClickListener(v -> createSceneDialog());
+                  findViewById(R.id.btn_texture_library).setOnClickListener(v -> showTextureLibrary());
+
+                  findViewById(R.id.btn_new_object).setOnClickListener(v -> createObjectDialog());
+                  findViewById(R.id.btn_play_scene).setOnClickListener(v -> startPlayer());
+                  findViewById(R.id.btn_stop_player).setOnClickListener(v -> stopPlayer());
+
+                  findViewById(R.id.btn_add_block).setOnClickListener(v -> showCategoryDialog());
+                  findViewById(R.id.btn_formula_manager).setOnClickListener(v -> showFormulaEditor(null));
+
+                  renderProjects();
+                  showProjects();
+              }
+
+              private void saveAll(){ ProjectStore.save(this, projects); }
+              private void toast(String s){ Toast.makeText(this, s, Toast.LENGTH_SHORT).show(); }
+
+              private ProjectItem currentProject(){
+                  if(currentProject < 0 || currentProject >= projects.size()) return null;
+                  return projects.get(currentProject);
+              }
+
+              private SceneItem currentScene(){
+                  ProjectItem p = currentProject();
+                  if(p == null || currentScene < 0 || currentScene >= p.scenes.size()) return null;
+                  return p.scenes.get(currentScene);
+              }
+
+              private ObjectItem currentObject(){
+                  SceneItem s = currentScene();
+                  if(s == null || currentObject < 0 || currentObject >= s.objects.size()) return null;
+                  return s.objects.get(currentObject);
+              }
+
+              private void showProjects(){
+                  screenProjects.setVisibility(View.VISIBLE);
+                  screenScenes.setVisibility(View.GONE);
+                  screenObjects.setVisibility(View.GONE);
+                  screenScripts.setVisibility(View.GONE);
+                  screenPlayer.setVisibility(View.GONE);
+                  renderProjects();
+              }
+
+              private void showScenes(){
+                  screenProjects.setVisibility(View.GONE);
+                  screenScenes.setVisibility(View.VISIBLE);
+                  screenObjects.setVisibility(View.GONE);
+                  screenScripts.setVisibility(View.GONE);
+                  screenPlayer.setVisibility(View.GONE);
+                  renderScenes();
+              }
+
+              private void showObjects(){
+                  screenProjects.setVisibility(View.GONE);
+                  screenScenes.setVisibility(View.GONE);
+                  screenObjects.setVisibility(View.VISIBLE);
+                  screenScripts.setVisibility(View.GONE);
+                  screenPlayer.setVisibility(View.GONE);
+                  renderObjects();
+              }
+
+              private void showScripts(){
+                  screenProjects.setVisibility(View.GONE);
+                  screenScenes.setVisibility(View.GONE);
+                  screenObjects.setVisibility(View.GONE);
+                  screenScripts.setVisibility(View.VISIBLE);
+                  screenPlayer.setVisibility(View.GONE);
+                  renderBlocks();
+              }
+
+              private void startPlayer(){
+                  SceneItem sc = currentScene();
+                  if(sc == null) return;
+
+                  for(ObjectItem o : sc.objects){
+                      o.x = o.startX;
+                      o.y = o.startY;
+                      o.visible = true;
+                      o.say = "";
+                  }
+
+                  stopFlag = false;
+                  screenProjects.setVisibility(View.GONE);
+                  screenScenes.setVisibility(View.GONE);
+                  screenObjects.setVisibility(View.GONE);
+                  screenScripts.setVisibility(View.GONE);
+                  screenPlayer.setVisibility(View.VISIBLE);
+
+                  drawPlayerScene();
+                  ScriptRuntime.runScene(this);
+              }
+
+              private void stopPlayer(){
+                  stopFlag = true;
+                  showObjects();
+              }
+
+              // ========================
+              // VISUAL FORMULA EDITOR
+              // ========================
+
+              private interface FormulaCallback {
+                  void onResult(String formula);
+              }
+
+              private void showFormulaEditor(FormulaCallback callback){
+                  AlertDialog.Builder builder = new AlertDialog.Builder(this);
+
+                  LinearLayout root = new LinearLayout(this);
+                  root.setOrientation(LinearLayout.VERTICAL);
+                  root.setPadding(dp(12), dp(12), dp(12), dp(12));
+                  root.setBackgroundColor(Color.parseColor("#1E1E2E"));
+
+                  // Display field
+                  EditText display = new EditText(this);
+                  display.setTextColor(Color.WHITE);
+                  display.setTextSize(20f);
+                  display.setBackgroundResource(R.drawable.btn_dark);
+                  display.setPadding(dp(14), dp(14), dp(14), dp(14));
+                  display.setHint("Формула...");
+                  display.setHintTextColor(Color.parseColor("#666688"));
+                  display.setInputType(InputType.TYPE_NULL);
+                  display.setFocusable(true);
+                  display.setFocusableInTouchMode(true);
+                  display.setShowSoftInputOnFocus(false);
+                  root.addView(display);
+
+                  // Category tabs
+                  HorizontalScrollView tabScroll = new HorizontalScrollView(this);
+                  tabScroll.setHorizontalScrollBarEnabled(false);
+                  LinearLayout tabsRow = new LinearLayout(this);
+                  tabsRow.setOrientation(LinearLayout.HORIZONTAL);
+                  tabsRow.setPadding(0, dp(8), 0, dp(4));
+
+                  String[] tabNames = {"Цифры", "Операторы", "Функции", "Датчики", "Переменные", "Текст"};
+                  int[] tabColors = {
+                      Color.parseColor("#636E72"),
+                      Color.parseColor("#00B894"),
+                      Color.parseColor("#6C5CE7"),
+                      Color.parseColor("#0984E3"),
+                      Color.parseColor("#FF7675"),
+                      Color.parseColor("#FDCB6E")
+                  };
+
+                  LinearLayout buttonsContainer = new LinearLayout(this);
+                  buttonsContainer.setOrientation(LinearLayout.VERTICAL);
+                  buttonsContainer.setPadding(0, dp(4), 0, 0);
+
+                  for(int ti = 0; ti < tabNames.length; ti++){
+                      Button tab = new Button(this);
+                      tab.setText(tabNames[ti]);
+                      tab.setTextColor(Color.WHITE);
+                      tab.setTextSize(12f);
+                      tab.setAllCaps(false);
+                      GradientDrawable tBg = new GradientDrawable();
+                      tBg.setColor(tabColors[ti]);
+                      tBg.setCornerRadius(dp(8));
+                      tab.setBackground(tBg);
+                      LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(
+                          LinearLayout.LayoutParams.WRAP_CONTENT, dp(36));
+                      tlp.rightMargin = dp(6);
+                      tab.setLayoutParams(tlp);
+
+                      final int tabIndex = ti;
+                      tab.setOnClickListener(v -> showFormulaTab(display, buttonsContainer, tabIndex));
+                      tabsRow.addView(tab);
+                  }
+
+                  tabScroll.addView(tabsRow);
+                  root.addView(tabScroll);
+
+                  ScrollView btnScroll = new ScrollView(this);
+                  btnScroll.setLayoutParams(new LinearLayout.LayoutParams(
+                      LinearLayout.LayoutParams.MATCH_PARENT, dp(250)));
+                  btnScroll.addView(buttonsContainer);
+                  root.addView(btnScroll);
+
+                  // Action buttons row
+                  LinearLayout actRow = new LinearLayout(this);
+                  actRow.setOrientation(LinearLayout.HORIZONTAL);
+                  actRow.setPadding(0, dp(8), 0, 0);
+
+                  Button btnClear = makeFormulaActionBtn("Очистить", "#E17055");
+                  btnClear.setOnClickListener(v -> display.setText(""));
+                  actRow.addView(btnClear);
+
+                  Button btnBackspace = makeFormulaActionBtn("⌫", "#636E72");
+                  btnBackspace.setOnClickListener(v -> {
+                      String t = display.getText().toString();
+                      if(!t.isEmpty()) display.setText(t.substring(0, t.length()-1));
+                  });
+                  actRow.addView(btnBackspace);
+
+                  root.addView(actRow);
+
+                  // Show default tab (digits)
+                  showFormulaTab(display, buttonsContainer, 0);
+
+                  builder.setView(root);
+                  builder.setTitle("Редактор формул");
+
+                  if(callback != null){
+                      builder.setPositiveButton("Вставить", (d, w) -> {
+                          callback.onResult(display.getText().toString());
+                      });
+                  } else {
+                      builder.setPositiveButton("Копировать", (d, w) -> {
+                          android.content.ClipboardManager cm = (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                          cm.setPrimaryClip(android.content.ClipData.newPlainText("formula", display.getText().toString()));
+                          toast("Скопировано: " + display.getText().toString());
+                      });
+                  }
+                  builder.setNegativeButton("Закрыть", null);
+                  builder.show();
+              }
+
+              private Button makeFormulaActionBtn(String text, String color){
+                  Button btn = new Button(this);
+                  btn.setText(text);
+                  btn.setTextColor(Color.WHITE);
+                  btn.setTextSize(14f);
+                  btn.setAllCaps(false);
+                  GradientDrawable bg = new GradientDrawable();
+                  bg.setColor(Color.parseColor(color));
+                  bg.setCornerRadius(dp(8));
+                  btn.setBackground(bg);
+                  LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(44), 1f);
+                  lp.rightMargin = dp(6);
+                  btn.setLayoutParams(lp);
+                  return btn;
+              }
+
+              private void showFormulaTab(EditText display, LinearLayout container, int tabIndex){
+                  container.removeAllViews();
+
+                  switch(tabIndex){
+                      case 0: // Цифры
+                          addFormulaGrid(display, container, new String[][]{
+                              {"7", "8", "9"},
+                              {"4", "5", "6"},
+                              {"1", "2", "3"},
+                              {"0", ".", "-"},
+                              {"(", ")", ","}
+                          }, R.drawable.btn_numpad, Color.parseColor("#2D3436"));
+                          break;
+
+                      case 1: // Операторы
+                          addFormulaButtonRow(display, container, new String[]{"+", "-", "*", "/"}, R.drawable.btn_op, Color.WHITE);
+                          break;
+
+                      case 2: // Функции
+                          addFormulaButtonRow(display, container,
+                              new String[]{"sin(", "cos(", "tan(", "atan(", "sqrt(", "abs(", "random(", ")"},
+                              R.drawable.btn_func, Color.WHITE);
+                          break;
+
+                      case 3: // Датчики
+                          addFormulaButtonRow(display, container,
+                              new String[]{"X", "Y", "касаниеX", "касаниеY", "колКасаний"},
+                              R.drawable.btn_sensor, Color.WHITE);
+                          break;
+
+                      case 4: // Переменные
+                      {
+                          ProjectItem p = currentProject();
+                          if(p != null && !p.variables.isEmpty()){
+                              String[] vars = new String[p.variables.size()];
+                              for(int i=0;i<p.variables.size();i++) vars[i] = p.variables.get(i).name;
+                              addFormulaButtonRow(display, container, vars, R.drawable.btn_var, Color.WHITE);
+                          } else {
+                              TextView tv = new TextView(this);
+                              tv.setText("Нет переменных. Создайте в Данных.");
+                              tv.setTextColor(Color.parseColor("#AAB0B8"));
+                              tv.setPadding(dp(8), dp(12), dp(8), dp(12));
+                              container.addView(tv);
+                          }
+                          break;
+                      }
+                      case 5: // Текст
+                      {
+                          LinearLayout row = new LinearLayout(this);
+                          row.setOrientation(LinearLayout.HORIZONTAL);
+                          row.setPadding(0, dp(4), 0, dp(4));
+
+                          Button quoteBtn = new Button(this);
+                          quoteBtn.setText("\" \"");
+                          quoteBtn.setTextColor(Color.WHITE);
+                          quoteBtn.setTextSize(16f);
+                          quoteBtn.setAllCaps(false);
+                          GradientDrawable bg = new GradientDrawable();
+                          bg.setColor(Color.parseColor("#FDCB6E"));
+                          bg.setCornerRadius(dp(8));
+                          quoteBtn.setBackground(bg);
+                          LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(48), 1f);
+                          lp.rightMargin = dp(6);
+                          quoteBtn.setLayoutParams(lp);
+                          quoteBtn.setOnClickListener(v -> {
+                              EditText input = new EditText(this);
+                              input.setHint("Введите текст");
+                              new AlertDialog.Builder(this)
+                                  .setTitle("Текстовое значение")
+                                  .setView(input)
+                                  .setPositiveButton("Вставить", (dd, ww) -> {
+                                      String txt = display.getText().toString();
+                                      txt += "\"" + input.getText().toString() + "\"";
+                                      display.setText(txt);
+                                  })
+                                  .setNegativeButton("Отмена", null)
+                                  .show();
+                          });
+                          row.addView(quoteBtn);
+                          container.addView(row);
+
+                          TextView hint = new TextView(this);
+                          hint.setText("Нажмите кнопку чтобы ввести текст в кавычках");
+                          hint.setTextColor(Color.parseColor("#AAB0B8"));
+                          hint.setPadding(dp(8), dp(8), dp(8), dp(8));
+                          container.addView(hint);
+                          break;
+                      }
+                  }
+              }
+
+              private void addFormulaGrid(EditText display, LinearLayout container, String[][] grid, int bgRes, int textColor){
+                  for(String[] row : grid){
+                      LinearLayout lr = new LinearLayout(this);
+                      lr.setOrientation(LinearLayout.HORIZONTAL);
+                      lr.setPadding(0, dp(3), 0, dp(3));
+
+                      for(String s : row){
+                          Button btn = new Button(this);
+                          btn.setText(s);
+                          btn.setTextColor(textColor);
+                          btn.setTextSize(18f);
+                          btn.setAllCaps(false);
+                          btn.setBackgroundResource(bgRes);
+                          LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(52), 1f);
+                          lp.rightMargin = dp(4);
+                          btn.setLayoutParams(lp);
+                          btn.setOnClickListener(v -> {
+                              String cur = display.getText().toString();
+                              display.setText(cur + s);
+                              display.setSelection(display.getText().length());
+                          });
+                          lr.addView(btn);
+                      }
+                      container.addView(lr);
+                  }
+              }
+
+              private void addFormulaButtonRow(EditText display, LinearLayout container, String[] items, int bgRes, int textColor){
+                  // Wrap in flow layout - 3 per row
+                  LinearLayout curRow = null;
+                  for(int i=0;i<items.length;i++){
+                      if(i % 3 == 0){
+                          curRow = new LinearLayout(this);
+                          curRow.setOrientation(LinearLayout.HORIZONTAL);
+                          curRow.setPadding(0, dp(3), 0, dp(3));
+                          container.addView(curRow);
+                      }
+
+                      Button btn = new Button(this);
+                      btn.setText(items[i]);
+                      btn.setTextColor(textColor);
+                      btn.setTextSize(14f);
+                      btn.setAllCaps(false);
+                      btn.setBackgroundResource(bgRes);
+                      LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(48), 1f);
+                      lp.rightMargin = dp(4);
+                      btn.setLayoutParams(lp);
+
+                      final String token = items[i];
+                      btn.setOnClickListener(v -> {
+                          String cur = display.getText().toString();
+                          display.setText(cur + token);
+                          display.setSelection(display.getText().length());
+                      });
+                      curRow.addView(btn);
+                  }
+                  // Fill remaining slots in last row
+                  if(curRow != null){
+                      int rem = items.length % 3;
+                      if(rem != 0){
+                          for(int i = rem; i < 3; i++){
+                              View spacer = new View(this);
+                              spacer.setLayoutParams(new LinearLayout.LayoutParams(0, dp(48), 1f));
+                              curRow.addView(spacer);
+                          }
+                      }
+                  }
+              }
+
+              // ========================
+              // RENDER METHODS
+              // ========================
+
+              private void renderProjects(){
+                  projectsList.removeAllViews();
+                  for(int i=0;i<projects.size();i++){
+                      ProjectItem p = projects.get(i);
+                      LinearLayout card = makeCard();
+                      card.addView(title(p.name));
+                      card.addView(subtitle("Сцен: " + p.scenes.size() + "  |  Текстур: " + p.textures.size()));
+
+                      final int idx = i;
+                      card.setOnClickListener(v -> {
+                          currentProject = idx;
+                          currentScene = -1;
+                          currentObject = -1;
+                          showScenes();
+                      });
+
+                      card.setOnLongClickListener(v -> {
+                          showProjectMenu(idx);
+                          return true;
+                      });
+
+                      projectsList.addView(card);
+                  }
+              }
+
+              private void renderScenes(){
+                  ProjectItem p = currentProject();
+                  if(p == null) return;
+                  txtProjectTitle.setText(p.name + " / Сцены");
+
+                  scenesList.removeAllViews();
+                  for(int i=0;i<p.scenes.size();i++){
+                      SceneItem s = p.scenes.get(i);
+                      LinearLayout card = makeCard();
+                      card.addView(title(s.name));
+                      card.addView(subtitle("Объектов: " + s.objects.size()));
+
+                      final int idx = i;
+                      card.setOnClickListener(v -> {
+                          currentScene = idx;
+                          currentObject = -1;
+                          showObjects();
+                      });
+
+                      card.setOnLongClickListener(v -> {
+                          showSceneMenu(idx);
+                          return true;
+                      });
+
+                      scenesList.addView(card);
+                  }
+              }
+
+              private void renderObjects(){
+                  SceneItem s = currentScene();
+                  if(s == null) return;
+                  txtSceneTitle.setText(s.name + " / Объекты");
+
+                  objectsList.removeAllViews();
+                  for(int i=0;i<s.objects.size();i++){
+                      ObjectItem o = s.objects.get(i);
+                      LinearLayout card = makeCard();
+                      card.addView(title(o.name + " [" + o.spriteType + "]"));
+                      card.addView(subtitle("X=" + (int)o.startX + " Y=" + (int)o.startY));
+
+                      LinearLayout row = new LinearLayout(this);
+                      row.setOrientation(LinearLayout.HORIZONTAL);
+
+                      Button texBtn = new Button(this);
+                      texBtn.setText("Текстура");
+                      texBtn.setTextColor(Color.WHITE);
+                      texBtn.setBackgroundResource(R.drawable.btn_purple);
+
+                      Button scriptsBtn = new Button(this);
+                      scriptsBtn.setText("Скрипты");
+                      scriptsBtn.setTextColor(Color.WHITE);
+                      scriptsBtn.setBackgroundResource(R.drawable.btn_blue);
+
+                      LinearLayout.LayoutParams lp1 = new LinearLayout.LayoutParams(0, dp(40), 1f);
+                      LinearLayout.LayoutParams lp2 = new LinearLayout.LayoutParams(0, dp(40), 1f);
+                      lp2.leftMargin = dp(8);
+
+                      texBtn.setLayoutParams(lp1);
+                      scriptsBtn.setLayoutParams(lp2);
+
+                      final int idx = i;
+                      texBtn.setOnClickListener(v -> showAssignTextureDialog(idx));
+                      scriptsBtn.setOnClickListener(v -> {
+                          currentObject = idx;
+                          showScripts();
+                      });
+
+                      row.addView(texBtn);
+                      row.addView(scriptsBtn);
+                      card.addView(row);
+
+                      card.setOnLongClickListener(v -> {
+                          showObjectMenu(idx);
+                          return true;
+                      });
+
+                      objectsList.addView(card);
+                  }
+              }
+
+              @SuppressLint("ClickableViewAccessibility")
+              private void renderBlocks(){
+                  ObjectItem o = currentObject();
+                  if(o == null) return;
+                  txtObjectTitle.setText(o.name + " / Скрипты");
+
+                  blocksList.removeAllViews();
+                  for(int i=0;i<o.blocks.size();i++){
+                      BlockItem b = o.blocks.get(i);
+
+                      TextView tv = new TextView(this);
+                      String text = b.label;
+                      if(b.arg1 != null && !b.arg1.isEmpty()) text += " [" + b.arg1 + "]";
+                      if(b.arg2 != null && !b.arg2.isEmpty()) text += " [" + b.arg2 + "]";
+                      tv.setText(text);
+                      tv.setTextColor(Color.WHITE);
+                      tv.setTextSize(16f);
+                      tv.setPadding(dp(14), dp(10), dp(14), dp(10));
+
+                      if(b.type.startsWith("event_")) tv.setBackgroundResource(R.drawable.block_event);
+                      else if(b.type.startsWith("move") || "go_xy".equals(b.type) || "goto_scene".equals(b.type)) tv.setBackgroundResource(R.drawable.block_motion);
+                      else if("wait".equals(b.type) || "forever".equals(b.type) || "end_forever".equals(b.type)) tv.setBackgroundResource(R.drawable.block_control);
+                      else if(b.type.startsWith("set_var") || b.type.startsWith("change_var") || b.type.startsWith("list_")) tv.setBackgroundResource(R.drawable.block_data);
+                      else if(b.type.startsWith("signal")) tv.setBackgroundResource(R.drawable.block_signal);
+                      else tv.setBackgroundResource(R.drawable.block_looks);
+
+                      LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                          LinearLayout.LayoutParams.MATCH_PARENT,
+                          LinearLayout.LayoutParams.WRAP_CONTENT
+                      );
+                      lp.topMargin = dp(8);
+                      tv.setLayoutParams(lp);
+
+                      final int idx = i;
+
+                      tv.setOnClickListener(v -> showBlockMenu(idx));
+
+                      tv.setOnLongClickListener(v -> {
+                          dragIndex = idx;
+                          toast("Выбран блок для перемещения: " + b.label);
+                          return true;
+                      });
+
+                      tv.setOnTouchListener((v, e) -> {
+                          if(dragIndex >= 0 && e.getAction() == MotionEvent.ACTION_UP){
+                              if(dragIndex != idx){
+                                  BlockItem moved = o.blocks.remove(dragIndex);
+                                  if(idx >= o.blocks.size()) o.blocks.add(moved);
+                                  else o.blocks.add(idx, moved);
+                                  dragIndex = -1;
+                                  saveAll();
+                                  renderBlocks();
+                              }
+                          }
+                          return false;
+                      });
+
+                      blocksList.addView(tv);
+                  }
+              }
+
+              private void drawPlayerScene(){
+                  SceneItem sc = currentScene();
+                  if(sc == null) return;
+
+                  try{
+                      GradientDrawable bg = new GradientDrawable();
+                      bg.setColor(Color.parseColor(sc.bgColor));
+                      bg.setCornerRadius(dp(18));
+                      bg.setStroke(dp(2), Color.parseColor("#8AC4E8"));
+                      playerStage.setBackground(bg);
+                  }catch(Exception ignored){}
+
+                  playerStageLayer.removeAllViews();
+
+                  for(int i=0;i<sc.objects.size();i++){
+                      ObjectItem o = sc.objects.get(i);
+
+                      FrameLayout wrap = new FrameLayout(this);
+                      wrap.setTranslationX(o.x);
+                      wrap.setTranslationY(o.y);
+
+                      View spriteView = buildSpriteView(o);
+                      spriteView.setVisibility(o.visible ? View.VISIBLE : View.INVISIBLE);
+
+                      final int idx = i;
+                      spriteView.setOnClickListener(v -> {
+                          if(!stopFlag){
+                              ScriptRuntime.tapped(this, sc.objects.get(idx));
+                          }
+                      });
+
+                      wrap.addView(spriteView);
+
+                      if(o.say != null && !o.say.isEmpty()){
+                          TextView speech = new TextView(this);
+                          speech.setText(o.say);
+                          speech.setTextSize(14f);
+                          speech.setTextColor(Color.BLACK);
+                          speech.setPadding(dp(8), dp(4), dp(8), dp(4));
+                          speech.setBackgroundResource(R.drawable.bg_panel);
+
+                          FrameLayout.LayoutParams slp = new FrameLayout.LayoutParams(
+                              FrameLayout.LayoutParams.WRAP_CONTENT,
+                              FrameLayout.LayoutParams.WRAP_CONTENT
+                          );
+                          slp.leftMargin = dp(40);
+                          slp.topMargin = -dp(10);
+                          speech.setLayoutParams(slp);
+                          wrap.addView(speech);
+                      }
+
+                      playerStageLayer.addView(wrap);
+                  }
+              }
+
+              private View buildSpriteView(ObjectItem o){
+                  if("texture".equals(o.spriteType)){
+                      ImageView img = new ImageView(this);
+                      TextureItem t = findTextureById(o.textureId);
+                      if(t != null && t.uri != null && !t.uri.isEmpty()){
+                          img.setImageURI(Uri.parse(t.uri));
+                      }
+                      img.setAdjustViewBounds(true);
+                      img.setLayoutParams(new FrameLayout.LayoutParams((int)o.w, (int)o.h));
+                      return img;
+                  }
+
+                  if("text".equals(o.spriteType)){
+                      TextView tv = new TextView(this);
+                      tv.setText(o.text);
+                      tv.setTextSize(24f);
+                      try { tv.setTextColor(Color.parseColor(o.color)); } catch(Exception ignored){}
+                      return tv;
+                  }
+
+                  if("shape".equals(o.spriteType)){
+                      View v = new View(this);
+                      GradientDrawable g = new GradientDrawable();
+                      try { g.setColor(Color.parseColor(o.color)); } catch(Exception e){ g.setColor(Color.WHITE); }
+                      if("circle".equals(o.shape)) g.setShape(GradientDrawable.OVAL);
+                      else g.setShape(GradientDrawable.RECTANGLE);
+                      g.setCornerRadius("square".equals(o.shape) ? 0f : dp(12));
+                      v.setBackground(g);
+                      v.setLayoutParams(new FrameLayout.LayoutParams((int)o.w, (int)o.h));
+                      return v;
+                  }
+
+                  TextView tv = new TextView(this);
+                  tv.setText(o.emoji);
+                  tv.setTextSize(42f);
+                  return tv;
+              }
+
+              private TextureItem findTextureById(String id){
+                  ProjectItem p = currentProject();
+                  if(p == null) return null;
+                  for(TextureItem t : p.textures){
+                      if(t.id.equals(id)) return t;
+                  }
+                  return null;
+              }
+
+              // ========================
+              // DIALOGS
+              // ========================
+
+              private void createProjectDialog(){
+                  EditText input = new EditText(this);
+                  input.setHint("Название проекта");
+                  input.setText("Мой проект");
+
+                  new AlertDialog.Builder(this)
+                      .setTitle("Создать проект")
+                      .setView(input)
+                      .setPositiveButton("Создать", (d,w) -> {
+                          ProjectItem p = new ProjectItem();
+                          p.name = input.getText().toString().trim().isEmpty() ? "Проект" : input.getText().toString();
+                          projects.add(p);
+                          saveAll();
+                          renderProjects();
+                      })
+                      .setNegativeButton("Отмена", null)
+                      .show();
+              }
+
+              private void createSceneDialog(){
+                  ProjectItem p = currentProject();
+                  if(p == null) return;
+
+                  LinearLayout root = new LinearLayout(this);
+                  root.setOrientation(LinearLayout.VERTICAL);
+
+                  EditText name = new EditText(this);
+                  name.setHint("Название сцены");
+                  name.setText("Сцена " + (p.scenes.size()+1));
+
+                  EditText color = new EditText(this);
+                  color.setHint("#D8F0FF");
+                  color.setText("#D8F0FF");
+
+                  root.addView(name);
+                  root.addView(color);
+
+                  new AlertDialog.Builder(this)
+                      .setTitle("Создать сцену")
+                      .setView(root)
+                      .setPositiveButton("Создать", (d,w) -> {
+                          SceneItem s = new SceneItem();
+                          s.name = name.getText().toString().trim().isEmpty() ? "Сцена" : name.getText().toString();
+                          s.bgColor = color.getText().toString().trim().isEmpty() ? "#D8F0FF" : color.getText().toString();
+                          p.scenes.add(s);
+                          saveAll();
+                          renderScenes();
+                      })
+                      .setNegativeButton("Отмена", null)
+                      .show();
+              }
+
+              private void createObjectDialog(){
+                  SceneItem s = currentScene();
+                  if(s == null) return;
+
+                  String[] types = {"Emoji", "Текст", "Квадрат", "Круг", "Текстура"};
+                  new AlertDialog.Builder(this)
+                      .setTitle("Тип объекта")
+                      .setItems(types, (d,w) -> {
+                          if(w == 0) createEmojiObject();
+                          else if(w == 1) createTextObject();
+                          else if(w == 2) createShapeObject("square");
+                          else if(w == 3) createShapeObject("circle");
+                          else createTextureObject();
+                      })
+                      .show();
+              }
+
+              private void createEmojiObject(){
+                  SceneItem s = currentScene();
+                  if(s == null) return;
+
+                  LinearLayout root = new LinearLayout(this);
+                  root.setOrientation(LinearLayout.VERTICAL);
+
+                  EditText name = new EditText(this);
+                  name.setHint("Название");
+                  name.setText("Объект " + (s.objects.size()+1));
+
+                  EditText emoji = new EditText(this);
+                  emoji.setHint("Emoji");
+                  emoji.setText("🐱");
+
+                  EditText x = new EditText(this); x.setHint("X"); x.setText("100");
+                  EditText y = new EditText(this); y.setHint("Y"); y.setText("80");
+
+                  root.addView(name); root.addView(emoji); root.addView(x); root.addView(y);
+
+                  new AlertDialog.Builder(this)
+                      .setTitle("Новый emoji-объект")
+                      .setView(root)
+                      .setPositiveButton("Создать", (d,w) -> {
+                          ObjectItem o = new ObjectItem();
+                          o.name = textOr(name, "Объект");
+                          o.spriteType = "emoji";
+                          o.emoji = textOr(emoji, "🐱");
+                          o.startX = parseFloat(x.getText().toString(), 100f);
+                          o.startY = parseFloat(y.getText().toString(), 80f);
+                          o.x = o.startX; o.y = o.startY;
+                          s.objects.add(o);
+                          saveAll();
+                          renderObjects();
+                      })
+                      .setNegativeButton("Отмена", null)
+                      .show();
+              }
+
+              private void createTextObject(){
+                  SceneItem s = currentScene();
+                  if(s == null) return;
+
+                  LinearLayout root = new LinearLayout(this);
+                  root.setOrientation(LinearLayout.VERTICAL);
+
+                  EditText name = new EditText(this); name.setHint("Название"); name.setText("Текст");
+                  EditText text = new EditText(this); text.setHint("Текст"); text.setText("Привет");
+                  EditText color = new EditText(this); color.setHint("#FFFFFF"); color.setText("#000000");
+                  EditText x = new EditText(this); x.setHint("X"); x.setText("100");
+                  EditText y = new EditText(this); y.setHint("Y"); y.setText("80");
+
+                  root.addView(name); root.addView(text); root.addView(color); root.addView(x); root.addView(y);
+
+                  new AlertDialog.Builder(this)
+                      .setTitle("Новый текстовый объект")
+                      .setView(root)
+                      .setPositiveButton("Создать", (d,w) -> {
+                          ObjectItem o = new ObjectItem();
+                          o.name = textOr(name, "Текст");
+                          o.spriteType = "text";
+                          o.text = textOr(text, "Привет");
+                          o.color = textOr(color, "#000000");
+                          o.startX = parseFloat(x.getText().toString(), 100f);
+                          o.startY = parseFloat(y.getText().toString(), 80f);
+                          o.x = o.startX; o.y = o.startY;
+                          s.objects.add(o);
+                          saveAll();
+                          renderObjects();
+                      })
+                      .setNegativeButton("Отмена", null)
+                      .show();
+              }
+
+              private void createShapeObject(String shape){
+                  SceneItem s = currentScene();
+                  if(s == null) return;
+
+                  LinearLayout root = new LinearLayout(this);
+                  root.setOrientation(LinearLayout.VERTICAL);
+
+                  EditText name = new EditText(this); name.setHint("Название"); name.setText("Фигура");
+                  EditText color = new EditText(this); color.setHint("#FFFFFF"); color.setText("#FF4444");
+                  EditText x = new EditText(this); x.setHint("X"); x.setText("100");
+                  EditText y = new EditText(this); y.setHint("Y"); y.setText("80");
+                  EditText w = new EditText(this); w.setHint("Ширина"); w.setText("72");
+                  EditText h = new EditText(this); h.setHint("Высота"); h.setText("72");
+
+                  root.addView(name); root.addView(color); root.addView(x); root.addView(y); root.addView(w); root.addView(h);
+
+                  new AlertDialog.Builder(this)
+                      .setTitle("Новая фигура")
+                      .setView(root)
+                      .setPositiveButton("Создать", (d,ww) -> {
+                          ObjectItem o = new ObjectItem();
+                          o.name = textOr(name, "Фигура");
+                          o.spriteType = "shape";
+                          o.shape = shape;
+                          o.color = textOr(color, "#FF4444");
+                          o.startX = parseFloat(x.getText().toString(), 100f);
+                          o.startY = parseFloat(y.getText().toString(), 80f);
+                          o.x = o.startX; o.y = o.startY;
+                          o.w = parseFloat(w.getText().toString(), 72f);
+                          o.h = parseFloat(h.getText().toString(), 72f);
+                          s.objects.add(o);
+                          saveAll();
+                          renderObjects();
+                      })
+                      .setNegativeButton("Отмена", null)
+                      .show();
+              }
+
+              private void createTextureObject(){
+                  SceneItem s = currentScene();
+                  ProjectItem p = currentProject();
+                  if(s == null || p == null) return;
+
+                  if(p.textures.isEmpty()){
+                      pendingTextureProject = currentProject;
+                      pendingAssignProject = -1;
+                      pendingAssignScene = -1;
+                      pendingAssignObject = -1;
+                      openImagePicker();
+                      toast("Сначала импортируется текстура");
+                      return;
+                  }
+
+                  String[] names = new String[p.textures.size()];
+                  for(int i=0;i<p.textures.size();i++) names[i] = p.textures.get(i).name;
+
+                  new AlertDialog.Builder(this)
+                      .setTitle("Выбери текстуру")
+                      .setItems(names, (d,w) -> {
+                          TextureItem tx = p.textures.get(w);
+                          ObjectItem o = new ObjectItem();
+                          o.name = tx.name;
+                          o.spriteType = "texture";
+                          o.textureId = tx.id;
+                          s.objects.add(o);
+                          saveAll();
+                          renderObjects();
+                      })
+                      .setNegativeButton("Импортировать новую", (d,w) -> {
+                          pendingTextureProject = currentProject;
+                          pendingAssignProject = currentProject;
+                          pendingAssignScene = currentScene;
+                          pendingAssignObject = s.objects.size();
+                          ObjectItem o = new ObjectItem();
+                          o.name = "Текстура";
+                          o.spriteType = "texture";
+                          s.objects.add(o);
+                          saveAll();
+                          openImagePicker();
+                          renderObjects();
+                      })
+                      .show();
+              }
+
+              private void openImagePicker(){
+                  Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                  i.addCategory(Intent.CATEGORY_OPENABLE);
+                  i.setType("image/*");
+                  i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                  i.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+                  imagePickerTexture.launch(i);
+              }
+
+              private void showTextureLibrary(){
+                  ProjectItem p = currentProject();
+                  if(p == null){
+                      toast("Сначала открой проект");
+                      return;
+                  }
+
+                  String[] items = new String[p.textures.size()+1];
+                  items[0] = "+ Импортировать новую";
+                  for(int i=0;i<p.textures.size();i++) items[i+1] = p.textures.get(i).name;
+
+                  new AlertDialog.Builder(this)
+                      .setTitle("Библиотека текстур")
+                      .setItems(items, (d,w) -> {
+                          if(w == 0){
+                              pendingTextureProject = currentProject;
+                              pendingAssignProject = -1;
+                              pendingAssignScene = -1;
+                              pendingAssignObject = -1;
+                              openImagePicker();
+                          }
+                      })
+                      .show();
+              }
+
+              private void showAssignTextureDialog(int objectIndex){
+                  ProjectItem p = currentProject();
+                  SceneItem s = currentScene();
+                  if(p == null || s == null) return;
+
+                  String[] items = new String[p.textures.size()+1];
+                  items[0] = "+ Импортировать новую";
+                  for(int i=0;i<p.textures.size();i++) items[i+1] = p.textures.get(i).name;
+
+                  new AlertDialog.Builder(this)
+                      .setTitle("Назначить текстуру")
+                      .setItems(items, (d,w) -> {
+                          ObjectItem o = s.objects.get(objectIndex);
+                          if(w == 0){
+                              pendingTextureProject = currentProject;
+                              pendingAssignProject = currentProject;
+                              pendingAssignScene = currentScene;
+                              pendingAssignObject = objectIndex;
+                              openImagePicker();
+                          } else {
+                              TextureItem tx = p.textures.get(w-1);
+                              o.spriteType = "texture";
+                              o.textureId = tx.id;
+                              saveAll();
+                              renderObjects();
+                          }
+                      })
+                      .show();
+              }
+
+              private void showDataManager(){
+                  ProjectItem p = currentProject();
+                  if(p == null){
+                      if(projects.isEmpty()){
+                          toast("Сначала создай проект");
+                          return;
+                      }
+                      toast("Открой проект и зайди снова");
+                      return;
+                  }
+
+                  String[] items = {"Переменные", "Списки"};
+                  new AlertDialog.Builder(this)
+                      .setTitle("Данные")
+                      .setItems(items, (d,w) -> {
+                          if(w == 0) showVariablesManager();
+                          else showListsManager();
+                      })
+                      .show();
+              }
+
+              private void showVariablesManager(){
+                  ProjectItem p = currentProject();
+                  if(p == null) return;
+
+                  String[] items = new String[p.variables.size()+1];
+                  items[0] = "+ Новая переменная";
+                  for(int i=0;i<p.variables.size();i++){
+                      VariableItem v = p.variables.get(i);
+                      items[i+1] = v.name + " = " + v.value;
+                  }
+
+                  new AlertDialog.Builder(this)
+                      .setTitle("Переменные")
+                      .setItems(items, (d,w) -> {
+                          if(w == 0){
+                              LinearLayout root = new LinearLayout(this);
+                              root.setOrientation(LinearLayout.VERTICAL);
+                              EditText name = new EditText(this);
+                              name.setHint("Имя");
+                              EditText value = new EditText(this);
+                              value.setHint("Значение");
+                              value.setText("0");
+                              root.addView(name);
+                              root.addView(value);
+                              new AlertDialog.Builder(this)
+                                  .setTitle("Новая переменная")
+                                  .setView(root)
+                                  .setPositiveButton("Создать", (dd,ww) -> {
+                                      VariableItem v = new VariableItem();
+                                      v.name = textOr(name, "переменная");
+                                      v.value = textOr(value, "0");
+                                      p.variables.add(v);
+                                      saveAll();
+                                  })
+                                  .setNegativeButton("Отмена", null)
+                                  .show();
+                          } else {
+                              final int varIdx = w - 1;
+                              String[] opts = {"Изменить значение", "Удалить"};
+                              new AlertDialog.Builder(this)
+                                  .setTitle(p.variables.get(varIdx).name)
+                                  .setItems(opts, (dd, ww) -> {
+                                      if(ww == 0){
+                                          EditText val = new EditText(this);
+                                          val.setText(p.variables.get(varIdx).value);
+                                          new AlertDialog.Builder(this)
+                                              .setTitle("Значение")
+                                              .setView(val)
+                                              .setPositiveButton("OK", (ddd, www) -> {
+                                                  p.variables.get(varIdx).value = val.getText().toString();
+                                                  saveAll();
+                                              })
+                                              .setNegativeButton("Отмена", null)
+                                              .show();
+                                      } else {
+                                          p.variables.remove(varIdx);
+                                          saveAll();
+                                      }
+                                  })
+                                  .show();
+                          }
+                      })
+                      .show();
+              }
+
+              private void showListsManager(){
+                  ProjectItem p = currentProject();
+                  if(p == null) return;
+
+                  String[] items = new String[p.lists.size()+1];
+                  items[0] = "+ Новый список";
+                  for(int i=0;i<p.lists.size();i++){
+                      ListItemModel li = p.lists.get(i);
+                      items[i+1] = li.name + " (" + li.items.size() + ")";
+                  }
+
+                  new AlertDialog.Builder(this)
+                      .setTitle("Списки")
+                      .setItems(items, (d,w) -> {
+                          if(w == 0){
+                              EditText input = new EditText(this);
+                              input.setHint("Имя списка");
+                              new AlertDialog.Builder(this)
+                                  .setTitle("Новый список")
+                                  .setView(input)
+                                  .setPositiveButton("Создать", (dd,ww) -> {
+                                      ListItemModel li = new ListItemModel();
+                                      li.name = textOr(input, "список");
+                                      p.lists.add(li);
+                                      saveAll();
+                                  })
+                                  .setNegativeButton("Отмена", null)
+                                  .show();
+                          }
+                      })
+                      .show();
+              }
+
+              // ========================
+              // BLOCK INSERTION WITH FORMULA EDITOR
+              // ========================
+
+              private void showCategoryDialog(){
+                  String[] cats = {"События", "Движение", "Внешность", "Управление", "Данные", "Сигналы"};
+                  new AlertDialog.Builder(this)
+                      .setTitle("Категория")
+                      .setItems(cats, (d,w) -> {
+                          if(w == 0) showBlockTypeDialog("event");
+                          else if(w == 1) showBlockTypeDialog("motion");
+                          else if(w == 2) showBlockTypeDialog("looks");
+                          else if(w == 3) showBlockTypeDialog("control");
+                          else if(w == 4) showBlockTypeDialog("data");
+                          else showBlockTypeDialog("signal");
+                      })
+                      .show();
+              }
+
+              private void showBlockTypeDialog(String cat){
+                  if("event".equals(cat)){
+                      String[] items = {"Когда запущено", "Когда объект нажат", "Когда получен сигнал"};
+                      new AlertDialog.Builder(this)
+                          .setTitle("События")
+                          .setItems(items, (d,w) -> {
+                              if(w == 0) insertBlockDirect(new BlockItem("event_start", "Когда запущено", "", ""));
+                              else if(w == 1) insertBlockDirect(new BlockItem("event_tap", "Когда объект нажат", "", ""));
+                              else openFormulaEditorForArg("Имя сигнала", "сигнал1", v ->
+                                  insertBlockDirect(new BlockItem("event_signal", "Когда получен сигнал", v, "")));
+                          }).show();
+                  } else if("motion".equals(cat)){
+                      String[] items = {"Двигаться по X", "Двигаться по Y", "Перейти в X Y", "Перейти в сцену"};
+                      new AlertDialog.Builder(this)
+                          .setTitle("Движение")
+                          .setItems(items, (d,w) -> {
+                              if(w == 0) openFormulaEditorForArg("Формула X", "10", v ->
+                                  insertBlockDirect(new BlockItem("move_x", "Двигаться по X", v, "")));
+                              else if(w == 1) openFormulaEditorForArg("Формула Y", "10", v ->
+                                  insertBlockDirect(new BlockItem("move_y", "Двигаться по Y", v, "")));
+                              else if(w == 2) openFormulaEditorForTwoArgs("X", "Y", (a,b) ->
+                                  insertBlockDirect(new BlockItem("go_xy", "Перейти в", a, b)));
+                              else openFormulaEditorForArg("Имя сцены", "\"Сцена 2\"", v ->
+                                  insertBlockDirect(new BlockItem("goto_scene", "Перейти в сцену", v, "")));
+                          }).show();
+                  } else if("looks".equals(cat)){
+                      String[] items = {"Сказать", "Скрыть", "Показать"};
+                      new AlertDialog.Builder(this)
+                          .setTitle("Внешность")
+                          .setItems(items, (d,w) -> {
+                              if(w == 0) openFormulaEditorForArg("Текст / формула", "\"Привет\"", v ->
+                                  insertBlockDirect(new BlockItem("say", "Сказать", v, "")));
+                              else if(w == 1) insertBlockDirect(new BlockItem("hide", "Скрыть", "", ""));
+                              else insertBlockDirect(new BlockItem("show", "Показать", "", ""));
+                          }).show();
+                  } else if("control".equals(cat)){
+                      String[] items = {"Ждать", "Вечно", "Конец вечно"};
+                      new AlertDialog.Builder(this)
+                          .setTitle("Управление")
+                          .setItems(items, (d,w) -> {
+                              if(w == 0) openFormulaEditorForArg("Секунды", "1", v ->
+                                  insertBlockDirect(new BlockItem("wait", "Ждать", v, "")));
+                              else if(w == 1) insertBlockDirect(new BlockItem("forever", "Вечно", "", ""));
+                              else insertBlockDirect(new BlockItem("end_forever", "Конец вечно", "", ""));
+                          }).show();
+                  } else if("data".equals(cat)){
+                      String[] items = {"Установить переменную", "Изменить переменную", "Добавить в список"};
+                      new AlertDialog.Builder(this)
+                          .setTitle("Данные")
+                          .setItems(items, (d,w) -> {
+                              if(w == 0) chooseVariable(name -> openFormulaEditorForArg("Значение / формула", "10", val ->
+                                  insertBlockDirect(new BlockItem("set_var", "Установить переменную", name, val))));
+                              else if(w == 1) chooseVariable(name -> openFormulaEditorForArg("Прибавить / формула", "1", val ->
+                                  insertBlockDirect(new BlockItem("change_var", "Изменить переменную", name, val))));
+                              else chooseList(name -> openFormulaEditorForArg("Значение", "\"элемент\"", val ->
+                                  insertBlockDirect(new BlockItem("list_add", "Добавить в список", name, val))));
+                          }).show();
+                  } else if("signal".equals(cat)){
+                      String[] items = {"Послать сигнал"};
+                      new AlertDialog.Builder(this)
+                          .setTitle("Сигналы")
+                          .setItems(items, (d,w) -> openFormulaEditorForArg("Имя сигнала", "сигнал1", v ->
+                              insertBlockDirect(new BlockItem("signal", "Послать сигнал", v, ""))))
+                          .show();
+                  }
+              }
+
+              private interface OneArg { void ok(String v); }
+              private interface TwoArg { void ok(String a, String b); }
+              private interface PickName { void pick(String name); }
+
+              private void openFormulaEditorForArg(String title, String def, OneArg cb){
+                  AlertDialog.Builder builder = new AlertDialog.Builder(this);
+
+                  LinearLayout root = new LinearLayout(this);
+                  root.setOrientation(LinearLayout.VERTICAL);
+                  root.setPadding(dp(12), dp(12), dp(12), dp(12));
+                  root.setBackgroundColor(Color.parseColor("#1E1E2E"));
+
+                  TextView label = new TextView(this);
+                  label.setText(title);
+                  label.setTextColor(Color.parseColor("#AAB0B8"));
+                  label.setTextSize(14f);
+                  label.setPadding(0, 0, 0, dp(6));
+                  root.addView(label);
+
+                  EditText display = new EditText(this);
+                  display.setTextColor(Color.WHITE);
+                  display.setTextSize(20f);
+                  display.setBackgroundResource(R.drawable.btn_dark);
+                  display.setPadding(dp(14), dp(14), dp(14), dp(14));
+                  display.setHint("Формула...");
+                  display.setHintTextColor(Color.parseColor("#666688"));
+                  display.setText(def);
+                  display.setInputType(InputType.TYPE_NULL);
+                  display.setFocusable(true);
+                  display.setFocusableInTouchMode(true);
+                  display.setShowSoftInputOnFocus(false);
+                  display.setSelection(display.getText().length());
+                  root.addView(display);
+
+                  HorizontalScrollView tabScroll = new HorizontalScrollView(this);
+                  tabScroll.setHorizontalScrollBarEnabled(false);
+                  LinearLayout tabsRow = new LinearLayout(this);
+                  tabsRow.setOrientation(LinearLayout.HORIZONTAL);
+                  tabsRow.setPadding(0, dp(8), 0, dp(4));
+
+                  String[] tabNames = {"Цифры", "Операторы", "Функции", "Датчики", "Переменные", "Текст"};
+                  int[] tabColors = {
+                      Color.parseColor("#636E72"),
+                      Color.parseColor("#00B894"),
+                      Color.parseColor("#6C5CE7"),
+                      Color.parseColor("#0984E3"),
+                      Color.parseColor("#FF7675"),
+                      Color.parseColor("#FDCB6E")
+                  };
+
+                  LinearLayout buttonsContainer = new LinearLayout(this);
+                  buttonsContainer.setOrientation(LinearLayout.VERTICAL);
+                  buttonsContainer.setPadding(0, dp(4), 0, 0);
+
+                  for(int ti = 0; ti < tabNames.length; ti++){
+                      Button tab = new Button(this);
+                      tab.setText(tabNames[ti]);
+                      tab.setTextColor(Color.WHITE);
+                      tab.setTextSize(12f);
+                      tab.setAllCaps(false);
+                      GradientDrawable tBg = new GradientDrawable();
+                      tBg.setColor(tabColors[ti]);
+                      tBg.setCornerRadius(dp(8));
+                      tab.setBackground(tBg);
+                      LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(
+                          LinearLayout.LayoutParams.WRAP_CONTENT, dp(36));
+                      tlp.rightMargin = dp(6);
+                      tab.setLayoutParams(tlp);
+
+                      final int tabIndex = ti;
+                      tab.setOnClickListener(v -> showFormulaTab(display, buttonsContainer, tabIndex));
+                      tabsRow.addView(tab);
+                  }
+
+                  tabScroll.addView(tabsRow);
+                  root.addView(tabScroll);
+
+                  ScrollView btnScroll = new ScrollView(this);
+                  btnScroll.setLayoutParams(new LinearLayout.LayoutParams(
+                      LinearLayout.LayoutParams.MATCH_PARENT, dp(220)));
+                  btnScroll.addView(buttonsContainer);
+                  root.addView(btnScroll);
+
+                  LinearLayout actRow = new LinearLayout(this);
+                  actRow.setOrientation(LinearLayout.HORIZONTAL);
+                  actRow.setPadding(0, dp(8), 0, 0);
+
+                  Button btnClear = makeFormulaActionBtn("Очистить", "#E17055");
+                  btnClear.setOnClickListener(v -> display.setText(""));
+                  actRow.addView(btnClear);
+
+                  Button btnBackspace = makeFormulaActionBtn("⌫", "#636E72");
+                  btnBackspace.setOnClickListener(v -> {
+                      String t = display.getText().toString();
+                      if(!t.isEmpty()) {
+                          display.setText(t.substring(0, t.length()-1));
+                          display.setSelection(display.getText().length());
+                      }
+                  });
+                  actRow.addView(btnBackspace);
+
+                  root.addView(actRow);
+
+                  showFormulaTab(display, buttonsContainer, 0);
+
+                  builder.setView(root);
+                  builder.setPositiveButton("ОК", (d, w) -> cb.ok(display.getText().toString()));
+                  builder.setNegativeButton("Отмена", null);
+                  builder.show();
+              }
+
+              private void openFormulaEditorForTwoArgs(String label1, String label2, TwoArg cb){
+                  openFormulaEditorForArg("Формула: " + label1, "0", a ->
+                      openFormulaEditorForArg("Формула: " + label2, "0", b ->
+                          cb.ok(a, b)));
+              }
+
+              private void chooseVariable(PickName cb){
+                  ProjectItem p = currentProject();
+                  if(p == null || p.variables.isEmpty()){
+                      toast("Сначала создай переменную");
+                      return;
+                  }
+                  String[] arr = new String[p.variables.size()];
+                  for(int i=0;i<p.variables.size();i++) arr[i] = p.variables.get(i).name;
+                  new AlertDialog.Builder(this)
+                      .setTitle("Выбери переменную")
+                      .setItems(arr, (d,w) -> cb.pick(arr[w]))
+                      .show();
+              }
+
+              private void chooseList(PickName cb){
+                  ProjectItem p = currentProject();
+                  if(p == null || p.lists.isEmpty()){
+                      toast("Сначала создай список");
+                      return;
+                  }
+                  String[] arr = new String[p.lists.size()];
+                  for(int i=0;i<p.lists.size();i++) arr[i] = p.lists.get(i).name;
+                  new AlertDialog.Builder(this)
+                      .setTitle("Выбери список")
+                      .setItems(arr, (d,w) -> cb.pick(arr[w]))
+                      .show();
+              }
+
+              private void insertBlockDirect(BlockItem block){
+                  ObjectItem o = currentObject();
+                  if(o == null) return;
+
+                  if(o.blocks.isEmpty()){
+                      o.blocks.add(block);
+                      saveAll();
+                      renderBlocks();
+                      return;
+                  }
+
+                  String[] opts = new String[o.blocks.size()+1];
+                  opts[0] = "В конец";
+                  for(int i=0;i<o.blocks.size();i++){
+                      opts[i+1] = "Перед: " + o.blocks.get(i).label;
+                  }
+
+                  new AlertDialog.Builder(this)
+                      .setTitle("Куда вставить блок?")
+                      .setItems(opts, (d,w) -> {
+                          if(w == 0) o.blocks.add(block);
+                          else o.blocks.add(w-1, block);
+                          saveAll();
+                          renderBlocks();
+                      })
+                      .show();
+              }
+
+              private void showBlockMenu(int idx){
+                  ObjectItem o = currentObject();
+                  if(o == null) return;
+                  BlockItem b = o.blocks.get(idx);
+
+                  String[] items = {"Удалить", "Изменить Arg1 (формулы)", "Изменить Arg2 (формулы)", "Дублировать"};
+                  new AlertDialog.Builder(this)
+                      .setTitle(b.label)
+                      .setItems(items, (d,w) -> {
+                          if(w == 0){
+                              o.blocks.remove(idx);
+                              saveAll();
+                              renderBlocks();
+                          } else if(w == 1){
+                              openFormulaEditorForArg("Arg1", b.arg1 == null ? "" : b.arg1, val -> {
+                                  b.arg1 = val;
+                                  saveAll();
+                                  renderBlocks();
+                              });
+                          } else if(w == 2){
+                              openFormulaEditorForArg("Arg2", b.arg2 == null ? "" : b.arg2, val -> {
+                                  b.arg2 = val;
+                                  saveAll();
+                                  renderBlocks();
+                              });
+                          } else if(w == 3){
+                              BlockItem dup = new BlockItem(b.type, b.label, b.arg1, b.arg2);
+                              o.blocks.add(idx+1, dup);
+                              saveAll();
+                              renderBlocks();
+                          }
+                      })
+                      .show();
+              }
+
+              private void showProjectMenu(int idx){
+                  String[] items = {"Переименовать", "Удалить"};
+                  new AlertDialog.Builder(this)
+                      .setTitle(projects.get(idx).name)
+                      .setItems(items, (d,w) -> {
+                          if(w == 0){
+                              EditText input = new EditText(this);
+                              input.setText(projects.get(idx).name);
+                              new AlertDialog.Builder(this)
+                                  .setTitle("Переименовать проект")
+                                  .setView(input)
+                                  .setPositiveButton("ОК", (dd,ww) -> {
+                                      projects.get(idx).name = input.getText().toString();
+                                      saveAll();
+                                      renderProjects();
+                                  })
+                                  .setNegativeButton("Отмена", null)
+                                  .show();
+                          } else {
+                              projects.remove(idx);
+                              saveAll();
+                              renderProjects();
+                          }
+                      })
+                      .show();
+              }
+
+              private void showSceneMenu(int idx){
+                  ProjectItem p = currentProject();
+                  if(p == null) return;
+                  String[] items = {"Переименовать", "Удалить"};
+                  new AlertDialog.Builder(this)
+                      .setTitle(p.scenes.get(idx).name)
+                      .setItems(items, (d,w) -> {
+                          if(w == 0){
+                              EditText input = new EditText(this);
+                              input.setText(p.scenes.get(idx).name);
+                              new AlertDialog.Builder(this)
+                                  .setTitle("Переименовать сцену")
+                                  .setView(input)
+                                  .setPositiveButton("ОК", (dd,ww) -> {
+                                      p.scenes.get(idx).name = input.getText().toString();
+                                      saveAll();
+                                      renderScenes();
+                                  })
+                                  .setNegativeButton("Отмена", null)
+                                  .show();
+                          } else {
+                              p.scenes.remove(idx);
+                              saveAll();
+                              renderScenes();
+                          }
+                      })
+                      .show();
+              }
+
+              private void showObjectMenu(int idx){
+                  SceneItem s = currentScene();
+                  if(s == null) return;
+                  String[] items = {"Переименовать", "Удалить"};
+                  new AlertDialog.Builder(this)
+                      .setTitle(s.objects.get(idx).name)
+                      .setItems(items, (d,w) -> {
+                          if(w == 0){
+                              EditText input = new EditText(this);
+                              input.setText(s.objects.get(idx).name);
+                              new AlertDialog.Builder(this)
+                                  .setTitle("Переименовать объект")
+                                  .setView(input)
+                                  .setPositiveButton("ОК", (dd,ww) -> {
+                                      s.objects.get(idx).name = input.getText().toString();
+                                      saveAll();
+                                      renderObjects();
+                                  })
+                                  .setNegativeButton("Отмена", null)
+                                  .show();
+                          } else {
+                              s.objects.remove(idx);
+                              saveAll();
+                              renderObjects();
+                          }
+                      })
+                      .show();
+              }
+
+              // ========================
+              // HELPERS
+              // ========================
+
+              private LinearLayout makeCard(){
+                  LinearLayout card = new LinearLayout(this);
+                  card.setOrientation(LinearLayout.VERTICAL);
+                  card.setBackgroundResource(R.drawable.bg_panel);
+                  card.setPadding(dp(12), dp(12), dp(12), dp(12));
+                  LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                      LinearLayout.LayoutParams.MATCH_PARENT,
+                      LinearLayout.LayoutParams.WRAP_CONTENT
+                  );
+                  lp.topMargin = dp(10);
+                  card.setLayoutParams(lp);
+                  return card;
+              }
+
+              private TextView title(String s){
+                  TextView tv = new TextView(this);
+                  tv.setText(s);
+                  tv.setTextSize(18f);
+                  tv.setTextColor(Color.parseColor("#2E648F"));
+                  tv.setTypeface(null, Typeface.BOLD);
+                  return tv;
+              }
+
+              private TextView subtitle(String s){
+                  TextView tv = new TextView(this);
+                  tv.setText(s);
+                  tv.setTextSize(13f);
+                  tv.setTextColor(Color.parseColor("#5D88A8"));
+                  return tv;
+              }
+
+              private int dp(int v){
+                  return (int)(v * getResources().getDisplayMetrics().density);
+              }
+
+              private float parseFloat(String s, float d){
+                  try { return Float.parseFloat(s); } catch(Exception e){ return d; }
+              }
+
+              private String textOr(EditText e, String d){
+                  String s = e.getText().toString().trim();
+                  return s.isEmpty() ? d : s;
+              }
+          }
+          MAINACT
+
+          cat <<EOF > app/src/main/AndroidManifest.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application
+                  android:label="Карманный Код Ультра"
+                  android:theme="@style/AppTheme">
+                  <activity
+                      android:name="com.pocketultra.ruv2.MainActivity"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          echo "include ':app'" > settings.gradle
+
+          cat <<EOF > build.gradle
+          buildscript {
+              repositories { google(); mavenCentral() }
+              dependencies { classpath 'com.android.tools.build:gradle:8.2.2' }
+          }
+          allprojects {
+              repositories { google(); mavenCentral() }
+          }
+          EOF
+
+          cat <<EOF > app/build.gradle
+          plugins {
+              id 'com.android.application'
+          }
+
+          android {
+              namespace 'com.pocketultra.ruv2'
+              compileSdk 34
+
+              defaultConfig {
+                  applicationId 'com.pocketultra.ruv2'
+                  minSdk 24
+                  targetSdk 34
+              }
+
+              buildFeatures {
+                  buildConfig true
+              }
+          }
+
+          dependencies {
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+          }
+          EOF
+
+      - name: Build APK
+        run: |
+          gradle wrapper --gradle-version 8.5
+          ./gradlew assembleDebug
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pocket_Code_Ultra_RU_v2_APK
+          path: app/build/outputs/apk/debug/app-debug.apk
