@@ -1,4 +1,4 @@
-name: Enjoer_6.1_Stars_Fixed
+name: Enjoer_6.1_Stars_Final
 on: [push, workflow_dispatch]
 
 jobs:
@@ -94,26 +94,11 @@ jobs:
           EOF
 
           cat <<EOF > app/src/main/res/drawable/crosshair.xml
-          <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-            <item android:gravity="center">
-              <shape android:shape="rectangle">
-                <size android:width="22dp" android:height="2dp"/>
-                <solid android:color="#FF00BFFF"/>
-              </shape>
-            </item>
-            <item android:gravity="center">
-              <shape android:shape="rectangle">
-                <size android:width="2dp" android:height="22dp"/>
-                <solid android:color="#FF00BFFF"/>
-              </shape>
-            </item>
-            <item android:gravity="center">
-              <shape android:shape="oval">
-                <size android:width="4dp" android:height="4dp"/>
-                <solid android:color="#FF7FDBFF"/>
-              </shape>
-            </item>
-          </layer-list>
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+            <solid android:color="#8000BFFF"/>
+            <stroke android:width="3dp" android:color="#FF00BFFF"/>
+            <size android:width="16dp" android:height="16dp"/>
+          </shape>
           EOF
 
           cat <<'LAYOUT' > app/src/main/res/layout/activity_main.xml
@@ -184,8 +169,8 @@ jobs:
 
                   <View
                       android:id="@+id/crosshair_game"
-                      android:layout_width="22dp"
-                      android:layout_height="22dp"
+                      android:layout_width="16dp"
+                      android:layout_height="16dp"
                       android:layout_centerInParent="true"
                       android:background="@drawable/crosshair"/>
               </RelativeLayout>
@@ -666,8 +651,8 @@ jobs:
 
                   <View
                       android:id="@+id/crosshair_engine"
-                      android:layout_width="22dp"
-                      android:layout_height="22dp"
+                      android:layout_width="16dp"
+                      android:layout_height="16dp"
                       android:layout_centerInParent="true"
                       android:background="@drawable/crosshair"/>
               </RelativeLayout>
@@ -728,8 +713,8 @@ jobs:
 
                   <View
                       android:id="@+id/crosshair_playtest"
-                      android:layout_width="22dp"
-                      android:layout_height="22dp"
+                      android:layout_width="16dp"
+                      android:layout_height="16dp"
                       android:layout_centerInParent="true"
                       android:background="@drawable/crosshair"/>
               </RelativeLayout>
@@ -1039,6 +1024,7 @@ jobs:
               private float timeSec = 0f;
               private float walkPhase = 0f;
               private float moveMag = 0f;
+              private float targetRY = 0f;
 
               public Block getSelectedBlock(){
                   if(selectedIndex>=0 && selectedIndex<blocks.size()) return blocks.get(selectedIndex);
@@ -1346,6 +1332,15 @@ jobs:
 
                       float mX = (rightX*jX + forwardX*(-jY))*s;
                       float mZ = (rightZ*jX + forwardZ*(-jY))*s;
+
+                      if(Math.abs(jX) > 0.05f || Math.abs(jY) > 0.05f){
+                          targetRY = (float)Math.toDegrees(Math.atan2(mX, -mZ));
+                      }
+
+                      float diff = targetRY - rY;
+                      while(diff > 180f) diff -= 360f;
+                      while(diff < -180f) diff += 360f;
+                      rY += diff * 0.15f;
 
                       vY-=.025f;
                       float nX=pX+mX,nY=pY+vY,nZ=pZ+mZ,fY=nY-PLAYER_HEIGHT,hY=nY;
@@ -2111,5 +2106,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Enjoer_6.1_Stars_Fixed
+          name: Enjoer_6.1_Stars_Final
           path: app/build/outputs/apk/debug/app-debug.apk
