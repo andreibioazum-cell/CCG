@@ -1,4 +1,4 @@
-name: Enjoer_6.1_Stars
+name: Enjoer_6.1_Stars_Fixed
 on: [push, workflow_dispatch]
 
 jobs:
@@ -1032,14 +1032,13 @@ jobs:
               public int selectedIndex = -1;
               public float screenW=1, screenH=1;
               public EventHost eventHost;
-              private static final float FLOOR_Y=0f, PLAYER_HEIGHT=3.2f, PLAYER_RADIUS=0.5f;
+              private static final float FLOOR_Y=0f, PLAYER_HEIGHT=3.6f, PLAYER_RADIUS=0.6f;
 
-              // --- Third-person camera + animation ---
               private float camX=0, camY=0, camZ=0;
               private long lastTimeNs = 0L;
               private float timeSec = 0f;
               private float walkPhase = 0f;
-              private float moveMag = 0f; // 0..1
+              private float moveMag = 0f;
 
               public Block getSelectedBlock(){
                   if(selectedIndex>=0 && selectedIndex<blocks.size()) return blocks.get(selectedIndex);
@@ -1157,6 +1156,9 @@ jobs:
               public void onSurfaceCreated(GL10 gl, EGLConfig cfg) {
                   GLES30.glEnable(GLES30.GL_DEPTH_TEST);
                   GLES30.glDepthFunc(GLES30.GL_LEQUAL);
+                  GLES30.glEnable(GLES30.GL_CULL_FACE);
+                  GLES30.glCullFace(GLES30.GL_BACK);
+                  GLES30.glFrontFace(GLES30.GL_CCW);
 
                   String vs="#version 300 es\n"+
                       "layout(location=0)in vec4 aP;layout(location=1)in vec3 aN;"+
@@ -1189,9 +1191,9 @@ jobs:
                       "vec3 d=normalize(vDir);"+
                       "float t=clamp(d.y*0.5+0.5,0.0,1.0);"+
                       "vec3 col=mix(vec3(0.005,0.008,0.02), vec3(0.03,0.16,0.36), t);"+
-                      "if(d.y>0.15){"+
-                      "vec2 uv=d.xz/(d.y+0.25);uv*=120.0;vec2 id=floor(uv);vec2 gv=fract(uv)-0.5;"+
-                      "float rnd=hash(id);float star=step(0.992,rnd);float dist=length(gv);"+
+                      "if(d.y>0.0){"+
+                      "vec2 uv=d.xz/(d.y+0.05);uv*=90.0;vec2 id=floor(uv);vec2 gv=fract(uv)-0.5;"+
+                      "float rnd=hash(id);float star=step(0.9935,rnd);float dist=length(gv);"+
                       "float tw=0.65+0.35*sin(rnd*500.0);"+
                       "float s=smoothstep(0.16,0.0,dist)*star*tw*2.8;"+
                       "float glow=smoothstep(0.42,0.0,dist)*star*0.9;"+
@@ -1244,19 +1246,18 @@ jobs:
                   float vy=(float)Math.sin(Math.toRadians(rX));
                   float vz=(float)(-Math.cos(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
 
-                  // Camera: editor = free/1st-person, game/playtest = 3rd-person
                   if(isEngineMode && !isPlayingLevel){
                       camX = pX; camY = pY; camZ = pZ;
                       Matrix.setLookAtM(view,0, camX,camY,camZ, pX+vx,pY+vy,pZ+vz, 0,1,0);
                   } else {
-                      float dist = 10.0f;
-                      float up   = 3.8f;
+                      float dist = 11.0f;
+                      float up   = 4.5f;
 
                       camX = pX - vx*dist;
                       camY = pY - vy*dist + up;
                       camZ = pZ - vz*dist;
 
-                      Matrix.setLookAtM(view,0, camX,camY,camZ, pX, pY-1.2f, pZ, 0,1,0);
+                      Matrix.setLookAtM(view,0, camX,camY,camZ, pX, pY-0.8f, pZ, 0,1,0);
                   }
 
                   Matrix.multiplyMM(vp,0,proj,0,view,0);
@@ -1267,6 +1268,7 @@ jobs:
 
               private void drawSky(){
                   GLES30.glDepthMask(false);
+                  GLES30.glDisable(GLES30.GL_CULL_FACE);
                   GLES30.glUseProgram(skyProg);
                   float[] invVP = new float[16];
                   Matrix.invertM(invVP,0,vp,0);
@@ -1276,6 +1278,7 @@ jobs:
                   GLES30.glEnableVertexAttribArray(0);
                   GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP,0,4);
                   GLES30.glDepthMask(true);
+                  GLES30.glEnable(GLES30.GL_CULL_FACE);
               }
 
               private void drawWorld(float vx,float vy,float vz){
@@ -1286,7 +1289,6 @@ jobs:
                   GLES30.glVertexAttribPointer(0,3,GLES30.GL_FLOAT,false,0,vBuf);GLES30.glEnableVertexAttribArray(0);
                   GLES30.glVertexAttribPointer(1,3,GLES30.GL_FLOAT,false,0,nBuf);GLES30.glEnableVertexAttribArray(1);
 
-                  // Floor
                   Matrix.setIdentityM(model,0);
                   Matrix.translateM(model,0,0,-.05f,0);
                   Matrix.scaleM(model,0,800,.1f,800);
@@ -1294,7 +1296,6 @@ jobs:
                   GLES30.glUniform1f(uFloor,1f);
                   draw(uM,uMVP,uC,.05f,.07f,.11f,1f);
 
-                  // Blocks
                   GLES30.glUniform1f(uFloor,0f);
                   for(int i=0;i<blocks.size();i++){
                       Block b=blocks.get(i);
@@ -1306,7 +1307,6 @@ jobs:
                       draw(uM,uMVP,uC,b.r,b.g,b.b,1f);
                   }
 
-                  // Placement ghost (editor)
                   if(isEngineMode&&!isPlayingLevel&&selectedIndex<0){
                       float px=pX+vx*placeDist,py=pY+vy*placeDist,pz=pZ+vz*placeDist;
                       px=snap(px); py=snap(py); pz=snap(pz);
@@ -1321,7 +1321,6 @@ jobs:
                       GLES30.glDisable(GLES30.GL_BLEND);
                   }
 
-                  // Player character (game/playtest only)
                   if(!(isEngineMode && !isPlayingLevel)){
                       drawPlayerCharacter(uM, uMVP, uC, uSel);
                   }
@@ -1336,8 +1335,9 @@ jobs:
 
                   moveMag = (float)Math.min(1.0, Math.sqrt(jX*jX + jY*jY));
 
-                  float s=.35f,rad=(float)Math.toRadians(rY),pitch=(float)Math.toRadians(rX);
+                  float s=.35f,rad=(float)Math.toRadians(rY);
                   if(isEngineMode&&!isPlayingLevel){
+                      float pitch=(float)Math.toRadians(rX);
                       float fx=(float)Math.sin(rad),fz=(float)-Math.cos(rad),fy=(float)Math.sin(pitch);
                       pX+=(fx*-jY+(float)Math.cos(rad)*jX)*s;
                       pZ+=(fz*-jY+(float)Math.sin(rad)*jX)*s;
@@ -1378,7 +1378,6 @@ jobs:
                       }
                       pX=nX;pY=nY;pZ=nZ;
 
-                      // walk animation phase
                       boolean onGround = isOnGround();
                       if(onGround && moveMag > 0.05f){
                           walkPhase += dt * 8.0f * moveMag;
@@ -1398,11 +1397,10 @@ jobs:
               private void drawPlayerCharacter(int uM, int uMVP, int uC, int uSel){
                   boolean onGround = isOnGround();
 
-                  // Roblox-like proportions
-                  final float legH = 1.1f, legW = 0.45f, legD = 0.45f;
-                  final float torsoH = 1.2f, torsoW = 0.9f, torsoD = 0.55f;
-                  final float headS = 0.8f;
-                  final float armH = 1.05f, armW = 0.35f, armD = 0.35f;
+                  final float legH = 1.25f, legW = 0.52f, legD = 0.52f;
+                  final float torsoH = 1.35f, torsoW = 1.05f, torsoD = 0.62f;
+                  final float headS = 0.95f;
+                  final float armH = 1.2f, armW = 0.4f, armD = 0.4f;
 
                   float footY = pY - PLAYER_HEIGHT;
 
@@ -1413,31 +1411,24 @@ jobs:
 
                   GLES30.glUniform1f(uSel, 0f);
 
-                  // Colors (classic "noob")
                   float skinR=1.0f, skinG=0.9f, skinB=0.2f;
                   float torsoR=0.15f, torsoG=0.45f, torsoB=1.0f;
                   float legsR=0.15f, legsG=0.85f, legsB=0.25f;
 
-                  // TORSO
                   Matrix.setIdentityM(model,0);
                   Matrix.translateM(model,0, pX, footY, pZ);
-                  Matrix.rotateM(model,0, rY, 0,1,0);
                   Matrix.translateM(model,0, 0f, legH + torsoH/2f + bob, 0f);
                   Matrix.scaleM(model,0, torsoW, torsoH, torsoD);
                   draw(uM,uMVP,uC, torsoR,torsoG,torsoB, 1f);
 
-                  // HEAD
                   Matrix.setIdentityM(model,0);
                   Matrix.translateM(model,0, pX, footY, pZ);
-                  Matrix.rotateM(model,0, rY, 0,1,0);
                   Matrix.translateM(model,0, 0f, legH + torsoH + headS/2f + bob, 0f);
                   Matrix.scaleM(model,0, headS, headS, headS);
                   draw(uM,uMVP,uC, skinR,skinG,skinB, 1f);
 
-                  // LEFT ARM
                   Matrix.setIdentityM(model,0);
                   Matrix.translateM(model,0, pX, footY, pZ);
-                  Matrix.rotateM(model,0, rY, 0,1,0);
                   float shoulderY = legH + torsoH - 0.1f + bob;
                   float shoulderX = -(torsoW/2f + armW/2f);
                   Matrix.translateM(model,0, shoulderX, shoulderY, 0f);
@@ -1446,10 +1437,8 @@ jobs:
                   Matrix.scaleM(model,0, armW, armH, armD);
                   draw(uM,uMVP,uC, skinR,skinG,skinB, 1f);
 
-                  // RIGHT ARM
                   Matrix.setIdentityM(model,0);
                   Matrix.translateM(model,0, pX, footY, pZ);
-                  Matrix.rotateM(model,0, rY, 0,1,0);
                   shoulderX = (torsoW/2f + armW/2f);
                   Matrix.translateM(model,0, shoulderX, shoulderY, 0f);
                   Matrix.rotateM(model,0, -armAngle, 1,0,0);
@@ -1457,22 +1446,18 @@ jobs:
                   Matrix.scaleM(model,0, armW, armH, armD);
                   draw(uM,uMVP,uC, skinR,skinG,skinB, 1f);
 
-                  // LEFT LEG
                   Matrix.setIdentityM(model,0);
                   Matrix.translateM(model,0, pX, footY, pZ);
-                  Matrix.rotateM(model,0, rY, 0,1,0);
-                  float hipX = -0.25f;
+                  float hipX = -0.28f;
                   Matrix.translateM(model,0, hipX, legH, 0f);
                   Matrix.rotateM(model,0, legAngle, 1,0,0);
                   Matrix.translateM(model,0, 0f, -legH/2f, 0f);
                   Matrix.scaleM(model,0, legW, legH, legD);
                   draw(uM,uMVP,uC, legsR,legsG,legsB, 1f);
 
-                  // RIGHT LEG
                   Matrix.setIdentityM(model,0);
                   Matrix.translateM(model,0, pX, footY, pZ);
-                  Matrix.rotateM(model,0, rY, 0,1,0);
-                  hipX = 0.25f;
+                  hipX = 0.28f;
                   Matrix.translateM(model,0, hipX, legH, 0f);
                   Matrix.rotateM(model,0, -legAngle, 1,0,0);
                   Matrix.translateM(model,0, 0f, -legH/2f, 0f);
@@ -2118,5 +2103,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Enjoer_6.1_Stars
+          name: Enjoer_6.1_Stars_Fixed
           path: app/build/outputs/apk/debug/app-debug.apk
