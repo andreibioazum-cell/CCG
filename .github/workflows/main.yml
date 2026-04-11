@@ -1156,9 +1156,6 @@ jobs:
               public void onSurfaceCreated(GL10 gl, EGLConfig cfg) {
                   GLES30.glEnable(GLES30.GL_DEPTH_TEST);
                   GLES30.glDepthFunc(GLES30.GL_LEQUAL);
-                  GLES30.glEnable(GLES30.GL_CULL_FACE);
-                  GLES30.glCullFace(GLES30.GL_BACK);
-                  GLES30.glFrontFace(GLES30.GL_CCW);
 
                   String vs="#version 300 es\n"+
                       "layout(location=0)in vec4 aP;layout(location=1)in vec3 aN;"+
@@ -1191,8 +1188,8 @@ jobs:
                       "vec3 d=normalize(vDir);"+
                       "float t=clamp(d.y*0.5+0.5,0.0,1.0);"+
                       "vec3 col=mix(vec3(0.005,0.008,0.02), vec3(0.03,0.16,0.36), t);"+
-                      "if(d.y>0.0){"+
-                      "vec2 uv=d.xz/(d.y+0.05);uv*=90.0;vec2 id=floor(uv);vec2 gv=fract(uv)-0.5;"+
+                      "if(d.y>-0.05){"+
+                      "vec2 uv=d.xz/(abs(d.y)+0.25);uv*=110.0;vec2 id=floor(uv);vec2 gv=fract(uv)-0.5;"+
                       "float rnd=hash(id);float star=step(0.9935,rnd);float dist=length(gv);"+
                       "float tw=0.65+0.35*sin(rnd*500.0);"+
                       "float s=smoothstep(0.16,0.0,dist)*star*tw*2.8;"+
@@ -1250,14 +1247,16 @@ jobs:
                       camX = pX; camY = pY; camZ = pZ;
                       Matrix.setLookAtM(view,0, camX,camY,camZ, pX+vx,pY+vy,pZ+vz, 0,1,0);
                   } else {
-                      float dist = 11.0f;
-                      float up   = 4.5f;
+                      float dist = 10.0f;
+                      float up   = 3.8f;
 
                       camX = pX - vx*dist;
                       camY = pY - vy*dist + up;
                       camZ = pZ - vz*dist;
 
-                      Matrix.setLookAtM(view,0, camX,camY,camZ, pX, pY-0.8f, pZ, 0,1,0);
+                      if(camY < FLOOR_Y + 0.5f) camY = FLOOR_Y + 0.5f;
+
+                      Matrix.setLookAtM(view,0, camX,camY,camZ, pX, pY-1.2f, pZ, 0,1,0);
                   }
 
                   Matrix.multiplyMM(vp,0,proj,0,view,0);
@@ -1268,7 +1267,6 @@ jobs:
 
               private void drawSky(){
                   GLES30.glDepthMask(false);
-                  GLES30.glDisable(GLES30.GL_CULL_FACE);
                   GLES30.glUseProgram(skyProg);
                   float[] invVP = new float[16];
                   Matrix.invertM(invVP,0,vp,0);
@@ -1278,7 +1276,6 @@ jobs:
                   GLES30.glEnableVertexAttribArray(0);
                   GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP,0,4);
                   GLES30.glDepthMask(true);
-                  GLES30.glEnable(GLES30.GL_CULL_FACE);
               }
 
               private void drawWorld(float vx,float vy,float vz){
@@ -1335,16 +1332,21 @@ jobs:
 
                   moveMag = (float)Math.min(1.0, Math.sqrt(jX*jX + jY*jY));
 
-                  float s=.35f,rad=(float)Math.toRadians(rY);
+                  float s=.35f,rad=(float)Math.toRadians(rY),pitch=(float)Math.toRadians(rX);
                   if(isEngineMode&&!isPlayingLevel){
-                      float pitch=(float)Math.toRadians(rX);
                       float fx=(float)Math.sin(rad),fz=(float)-Math.cos(rad),fy=(float)Math.sin(pitch);
                       pX+=(fx*-jY+(float)Math.cos(rad)*jX)*s;
                       pZ+=(fz*-jY+(float)Math.sin(rad)*jX)*s;
                       pY+=(fy*-jY)*s;
                   } else {
-                      float mX=((float)Math.sin(rad)*-jY+(float)Math.cos(rad)*jX)*s;
-                      float mZ=((float)-Math.cos(rad)*-jY+(float)Math.sin(rad)*jX)*s;
+                      float forwardX = (float)Math.sin(rad);
+                      float forwardZ = (float)-Math.cos(rad);
+                      float rightX   = (float)Math.cos(rad);
+                      float rightZ   = (float)Math.sin(rad);
+
+                      float mX = (rightX*jX + forwardX*(-jY))*s;
+                      float mZ = (rightZ*jX + forwardZ*(-jY))*s;
+
                       vY-=.025f;
                       float nX=pX+mX,nY=pY+vY,nZ=pZ+mZ,fY=nY-PLAYER_HEIGHT,hY=nY;
                       if(fY<FLOOR_Y){nY=FLOOR_Y+PLAYER_HEIGHT;vY=0;}
@@ -1397,10 +1399,10 @@ jobs:
               private void drawPlayerCharacter(int uM, int uMVP, int uC, int uSel){
                   boolean onGround = isOnGround();
 
-                  final float legH = 1.25f, legW = 0.52f, legD = 0.52f;
-                  final float torsoH = 1.35f, torsoW = 1.05f, torsoD = 0.62f;
-                  final float headS = 0.95f;
-                  final float armH = 1.2f, armW = 0.4f, armD = 0.4f;
+                  final float legH = 1.4f, legW = 0.55f, legD = 0.55f;
+                  final float torsoH = 1.5f, torsoW = 1.1f, torsoD = 0.7f;
+                  final float headS = 1.0f;
+                  final float armH = 1.3f, armW = 0.45f, armD = 0.45f;
 
                   float footY = pY - PLAYER_HEIGHT;
 
@@ -1417,18 +1419,21 @@ jobs:
 
                   Matrix.setIdentityM(model,0);
                   Matrix.translateM(model,0, pX, footY, pZ);
+                  Matrix.rotateM(model,0, rY, 0,1,0);
                   Matrix.translateM(model,0, 0f, legH + torsoH/2f + bob, 0f);
                   Matrix.scaleM(model,0, torsoW, torsoH, torsoD);
                   draw(uM,uMVP,uC, torsoR,torsoG,torsoB, 1f);
 
                   Matrix.setIdentityM(model,0);
                   Matrix.translateM(model,0, pX, footY, pZ);
+                  Matrix.rotateM(model,0, rY, 0,1,0);
                   Matrix.translateM(model,0, 0f, legH + torsoH + headS/2f + bob, 0f);
                   Matrix.scaleM(model,0, headS, headS, headS);
                   draw(uM,uMVP,uC, skinR,skinG,skinB, 1f);
 
                   Matrix.setIdentityM(model,0);
                   Matrix.translateM(model,0, pX, footY, pZ);
+                  Matrix.rotateM(model,0, rY, 0,1,0);
                   float shoulderY = legH + torsoH - 0.1f + bob;
                   float shoulderX = -(torsoW/2f + armW/2f);
                   Matrix.translateM(model,0, shoulderX, shoulderY, 0f);
@@ -1439,6 +1444,7 @@ jobs:
 
                   Matrix.setIdentityM(model,0);
                   Matrix.translateM(model,0, pX, footY, pZ);
+                  Matrix.rotateM(model,0, rY, 0,1,0);
                   shoulderX = (torsoW/2f + armW/2f);
                   Matrix.translateM(model,0, shoulderX, shoulderY, 0f);
                   Matrix.rotateM(model,0, -armAngle, 1,0,0);
@@ -1448,7 +1454,8 @@ jobs:
 
                   Matrix.setIdentityM(model,0);
                   Matrix.translateM(model,0, pX, footY, pZ);
-                  float hipX = -0.28f;
+                  Matrix.rotateM(model,0, rY, 0,1,0);
+                  float hipX = -0.3f;
                   Matrix.translateM(model,0, hipX, legH, 0f);
                   Matrix.rotateM(model,0, legAngle, 1,0,0);
                   Matrix.translateM(model,0, 0f, -legH/2f, 0f);
@@ -1457,7 +1464,8 @@ jobs:
 
                   Matrix.setIdentityM(model,0);
                   Matrix.translateM(model,0, pX, footY, pZ);
-                  hipX = 0.28f;
+                  Matrix.rotateM(model,0, rY, 0,1,0);
+                  hipX = 0.3f;
                   Matrix.translateM(model,0, hipX, legH, 0f);
                   Matrix.rotateM(model,0, -legAngle, 1,0,0);
                   Matrix.translateM(model,0, 0f, -legH/2f, 0f);
