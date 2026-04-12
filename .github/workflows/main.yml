@@ -1003,7 +1003,6 @@ jobs:
           }
           SCRIPT
 
-          # ИСПРАВЛЕННЫЙ GameRenderer.java
           cat <<'RENDERER' > app/src/main/java/com/enjoer/game/GameRenderer.java
           package com.enjoer.game;
 
@@ -1033,16 +1032,16 @@ jobs:
               public int selectedIndex = -1;
               public float screenW=1, screenH=1;
               public EventHost eventHost;
-              private static final float FLOOR_Y=0f, PLAYER_HEIGHT=4.0f, PLAYER_RADIUS=0.6f;
+              // Increased player size: height from 3.2 to ~3.84, radius from 0.5 to 0.6
+              private static final float FLOOR_Y=0f, PLAYER_HEIGHT=3.84f, PLAYER_RADIUS=0.6f;
 
-              // Раздельные углы камеры (для игрового режима)
-              public float camYaw = 0f, camPitch = 0f;
-
+              // --- Third-person camera + animation ---
               private float camX=0, camY=0, camZ=0;
               private long lastTimeNs = 0L;
               private float timeSec = 0f;
               private float walkPhase = 0f;
-              private float moveMag = 0f;
+              private float moveMag = 0f; // 0..1
+              private float targetRY = 0f; // for smooth rotation
 
               public Block getSelectedBlock(){
                   if(selectedIndex>=0 && selectedIndex<blocks.size()) return blocks.get(selectedIndex);
@@ -1192,10 +1191,9 @@ jobs:
                       "vec3 d=normalize(vDir);"+
                       "float t=clamp(d.y*0.5+0.5,0.0,1.0);"+
                       "vec3 col=mix(vec3(0.005,0.008,0.02), vec3(0.03,0.16,0.36), t);"+
-                      "vec2 uv = d.xz / (abs(d.y)+0.3); uv *= 120.0;"+
-                      "vec2 id=floor(uv); vec2 gv=fract(uv)-0.5;"+
-                      "float rnd=hash(id); float star=step(0.992, rnd);"+
-                      "float dist=length(gv);"+
+                      // Stars everywhere (no d.y restriction)
+                      "vec2 uv=d.xz/(abs(d.y)+0.25);uv*=140.0;vec2 id=floor(uv);vec2 gv=fract(uv)-0.5;"+
+                      "float rnd=hash(id);float star=step(0.988,rnd);float dist=length(gv);"+
                       "float tw=0.65+0.35*sin(rnd*500.0);"+
                       "float s=smoothstep(0.16,0.0,dist)*star*tw*2.8;"+
                       "float glow=smoothstep(0.42,0.0,dist)*star*0.9;"+
@@ -1245,34 +1243,29 @@ jobs:
                   GLES30.glClearColor(.01f,.015f,.03f,1f);
                   GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT|GLES30.GL_DEPTH_BUFFER_BIT);
 
-                  float vx, vy, vz;
+                  float vx=(float)(Math.sin(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
+                  float vy=(float)Math.sin(Math.toRadians(rX));
+                  float vz=(float)(-Math.cos(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
 
-                  // Разделяем камеру и игрока
+                  // Camera: editor = free/1st-person, game/playtest = 3rd-person
                   if(isEngineMode && !isPlayingLevel){
-                      vx=(float)(Math.sin(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
-                      vy=(float)Math.sin(Math.toRadians(rX));
-                      vz=(float)(-Math.cos(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
-
                       camX = pX; camY = pY; camZ = pZ;
                       Matrix.setLookAtM(view,0, camX,camY,camZ, pX+vx,pY+vy,pZ+vz, 0,1,0);
                   } else {
-                      // В игре камера использует camYaw/camPitch, персонаж использует rY
-                      vx=(float)(Math.sin(Math.toRadians(camYaw))*Math.cos(Math.toRadians(camPitch)));
-                      vy=(float)Math.sin(Math.toRadians(camPitch));
-                      vz=(float)(-Math.cos(Math.toRadians(camYaw))*Math.cos(Math.toRadians(camPitch)));
-
                       float dist = 10.0f;
                       float up   = 3.8f;
+
                       camX = pX - vx*dist;
                       camY = pY - vy*dist + up;
                       camZ = pZ - vz*dist;
+
                       Matrix.setLookAtM(view,0, camX,camY,camZ, pX, pY-1.2f, pZ, 0,1,0);
                   }
 
                   Matrix.multiplyMM(vp,0,proj,0,view,0);
 
                   drawSky();
-                  drawWorld();
+                  drawWorld(vx,vy,vz);
               }
 
               private void drawSky(){
@@ -1288,7 +1281,7 @@ jobs:
                   GLES30.glDepthMask(true);
               }
 
-              private void drawWorld(){
+              private void drawWorld(float vx,float vy,float vz){
                   GLES30.glUseProgram(prog);
                   int uMVP=GLES30.glGetUniformLocation(prog,"uMVP"),uM=GLES30.glGetUniformLocation(prog,"uM"),uC=GLES30.glGetUniformLocation(prog,"uC");
                   int uSel=GLES30.glGetUniformLocation(prog,"uSel"),uFloor=GLES30.glGetUniformLocation(prog,"isFloor");
@@ -1296,8 +1289,7 @@ jobs:
                   GLES30.glVertexAttribPointer(0,3,GLES30.GL_FLOAT,false,0,vBuf);GLES30.glEnableVertexAttribArray(0);
                   GLES30.glVertexAttribPointer(1,3,GLES30.GL_FLOAT,false,0,nBuf);GLES30.glEnableVertexAttribArray(1);
 
-                  // Floor (непрозрачный)
-                  GLES30.glDisable(GLES30.GL_BLEND);
+                  // Floor
                   Matrix.setIdentityM(model,0);
                   Matrix.translateM(model,0,0,-.05f,0);
                   Matrix.scaleM(model,0,800,.1f,800);
@@ -1319,10 +1311,7 @@ jobs:
 
                   // Placement ghost (editor)
                   if(isEngineMode&&!isPlayingLevel&&selectedIndex<0){
-                      float vx=(float)(Math.sin(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
-                      float vy=(float)Math.sin(Math.toRadians(rX));
-                      float vz=(float)(-Math.cos(Math.toRadians(rY))*Math.cos(Math.toRadians(rX)));
-                      float px=pX+vx*placeDist, py=pY+vy*placeDist, pz=pZ+vz*placeDist;
+                      float px=pX+vx*placeDist,py=pY+vy*placeDist,pz=pZ+vz*placeDist;
                       px=snap(px); py=snap(py); pz=snap(pz);
                       if(py-blockSY/2f<FLOOR_Y)py=FLOOR_Y+blockSY/2f;
                       Matrix.setIdentityM(model,0);
@@ -1350,28 +1339,36 @@ jobs:
 
                   moveMag = (float)Math.min(1.0, Math.sqrt(jX*jX + jY*jY));
 
-                  float s=.35f, rad=(float)Math.toRadians(rY), pitch=(float)Math.toRadians(rX);
+                  float s=.35f,rad=(float)Math.toRadians(rY),pitch=(float)Math.toRadians(rX);
+
+                  // Player rotation towards joystick direction (when moving)
+                  if(!isEngineMode || isPlayingLevel){
+                      if(moveMag > 0.05f){
+                          // Compute movement direction in world space from joystick
+                          float mX=((float)Math.sin(rad)*-jY+(float)Math.cos(rad)*jX);
+                          float mZ=((float)-Math.cos(rad)*-jY+(float)Math.sin(rad)*jX);
+                          float target = (float)Math.toDegrees(Math.atan2(mX, mZ));
+                          // Smooth rotation (lerp)
+                          float diff = target - rY;
+                          while(diff < -180) diff += 360;
+                          while(diff > 180) diff -= 360;
+                          rY += diff * Math.min(1f, dt * 8f);
+                      }
+                  }
+
                   if(isEngineMode&&!isPlayingLevel){
-                      float fx=(float)Math.sin(rad), fz=(float)-Math.cos(rad), fy=(float)Math.sin(pitch);
+                      float fx=(float)Math.sin(rad),fz=(float)-Math.cos(rad),fy=(float)Math.sin(pitch);
                       pX+=(fx*-jY+(float)Math.cos(rad)*jX)*s;
                       pZ+=(fz*-jY+(float)Math.sin(rad)*jX)*s;
                       pY+=(fy*-jY)*s;
+                      // Prevent camera going below floor in editor
+                      pY = Math.max(pY, FLOOR_Y + 0.5f);
                   } else {
                       float mX=((float)Math.sin(rad)*-jY+(float)Math.cos(rad)*jX)*s;
                       float mZ=((float)-Math.cos(rad)*-jY+(float)Math.sin(rad)*jX)*s;
-                      
-                      // Поворот игрока в сторону движения (тело)
-                      if(moveMag > 0.1f){
-                          float targetAngle = (float)Math.toDegrees(Math.atan2(jX, -jY));
-                          float diff = targetAngle - rY;
-                          while(diff > 180) diff -= 360;
-                          while(diff < -180) diff += 360;
-                          rY += diff * Math.min(1f, dt * 8f);
-                      }
-
                       vY-=.025f;
-                      float nX=pX+mX, nY=pY+vY, nZ=pZ+mZ, fY=nY-PLAYER_HEIGHT, hY=nY;
-                      if(fY<FLOOR_Y){nY=FLOOR_Y+PLAYER_HEIGHT; vY=0;}
+                      float nX=pX+mX,nY=pY+vY,nZ=pZ+mZ,fY=nY-PLAYER_HEIGHT,hY=nY;
+                      if(fY<FLOOR_Y){nY=FLOOR_Y+PLAYER_HEIGHT;vY=0;}
                       for(Block b:blocks){
                           boolean overlapXZ = nX+PLAYER_RADIUS>b.minX()&&nX-PLAYER_RADIUS<b.maxX()&&nZ+PLAYER_RADIUS>b.minZ()&&nZ-PLAYER_RADIUS<b.maxZ();
                           boolean overlapY = fY<b.maxY()-.1f&&hY>b.minY()+.1f;
@@ -1388,11 +1385,11 @@ jobs:
 
                           if(overlapXZ){
                               if(pY-PLAYER_HEIGHT>=b.maxY()-.15f&&fY<b.maxY()){
-                                  nY=b.maxY()+PLAYER_HEIGHT; vY=0;
+                                  nY=b.maxY()+PLAYER_HEIGHT;vY=0;
                               }else if(pY<b.minY()&&hY>b.minY()){
-                                  nY=b.minY(); vY=0;
+                                  nY=b.minY();vY=0;
                               }else if(overlapY){
-                                  float oX1=(nX+PLAYER_RADIUS)-b.minX(), oX2=b.maxX()-(nX-PLAYER_RADIUS), oZ1=(nZ+PLAYER_RADIUS)-b.minZ(), oZ2=b.maxZ()-(nZ-PLAYER_RADIUS), minO=Math.min(Math.min(oX1,oX2),Math.min(oZ1,oZ2));
+                                  float oX1=(nX+PLAYER_RADIUS)-b.minX(),oX2=b.maxX()-(nX-PLAYER_RADIUS),oZ1=(nZ+PLAYER_RADIUS)-b.minZ(),oZ2=b.maxZ()-(nZ-PLAYER_RADIUS),minO=Math.min(Math.min(oX1,oX2),Math.min(oZ1,oZ2));
                                   if(minO==oX1)nX=b.minX()-PLAYER_RADIUS;
                                   else if(minO==oX2)nX=b.maxX()+PLAYER_RADIUS;
                                   else if(minO==oZ1)nZ=b.minZ()-PLAYER_RADIUS;
@@ -1400,8 +1397,9 @@ jobs:
                               }
                           }
                       }
-                      pX=nX; pY=nY; pZ=nZ;
+                      pX=nX;pY=nY;pZ=nZ;
 
+                      // walk animation phase
                       boolean onGround = isOnGround();
                       if(onGround && moveMag > 0.05f){
                           walkPhase += dt * 8.0f * moveMag;
@@ -1421,10 +1419,11 @@ jobs:
               private void drawPlayerCharacter(int uM, int uMVP, int uC, int uSel){
                   boolean onGround = isOnGround();
 
-                  final float legH = 1.4f, legW = 0.55f, legD = 0.55f;
-                  final float torsoH = 1.5f, torsoW = 1.1f, torsoD = 0.7f;
-                  final float headS = 1.0f;
-                  final float armH = 1.3f, armW = 0.45f, armD = 0.45f;
+                  // Roblox-like proportions (scaled up by 20%)
+                  final float legH = 1.32f, legW = 0.54f, legD = 0.54f;
+                  final float torsoH = 1.44f, torsoW = 1.08f, torsoD = 0.66f;
+                  final float headS = 0.96f;
+                  final float armH = 1.26f, armW = 0.42f, armD = 0.42f;
 
                   float footY = pY - PLAYER_HEIGHT;
 
@@ -1435,6 +1434,7 @@ jobs:
 
                   GLES30.glUniform1f(uSel, 0f);
 
+                  // Colors (classic "noob")
                   float skinR=1.0f, skinG=0.9f, skinB=0.2f;
                   float torsoR=0.15f, torsoG=0.45f, torsoB=1.0f;
                   float legsR=0.15f, legsG=0.85f, legsB=0.25f;
@@ -1528,7 +1528,6 @@ jobs:
           }
           RENDERER
 
-          # ИСПРАВЛЕННЫЙ MainActivity.java
           cat <<'MAINACT' > app/src/main/java/com/enjoer/game/MainActivity.java
           package com.enjoer.game;
 
@@ -1716,8 +1715,6 @@ jobs:
                       ren.isPlayingLevel=false;
                       ren.blocks.clear();
                       ren.pX=0;ren.pY=20;ren.pZ=35;
-                      ren.rY=0; ren.rX=0;
-                      ren.camYaw=0; ren.camPitch=0;
                       ren.selectedIndex=-1;
                       menuUI.setVisibility(View.GONE);
                       gameUI.setVisibility(View.GONE);
@@ -1760,8 +1757,6 @@ jobs:
                   findViewById(R.id.btn_stop_playtest).setOnClickListener(v->{
                       ren.isPlayingLevel=false;
                       ren.pX=0;ren.pY=20;ren.pZ=35;
-                      ren.rY=0; ren.rX=0;
-                      ren.camYaw=0; ren.camPitch=0;
                       playtestUI.setVisibility(View.GONE);
                       engineUI.setVisibility(View.VISIBLE);
                       updAxis();
@@ -1867,12 +1862,9 @@ jobs:
                   setupJoy(findViewById(R.id.joy_base),findViewById(R.id.joy_stick));
                   setupJoy(findViewById(R.id.engine_joy_base),findViewById(R.id.engine_joy_stick));
                   setupJoy(findViewById(R.id.playtest_joy_base),findViewById(R.id.playtest_joy_stick));
+                  setupLook(findViewById(R.id.look_zone));
+                  setupLook(findViewById(R.id.playtest_look_zone));
 
-                  // Камера свайпами (look_zone, playtest_look_zone)
-                  setupLook(findViewById(R.id.look_zone), true);
-                  setupLook(findViewById(R.id.playtest_look_zone), true);
-
-                  // Редактор: касания на engine_touch_zone (камера + выбор блоков)
                   findViewById(R.id.engine_touch_zone).setOnTouchListener((v,e)->{
                       if(e.getAction()==MotionEvent.ACTION_DOWN){
                           lx=e.getX();ly=e.getY();
@@ -1903,10 +1895,10 @@ jobs:
                   updGridButton();
               }
 
-              private void resetP(){ 
-                  ren.pX=0; ren.pY=7; ren.pZ=15; ren.vY=0; 
-                  ren.rY=0; ren.rX=0;
-                  ren.camYaw=0; ren.camPitch=0;
+              @Override
+              protected void onSaveInstanceState(Bundle outState) {
+                  super.onSaveInstanceState(outState);
+                  outState.putInt("mode", pendingMode);
               }
 
               private void showScriptDialog(){
@@ -1979,6 +1971,8 @@ jobs:
                   updSizeInfo();
               }
 
+              private void resetP(){ ren.pX=0; ren.pY=7; ren.pZ=15; ren.vY=0; }
+
               private void axisBtn(int id,float dx,float dy,float dz){
                   findViewById(id).setOnTouchListener((v,e)->{
                       if(e.getAction()==MotionEvent.ACTION_DOWN||e.getAction()==MotionEvent.ACTION_MOVE){
@@ -2040,20 +2034,13 @@ jobs:
                   });
               }
 
-              private void setupLook(View z, boolean isGameMode){
+              private void setupLook(View z){
                   z.setOnTouchListener((v,e)->{
                       if(e.getAction()==MotionEvent.ACTION_DOWN){
                           lx=e.getX();ly=e.getY();
                       }else if(e.getAction()==MotionEvent.ACTION_MOVE){
-                          if(isGameMode && (ren.isPlayingLevel || !ren.isEngineMode)){
-                              // Игровой режим: управляем camYaw/camPitch
-                              ren.camYaw+=(e.getX()-lx)*.25f;
-                              ren.camPitch=Math.max(-85,Math.min(85,ren.camPitch-(e.getY()-ly)*.25f));
-                          } else {
-                              // Редактор: управляем rY/rX
-                              ren.rY+=(e.getX()-lx)*.25f;
-                              ren.rX=Math.max(-85,Math.min(85,ren.rX-(e.getY()-ly)*.25f));
-                          }
+                          ren.rY+=(e.getX()-lx)*.25f;
+                          ren.rX=Math.max(-85,Math.min(85,ren.rX-(e.getY()-ly)*.25f));
                           lx=e.getX();ly=e.getY();
                       }
                       return true;
