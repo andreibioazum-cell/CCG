@@ -1041,7 +1041,6 @@ jobs:
               private float timeSec = 0f;
               private float walkPhase = 0f;
               private float moveMag = 0f; // 0..1
-              private float targetRY = 0f; // for smooth rotation
 
               public Block getSelectedBlock(){
                   if(selectedIndex>=0 && selectedIndex<blocks.size()) return blocks.get(selectedIndex);
@@ -1340,21 +1339,6 @@ jobs:
                   moveMag = (float)Math.min(1.0, Math.sqrt(jX*jX + jY*jY));
 
                   float s=.35f,rad=(float)Math.toRadians(rY),pitch=(float)Math.toRadians(rX);
-
-                  // Player rotation towards joystick direction (when moving)
-                  if(!isEngineMode || isPlayingLevel){
-                      if(moveMag > 0.05f){
-                          // Compute movement direction in world space from joystick
-                          float mX=((float)Math.sin(rad)*-jY+(float)Math.cos(rad)*jX);
-                          float mZ=((float)-Math.cos(rad)*-jY+(float)Math.sin(rad)*jX);
-                          float target = (float)Math.toDegrees(Math.atan2(mX, mZ));
-                          // Smooth rotation (lerp)
-                          float diff = target - rY;
-                          while(diff < -180) diff += 360;
-                          while(diff > 180) diff -= 360;
-                          rY += diff * Math.min(1f, dt * 8f);
-                      }
-                  }
 
                   if(isEngineMode&&!isPlayingLevel){
                       float fx=(float)Math.sin(rad),fz=(float)-Math.cos(rad),fy=(float)Math.sin(pitch);
