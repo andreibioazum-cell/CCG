@@ -1,4 +1,4 @@
-name: JsAI Quantum Infinity - Final Stable Build
+name: JsAI Quantum Infinity - Fixed Resource Build
 
 on:
   push:
@@ -11,14 +11,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 1. Генерация полной структуры проекта
+      # 1. Генерация структуры проекта
       - name: Generate Project
         run: |
           mkdir -p app/src/main/java/com/jsai/quantum
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
 
-          # ПРОВЕРКА: Добавление настроек AndroidX (обязательно!)
+          # Настройки AndroidX
           cat > gradle.properties << 'EOF'
           android.useAndroidX=true
           android.enableJetifier=true
@@ -58,8 +58,8 @@ jobs:
                   applicationId "com.jsai.quantum"
                   minSdk 26
                   targetSdk 34
-                  versionCode 13
-                  versionName "Quantum-Infinity-4.6"
+                  versionCode 14
+                  versionName "Quantum-Infinity-4.7"
               }
               buildTypes {
                   release {
@@ -77,7 +77,7 @@ jobs:
           }
           EOF
 
-          # layout/activity_main.xml
+          # layout/activity_main.xml (ИСПРАВЛЕНО: android:textColorHint)
           cat > app/src/main/res/layout/activity_main.xml << 'EOF'
           <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
               android:layout_width="match_parent" android:layout_height="match_parent"
@@ -91,7 +91,7 @@ jobs:
                       android:textColor="#00E5FF" android:fontFamily="monospace" android:textSize="12sp"/>
               </ScrollView>
               <EditText android:id="@+id/input" android:layout_width="match_parent" android:layout_height="wrap_content"
-                  android:textColor="#FFFFFF" android:hint="Prompt..." android:hintTextColor="#444444"/>
+                  android:textColor="#FFFFFF" android:hint="Prompt..." android:textColorHint="#444444"/>
               <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
                   <Button android:id="@+id/loadBtn" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="DATA"/>
                   <Button android:id="@+id/trainBtn" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="TRAIN"/>
@@ -100,11 +100,10 @@ jobs:
           </LinearLayout>
           EOF
 
-          # strings.xml
+          # Ресурсы
           cat > app/src/main/res/values/strings.xml << 'EOF'
           <resources><string name="app_name">JsAI Infinity</string></resources>
           EOF
-          # themes.xml
           cat > app/src/main/res/values/themes.xml << 'EOF'
           <resources><style name="Theme.JsAI" parent="Theme.AppCompat.NoActionBar"/></resources>
           EOF
@@ -152,7 +151,7 @@ jobs:
                           generateResponse(p)
                       }
                   }
-                  console.text = ">>> JSAI QUANTUM INFINITY 4.6\n>>> NO LIMITS MODE ENABLED\n"
+                  console.text = ">>> JSAI QUANTUM INFINITY 4.7 READY\n"
               }
 
               private fun startInfinityTraining() = CoroutineScope(Dispatchers.Main).launch {
