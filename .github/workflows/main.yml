@@ -1,4 +1,4 @@
-name: JsAI Quantum Infinity - Final Fix
+name: JsAI Quantum Infinity - 100% Working Build
 
 on:
   push:
@@ -11,15 +11,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 1. Генерируем проект с ПРАВИЛЬНОЙ структурой репозиториев
+      # 1. Генерация ПРАВИЛЬНОЙ структуры проекта
       - name: Generate Project
         run: |
           mkdir -p app/src/main/java/com/jsai/quantum
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
-          mkdir -p app/src/main/res/drawable
+          mkdir -p app/src/main/res/mipmap-mdpi
 
-          # settings.gradle (Здесь теперь управляются все репозитории)
+          # settings.gradle
           cat > settings.gradle << 'EOF'
           pluginManagement {
               repositories { google(); mavenCentral(); gradlePluginPortal() }
@@ -32,20 +32,20 @@ jobs:
           include ':app'
           EOF
 
-          # build.gradle (Root) - Убрали конфликтующий allprojects
+          # build.gradle (Root)
           cat > build.gradle << 'EOF'
-          buildscript {
-              repositories { google(); mavenCentral() }
-              dependencies {
-                  classpath 'com.android.tools.build:gradle:8.2.2'
-                  classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.20'
-              }
+          plugins {
+              id 'com.android.application' version '8.2.2' apply false
+              id 'org.jetbrains.kotlin.android' version '1.9.20' apply false
           }
           EOF
 
           # app/build.gradle
           cat > app/build.gradle << 'EOF'
-          plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }
+          plugins {
+              id 'com.android.application'
+              id 'org.jetbrains.kotlin.android'
+          }
           android {
               namespace 'com.jsai.quantum'
               compileSdk 34
@@ -53,10 +53,14 @@ jobs:
                   applicationId "com.jsai.quantum"
                   minSdk 26
                   targetSdk 34
-                  versionCode 11
-                  versionName "Quantum-Infinity-4.4"
+                  versionCode 12
+                  versionName "Quantum-Infinity-4.5"
               }
-              buildTypes { release { minifyEnabled true; proguardFiles getDefaultProguardFile('proguard-android-optimize.txt') } }
+              buildTypes {
+                  release {
+                      minifyEnabled false
+                  }
+              }
               compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
               kotlinOptions { jvmTarget = "17" }
           }
@@ -68,15 +72,38 @@ jobs:
           }
           EOF
 
+          # layout/activity_main.xml (ОБЯЗАТЕЛЬНО ДЛЯ ID)
+          cat > app/src/main/res/layout/activity_main.xml << 'EOF'
+          <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent" android:layout_height="match_parent"
+              android:orientation="vertical" android:background="#000000" android:padding="16dp">
+              <TextView android:id="@+id/stats" android:layout_width="match_parent" android:layout_height="wrap_content"
+                  android:textColor="#00FF00" android:fontFamily="monospace" android:textSize="10sp"/>
+              <ProgressBar android:id="@+id/progress" style="?android:attr/progressBarStyleHorizontal"
+                  android:layout_width="match_parent" android:layout_height="wrap_content"/>
+              <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+                  <TextView android:id="@+id/console" android:layout_width="match_parent" android:layout_height="wrap_content"
+                      android:textColor="#00E5FF" android:fontFamily="monospace" android:textSize="12sp"/>
+              </ScrollView>
+              <EditText android:id="@+id/input" android:layout_width="match_parent" android:layout_height="wrap_content"
+                  android:textColor="#FFFFFF" android:hint="Prompt..." android:setHintTextColor="#444444"/>
+              <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                  <Button android:id="@+id/loadBtn" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="DATA"/>
+                  <Button android:id="@+id/trainBtn" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="TRAIN"/>
+                  <Button android:id="@+id/sendBtn" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="SEND"/>
+              </LinearLayout>
+          </LinearLayout>
+          EOF
+
           # Ресурсы
-          cat > app/src/main/res/values/colors.xml << 'EOF'
-          <resources><color name="black">#FF000000</color><color name="white">#FFFFFFFF</color></resources>
+          cat > app/src/main/res/values/strings.xml << 'EOF'
+          <resources><string name="app_name">JsAI Infinity</string></resources>
           EOF
           cat > app/src/main/res/values/themes.xml << 'EOF'
           <resources><style name="Theme.JsAI" parent="Theme.AppCompat.NoActionBar"/></resources>
           EOF
 
-          # MainActivity.kt (Твой код Infinity с контекстом 4)
+          # MainActivity.kt
           cat > app/src/main/java/com/jsai/quantum/MainActivity.kt << 'EOF'
           package com.jsai.quantum
           import android.app.Activity
@@ -100,58 +127,59 @@ jobs:
 
               override fun onCreate(savedInstanceState: Bundle?) {
                   super.onCreate(savedInstanceState)
-                  setupUI()
-              }
+                  setContentView(R.layout.activity_main)
+                  
+                  console = findViewById(R.id.console)
+                  bar = findViewById(R.id.progress)
+                  stats = findViewById(R.id.stats)
+                  val input = findViewById<EditText>(R.id.input)
 
-              private fun setupUI() {
-                  val root = LinearLayout(this).apply {
-                      orientation = LinearLayout.VERTICAL
-                      setBackgroundColor(0xFF000000.toInt())
-                      padding = 32
+                  findViewById<Button>(R.id.loadBtn).setOnClickListener {
+                      startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { type = "text/*" }, 101)
                   }
-                  stats = TextView(this).apply { textColor = 0xFF00FF00.toInt(); typeface = android.graphics.Typeface.MONOSPACE; textSize = 10f }
-                  bar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal)
-                  console = TextView(this).apply { textColor = 0xFF00E5FF.toInt(); textSize = 12f; typeface = android.graphics.Typeface.MONOSPACE }
-                  val scroll = ScrollView(this).apply { layoutParams = LinearLayout.LayoutParams(-1, 0, 1f); addView(console) }
-                  val input = EditText(this).apply { setTextColor(0xFFFFFFFF.toInt()); hint = "Neural prompt..." }
-                  val row = LinearLayout(this)
-                  val load = Button(this).apply { text = "DATA" }; val train = Button(this).apply { text = "TRAIN" }; val send = Button(this).apply { text = "SEND" }
-                  row.addView(load); row.addView(train); row.addView(send)
-                  root.addView(stats); root.addView(bar); root.addView(scroll); root.addView(input); root.addView(row)
-                  setContentView(root)
-                  load.setOnClickListener { startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { type = "text/*" }, 101) }
-                  train.setOnClickListener { if(!isTraining && selectedFileUri != null) startInfinityTraining() }
-                  send.setOnClickListener {
+                  findViewById<Button>(R.id.trainBtn).setOnClickListener {
+                      if(!isTraining && selectedFileUri != null) startInfinityTraining()
+                  }
+                  findViewById<Button>(R.id.sendBtn).setOnClickListener {
                       val p = input.text.toString()
-                      if(p.isNotBlank()) { console.append("\n\nUSER: $p"); input.setText(""); generateResponse(p) }
+                      if(p.isNotBlank()) {
+                          console.append("\n\nUSER: $p")
+                          input.setText("")
+                          generateResponse(p)
+                      }
                   }
+                  console.text = ">>> JSAI QUANTUM INFINITY 4.5 READY\n"
               }
 
               private fun startInfinityTraining() = CoroutineScope(Dispatchers.Main).launch {
                   isTraining = true
                   val uri = selectedFileUri ?: return@launch
-                  console.append("\n[INFINITY ENGINE: Processing stream...]")
+                  console.append("\n[PROCESSING STREAM...]")
                   withContext(Dispatchers.Default) {
                       try {
-                          val inputStream: InputStream? = contentResolver.openInputStream(uri)
-                          val scanner = Scanner(inputStream).useDelimiter("[^a-zA-Zа-яА-Я0-9']+")
-                          val buffer = LinkedList<String>()
-                          var count = 0
-                          while(scanner.hasNext()) {
-                              val word = scanner.next().lowercase()
-                              if (word.length < 2) continue
-                              if (buffer.size == contextOrder) {
-                                  val context = buffer.toList()
-                                  val nextMap = brain.getOrPut(context) { mutableMapOf() }
-                                  nextMap[word] = (nextMap[word] ?: 0) + 1
-                                  buffer.removeFirst()
-                                  count++
+                          contentResolver.openInputStream(uri)?.use { stream ->
+                              val scanner = Scanner(stream).useDelimiter("[^a-zA-Zа-яА-Я0-9']+")
+                              val buffer = LinkedList<String>()
+                              var count = 0
+                              while(scanner.hasNext()) {
+                                  val word = scanner.next().lowercase()
+                                  if (word.length < 2) continue
+                                  if (buffer.size == contextOrder) {
+                                      val context = buffer.toList()
+                                      val nextMap = brain.getOrPut(context) { mutableMapOf() }
+                                      nextMap[word] = (nextMap[word] ?: 0) + 1
+                                      buffer.removeFirst()
+                                      count++
+                                  }
+                                  buffer.add(word)
+                                  if (count % 5000 == 0) {
+                                      withContext(Dispatchers.Main) { stats.text = "TOKENS: $count | NODES: ${brain.size}" }
+                                  }
                               }
-                              buffer.add(word)
-                              if (count % 5000 == 0) { withContext(Dispatchers.Main) { stats.text = "TOKENS: $count | NODES: ${brain.size}" } }
                           }
-                          inputStream?.close()
-                      } catch(e: Exception) { withContext(Dispatchers.Main) { console.append("\nError: ${e.message}") } }
+                      } catch(e: Exception) {
+                          withContext(Dispatchers.Main) { console.append("\nError: ${e.message}") }
+                      }
                   }
                   console.append("\n[TRAINING COMPLETE: ${brain.size} nodes mapped]")
                   isTraining = false
@@ -170,9 +198,11 @@ jobs:
                       val nextWords = brain[currentContext]
                       if (nextWords != null) {
                           val nextWord = nextWords.maxByOrNull { it.value + (0..1).random() }?.key ?: brain.keys.random()[0]
-                          result.add(nextWord); currentContext = result.subList(result.size - contextOrder, result.size)
+                          result.add(nextWord)
+                          currentContext = result.subList(result.size - contextOrder, result.size)
                       } else {
-                          val jump = brain.keys.random(); result.addAll(jump); currentContext = jump
+                          val jump = brain.keys.random()
+                          result.addAll(jump); currentContext = jump
                       }
                   }
                   console.append("\nJSAI: ${result.joinToString(" ")}")
@@ -185,7 +215,7 @@ jobs:
           }
           EOF
 
-          # Manifest
+          # Android Manifest
           cat > app/src/main/AndroidManifest.xml << 'EOF'
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <application android:label="JsAI Infinity" android:theme="@style/Theme.JsAI" android:largeHeap="true">
@@ -198,26 +228,22 @@ jobs:
           </manifest>
           EOF
 
-      # 2. Установка Java 17
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      # 3. Установка стабильного Gradle 8.2
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: 8.2
+          gradle-version: 8.4
 
-      # 4. Сборка
       - name: Build APK
         run: gradle assembleDebug --no-daemon
 
-      # 5. Выгрузка
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: JsAI-Infinity-Build
+          name: JsAI-Infinity-Final
           path: app/build/outputs/apk/debug/app-debug.apk
