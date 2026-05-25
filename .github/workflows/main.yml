@@ -1,4 +1,4 @@
-name: JsAI Quantum Infinity - Ultra Stable
+name: JsAI Quantum Infinity - Final Fix
 
 on:
   push:
@@ -11,7 +11,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 1. Генерируем проект со всеми ресурсами
+      # 1. Генерируем проект с ПРАВИЛЬНОЙ структурой репозиториев
       - name: Generate Project
         run: |
           mkdir -p app/src/main/java/com/jsai/quantum
@@ -19,9 +19,11 @@ jobs:
           mkdir -p app/src/main/res/values
           mkdir -p app/src/main/res/drawable
 
-          # settings.gradle
+          # settings.gradle (Здесь теперь управляются все репозитории)
           cat > settings.gradle << 'EOF'
-          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          pluginManagement {
+              repositories { google(); mavenCentral(); gradlePluginPortal() }
+          }
           dependencyResolutionManagement {
               repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
               repositories { google(); mavenCentral() }
@@ -30,7 +32,7 @@ jobs:
           include ':app'
           EOF
 
-          # build.gradle (Root)
+          # build.gradle (Root) - Убрали конфликтующий allprojects
           cat > build.gradle << 'EOF'
           buildscript {
               repositories { google(); mavenCentral() }
@@ -39,7 +41,6 @@ jobs:
                   classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.20'
               }
           }
-          allprojects { repositories { google(); mavenCentral() } }
           EOF
 
           # app/build.gradle
@@ -52,8 +53,8 @@ jobs:
                   applicationId "com.jsai.quantum"
                   minSdk 26
                   targetSdk 34
-                  versionCode 10
-                  versionName "Quantum-Infinity-4.3"
+                  versionCode 11
+                  versionName "Quantum-Infinity-4.4"
               }
               buildTypes { release { minifyEnabled true; proguardFiles getDefaultProguardFile('proguard-android-optimize.txt') } }
               compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
@@ -67,16 +68,15 @@ jobs:
           }
           EOF
 
-          # Добавляем базовые цвета и темы, чтобы билд не падал
+          # Ресурсы
           cat > app/src/main/res/values/colors.xml << 'EOF'
           <resources><color name="black">#FF000000</color><color name="white">#FFFFFFFF</color></resources>
           EOF
-
           cat > app/src/main/res/values/themes.xml << 'EOF'
           <resources><style name="Theme.JsAI" parent="Theme.AppCompat.NoActionBar"/></resources>
           EOF
 
-          # MainActivity.kt (Твой код Infinity)
+          # MainActivity.kt (Твой код Infinity с контекстом 4)
           cat > app/src/main/java/com/jsai/quantum/MainActivity.kt << 'EOF'
           package com.jsai.quantum
           import android.app.Activity
@@ -115,9 +115,7 @@ jobs:
                   val scroll = ScrollView(this).apply { layoutParams = LinearLayout.LayoutParams(-1, 0, 1f); addView(console) }
                   val input = EditText(this).apply { setTextColor(0xFFFFFFFF.toInt()); hint = "Neural prompt..." }
                   val row = LinearLayout(this)
-                  val load = Button(this).apply { text = "DATA" }
-                  val train = Button(this).apply { text = "TRAIN" }
-                  val send = Button(this).apply { text = "SEND" }
+                  val load = Button(this).apply { text = "DATA" }; val train = Button(this).apply { text = "TRAIN" }; val send = Button(this).apply { text = "SEND" }
                   row.addView(load); row.addView(train); row.addView(send)
                   root.addView(stats); root.addView(bar); root.addView(scroll); root.addView(input); root.addView(row)
                   setContentView(root)
@@ -125,11 +123,7 @@ jobs:
                   train.setOnClickListener { if(!isTraining && selectedFileUri != null) startInfinityTraining() }
                   send.setOnClickListener {
                       val p = input.text.toString()
-                      if(p.isNotBlank()) {
-                          console.append("\n\nUSER: $p")
-                          input.setText("")
-                          generateResponse(p)
-                      }
+                      if(p.isNotBlank()) { console.append("\n\nUSER: $p"); input.setText(""); generateResponse(p) }
                   }
               }
 
@@ -154,14 +148,10 @@ jobs:
                                   count++
                               }
                               buffer.add(word)
-                              if (count % 5000 == 0) {
-                                  withContext(Dispatchers.Main) { stats.text = "TOKENS: $count | NODES: ${brain.size}" }
-                              }
+                              if (count % 5000 == 0) { withContext(Dispatchers.Main) { stats.text = "TOKENS: $count | NODES: ${brain.size}" } }
                           }
                           inputStream?.close()
-                      } catch(e: Exception) {
-                          withContext(Dispatchers.Main) { console.append("\nError: ${e.message}") }
-                      }
+                      } catch(e: Exception) { withContext(Dispatchers.Main) { console.append("\nError: ${e.message}") } }
                   }
                   console.append("\n[TRAINING COMPLETE: ${brain.size} nodes mapped]")
                   isTraining = false
@@ -180,11 +170,9 @@ jobs:
                       val nextWords = brain[currentContext]
                       if (nextWords != null) {
                           val nextWord = nextWords.maxByOrNull { it.value + (0..1).random() }?.key ?: brain.keys.random()[0]
-                          result.add(nextWord)
-                          currentContext = result.subList(result.size - contextOrder, result.size)
+                          result.add(nextWord); currentContext = result.subList(result.size - contextOrder, result.size)
                       } else {
-                          val jump = brain.keys.random()
-                          result.addAll(jump); currentContext = jump
+                          val jump = brain.keys.random(); result.addAll(jump); currentContext = jump
                       }
                   }
                   console.append("\nJSAI: ${result.joinToString(" ")}")
@@ -217,7 +205,7 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # 3. Принудительная установка стабильного Gradle 8.2
+      # 3. Установка стабильного Gradle 8.2
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -227,7 +215,7 @@ jobs:
       - name: Build APK
         run: gradle assembleDebug --no-daemon
 
-      # 5. Выгрузка результата
+      # 5. Выгрузка
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
