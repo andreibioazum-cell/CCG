@@ -1,4 +1,4 @@
-name: JsAI Quantum Infinity - No Limits Build
+name: JsAI Quantum Infinity - Fixed
 
 on:
   push:
@@ -11,16 +11,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-          cache: 'gradle'
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
+      # 1. Сначала создаем все файлы проекта
       - name: Generate Infinity Project
         run: |
           mkdir -p app/src/main/java/com/jsai/quantum
@@ -56,8 +47,8 @@ jobs:
                   applicationId "com.jsai.quantum"
                   minSdk 26
                   targetSdk 34
-                  versionCode 7
-                  versionName "Quantum-Infinity-4.0"
+                  versionCode 8
+                  versionName "Quantum-Infinity-4.1"
               }
               buildTypes { release { minifyEnabled true; proguardFiles getDefaultProguardFile('proguard-android-optimize.txt') } }
               compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
@@ -87,8 +78,6 @@ jobs:
               private lateinit var console: TextView
               private lateinit var bar: ProgressBar
               private lateinit var stats: TextView
-              
-              // Мощная структура данных: Контекст (4 слова) -> Следующее слово -> Частота
               private val brain = mutableMapOf<List<String>, MutableMap<String, Int>>()
               private var isTraining = false
               private val contextOrder = 4 
@@ -106,18 +95,17 @@ jobs:
                       padding = 32
                   }
                   stats = TextView(this).apply { textColor = 0xFF00FF00.toInt(); typeface = android.graphics.Typeface.MONOSPACE; textSize = 10f }
-                  bar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply { scaleY = 2f }
+                  bar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal)
                   console = TextView(this).apply { textColor = 0xFF00E5FF.toInt(); textSize = 12f; typeface = android.graphics.Typeface.MONOSPACE }
                   val scroll = ScrollView(this).apply { layoutParams = LinearLayout.LayoutParams(-1, 0, 1f); addView(console) }
-                  val input = EditText(this).apply { setTextColor(0xFFFFFFFF.toInt()); hint = "Neural prompt..."; setHintTextColor(0xFF444444.toInt()) }
+                  val input = EditText(this).apply { setTextColor(0xFFFFFFFF.toInt()); hint = "Neural prompt..." }
                   val row = LinearLayout(this)
-                  val load = Button(this).apply { text = "OPEN FILE (100MB+)" }
-                  val train = Button(this).apply { text = "INFINITY TRAIN" }
+                  val load = Button(this).apply { text = "DATA" }
+                  val train = Button(this).apply { text = "TRAIN" }
                   val send = Button(this).apply { text = "SEND" }
                   row.addView(load); row.addView(train); row.addView(send)
                   root.addView(stats); root.addView(bar); root.addView(scroll); root.addView(input); root.addView(row)
                   setContentView(root)
-
                   load.setOnClickListener { startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { type = "text/*" }, 101) }
                   train.setOnClickListener { if(!isTraining && selectedFileUri != null) startInfinityTraining() }
                   send.setOnClickListener {
@@ -128,95 +116,78 @@ jobs:
                           generateResponse(p)
                       }
                   }
-                  console.text = ">>> JSAI QUANTUM INFINITY 4.0\n>>> ARCH: SPARSE N-GRAM NODES\n>>> STATUS: NO LIMITS ENABLED\n"
+                  console.text = ">>> JSAI QUANTUM INFINITY 4.1\n>>> STATUS: NO LIMITS\n"
               }
 
               private fun startInfinityTraining() = CoroutineScope(Dispatchers.Main).launch {
                   isTraining = true
                   val uri = selectedFileUri ?: return@launch
-                  console.append("\n[INFINITY ENGINE: Starting buffered stream...]")
-                  
+                  console.append("\n[INFINITY ENGINE: Processing stream...]")
                   withContext(Dispatchers.Default) {
-                      val inputStream: InputStream? = contentResolver.openInputStream(uri)
-                      val scanner = Scanner(inputStream).useDelimiter("[^a-zA-Zа-яА-Я0-9']+")
-                      val buffer = LinkedList<String>()
-                      var count = 0
-
-                      while(scanner.hasNext()) {
-                          val word = scanner.next().lowercase()
-                          if (word.length < 2) continue
-                          
-                          if (buffer.size == contextOrder) {
-                              val context = buffer.toList()
-                              val nextMap = brain.getOrPut(context) { mutableMapOf() }
-                              nextMap[word] = (nextMap[word] ?: 0) + 1
-                              buffer.removeFirst()
-                              count++
-                          }
-                          buffer.add(word)
-
-                          if (count % 2000 == 0) {
-                              withContext(Dispatchers.Main) {
-                                  stats.text = "PROCESSED: $count TOKENS | NODES: ${brain.size}"
-                                  bar.isIndeterminate = true
+                      try {
+                          val inputStream: InputStream? = contentResolver.openInputStream(uri)
+                          val scanner = Scanner(inputStream).useDelimiter("[^a-zA-Zа-яА-Я0-9']+")
+                          val buffer = LinkedList<String>()
+                          var count = 0
+                          while(scanner.hasNext()) {
+                              val word = scanner.next().lowercase()
+                              if (word.length < 2) continue
+                              if (buffer.size == contextOrder) {
+                                  val context = buffer.toList()
+                                  val nextMap = brain.getOrPut(context) { mutableMapOf() }
+                                  nextMap[word] = (nextMap[word] ?: 0) + 1
+                                  buffer.removeFirst()
+                                  count++
+                              }
+                              buffer.add(word)
+                              if (count % 5000 == 0) {
+                                  withContext(Dispatchers.Main) {
+                                      stats.text = "TOKENS: $count | NODES: ${brain.size}"
+                                  }
                               }
                           }
+                          inputStream?.close()
+                      } catch(e: Exception) {
+                          withContext(Dispatchers.Main) { console.append("\nError: ${e.message}") }
                       }
-                      inputStream?.close()
                   }
-                  
-                  bar.isIndeterminate = false
-                  bar.progress = 100
-                  console.append("\n[TRAINING COMPLETE: Brain contains ${brain.size} logic chains]")
+                  console.append("\n[TRAINING COMPLETE: ${brain.size} nodes mapped]")
                   isTraining = false
               }
 
               private fun generateResponse(prompt: String) {
-                  if (brain.isEmpty()) { console.append("\nJSAI: Memory empty."); return }
-                  
+                  if (brain.isEmpty()) return
                   val tokens = prompt.lowercase().split(" ").filter { it.length > 1 }
                   var currentContext = brain.keys.random()
-                  
-                  // Смысловой вход в контекст (Deep Search)
-                  for (i in tokens.indices) {
-                      val match = brain.keys.find { it.contains(tokens[i]) }
+                  for (token in tokens) {
+                      val match = brain.keys.find { it.contains(token) }
                       if (match != null) { currentContext = match; break }
                   }
-
                   val result = currentContext.toMutableList()
-                  
                   repeat(60) {
                       val nextWords = brain[currentContext]
                       if (nextWords != null) {
-                          // Выбор слова на основе веса (частоты)
                           val nextWord = nextWords.maxByOrNull { it.value + (0..1).random() }?.key ?: brain.keys.random()[0]
                           result.add(nextWord)
                           currentContext = result.subList(result.size - contextOrder, result.size)
                       } else {
                           val jump = brain.keys.random()
-                          result.addAll(jump)
-                          currentContext = jump
+                          result.addAll(jump); currentContext = jump
                       }
                   }
-                  
-                  val text = result.joinToString(" ")
-                  console.append("\nJSAI: ${text.replaceFirstChar { it.uppercase() }}.")
+                  console.append("\nJSAI: ${result.joinToString(" ")}")
               }
 
               override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
                   super.onActivityResult(requestCode, resultCode, data)
-                  if (resultCode == Activity.RESULT_OK) {
-                      selectedFileUri = data?.data
-                      console.append("\n[SYSTEM: File linked successfully]")
-                  }
+                  if (resultCode == Activity.RESULT_OK) selectedFileUri = data?.data
               }
           }
           EOF
 
           cat > app/src/main/AndroidManifest.xml << 'EOF'
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="JsAI Infinity" android:theme="@style/Theme.AppCompat.NoActionBar" 
-                  android:largeHeap="true" android:hardwareAccelerated="true">
+              <application android:label="JsAI Infinity" android:largeHeap="true">
                   <activity android:name=".MainActivity" android:exported="true">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/>
@@ -226,10 +197,16 @@ jobs:
           </manifest>
           EOF
 
+      # 2. Настраиваем Java БЕЗ кэша (чтобы не было ошибки)
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # 3. Собираем APK используя предустановленный Gradle
       - name: Build APK
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug
+        run: gradle assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
