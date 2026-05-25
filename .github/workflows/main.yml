@@ -1,4 +1,4 @@
-name: JsAI Quantum Infinity - Fixed
+name: JsAI Quantum Infinity - Stable Build
 
 on:
   push:
@@ -11,8 +11,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 1. Сначала создаем все файлы проекта
-      - name: Generate Infinity Project
+      # 1. Генерируем структуру проекта
+      - name: Generate Project
         run: |
           mkdir -p app/src/main/java/com/jsai/quantum
           mkdir -p app/src/main/res/layout
@@ -47,8 +47,8 @@ jobs:
                   applicationId "com.jsai.quantum"
                   minSdk 26
                   targetSdk 34
-                  versionCode 8
-                  versionName "Quantum-Infinity-4.1"
+                  versionCode 9
+                  versionName "Quantum-Infinity-4.2"
               }
               buildTypes { release { minifyEnabled true; proguardFiles getDefaultProguardFile('proguard-android-optimize.txt') } }
               compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
@@ -116,7 +116,6 @@ jobs:
                           generateResponse(p)
                       }
                   }
-                  console.text = ">>> JSAI QUANTUM INFINITY 4.1\n>>> STATUS: NO LIMITS\n"
               }
 
               private fun startInfinityTraining() = CoroutineScope(Dispatchers.Main).launch {
@@ -141,9 +140,7 @@ jobs:
                               }
                               buffer.add(word)
                               if (count % 5000 == 0) {
-                                  withContext(Dispatchers.Main) {
-                                      stats.text = "TOKENS: $count | NODES: ${brain.size}"
-                                  }
+                                  withContext(Dispatchers.Main) { stats.text = "TOKENS: $count | NODES: ${brain.size}" }
                               }
                           }
                           inputStream?.close()
@@ -197,14 +194,20 @@ jobs:
           </manifest>
           EOF
 
-      # 2. Настраиваем Java БЕЗ кэша (чтобы не было ошибки)
+      # 2. Установка Java 17
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      # 3. Собираем APK используя предустановленный Gradle
+      # 3. Установка СТАБИЛЬНОГО Gradle 8.5
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.5
+
+      # 4. Сборка APK через установленный Gradle
       - name: Build APK
         run: gradle assembleDebug
 
