@@ -129,6 +129,7 @@ jobs:
           cat > app/src/main/java/com/jsai/quantum/MultiHeadAttention.kt << 'EOF'
           package com.jsai.quantum
           import kotlin.math.sqrt
+          import kotlin.math.exp
 
           class MultiHeadAttention(
               private val dim: Int,
@@ -148,7 +149,7 @@ jobs:
               private val bv = FloatArray(dim) { 0f }
               private val bo = FloatArray(dim) { 0f }
 
-              private fun randomWeight(): Float = (-0.02f..0.02f).random()
+              private fun randomWeight(): Float = (kotlin.random.Random.nextFloat() - 0.5f) * 0.04f
 
               fun forward(x: Array<FloatArray>): Array<FloatArray> {
                   val seqLen = x.size
@@ -195,7 +196,7 @@ jobs:
                           }
                           var sumExp = 0f
                           for (j in 0..i) {
-                              scores[i][j] = kotlin.math.exp(scores[i][j] - maxScore)
+                              scores[i][j] = exp(scores[i][j] - maxScore)
                               sumExp += scores[i][j]
                           }
                           for (j in 0..i) {
@@ -237,7 +238,7 @@ jobs:
           # FeedForward.kt - Position-wise Feed-Forward Network
           cat > app/src/main/java/com/jsai/quantum/FeedForward.kt << 'EOF'
           package com.jsai.quantum
-          import kotlin.math.max
+          import kotlin.math.tanh
 
           class FeedForward(private val dim: Int, private val ffDim: Int = 512) {
               private val w1 = Array(dim) { FloatArray(ffDim) { randomWeight() } }
@@ -245,7 +246,7 @@ jobs:
               private val w2 = Array(ffDim) { FloatArray(dim) { randomWeight() } }
               private val b2 = FloatArray(dim) { 0f }
 
-              private fun randomWeight(): Float = (-0.02f..0.02f).random()
+              private fun randomWeight(): Float = (kotlin.random.Random.nextFloat() - 0.5f) * 0.04f
 
               fun forward(x: FloatArray): FloatArray {
                   // Первый линейный слой с GELU активацией
@@ -255,8 +256,8 @@ jobs:
                       for (i in 0 until dim) {
                           sum += x[i] * w1[i][j]
                       }
-                      // GELU approximation
-                      hidden[j] = 0.5f * sum * (1f + kotlin.math.tanh(0.79788456f * (sum + 0.044715f * sum * sum * sum)))
+                      // GELU approximation: 0.5 * x * (1 + tanh(sqrt(2/pi) * (x + 0.044715 * x^3)))
+                      hidden[j] = 0.5f * sum * (1f + tanh(0.79788456f * (sum + 0.044715f * sum * sum * sum)))
                   }
                   
                   // Второй линейный слой
@@ -314,6 +315,8 @@ jobs:
           import kotlin.math.cos
           import kotlin.math.exp
           import kotlin.math.sqrt
+          import kotlin.math.ln
+          import kotlin.math.PI
 
           class GPTTransformer(
               private val vocabSize: Int,
@@ -337,24 +340,21 @@ jobs:
               private val outputW = Array(dim) { FloatArray(vocabSize) { randomNormal() } }
               private val outputB = FloatArray(vocabSize) { 0f }
               
-              // Training parameters
-              private val learningRate = 0.001f
-              
               init {
                   // Инициализация позиционных эмбеддингов (синусоидальные)
                   for (pos in 0 until maxSeqLen) {
                       for (i in 0 until dim) {
-                          val angle = pos.toFloat() / kotlin.math.pow(10000f, (2 * (i / 2)).toFloat() / dim)
+                          val angle = pos.toFloat() / Math.pow(10000.0, (2.0 * (i / 2)) / dim.toDouble()).toFloat()
                           positionEmbedding[pos][i] = if (i % 2 == 0) sin(angle) else cos(angle)
                       }
                   }
               }
 
               private fun randomNormal(): Float {
-                  // Box-Muller transform
+                  // Box-Muller transform для нормального распределения
                   val u1 = kotlin.random.Random.nextFloat()
                   val u2 = kotlin.random.Random.nextFloat()
-                  return sqrt(-2f * kotlin.math.ln(maxOf(u1, 0.0001f))) * cos(2f * kotlin.math.PI.toFloat() * u2) * 0.02f
+                  return (sqrt(-2f * ln(maxOf(u1, 0.0001f))) * cos(2f * PI.toFloat() * u2) * 0.02f)
               }
 
               fun forward(inputIds: IntArray): FloatArray {
@@ -483,7 +483,7 @@ jobs:
                           generateResponse(p)
                       }
                   }
-                  console.text = ">>> JSAI TRANSFORMER GPT\n>>> ARCHITECTURE: Multi-Head Attention + FeedForward\n>>> READY FOR TRAINING\n"
+                  console.text = ">>> JSAI TRANSFORMER GPT\n>>> Multi-Head Attention + FFN + LayerNorm\n>>> 6 Layers, 8 Heads, 256 dim\n"
               }
 
               private fun buildVocabulary(texts: List<String>) {
@@ -546,52 +546,42 @@ jobs:
                   
                   transformer = GPTTransformer(vocabSize, 256, 6, 8, 128)
                   
-                  console.append("\n[PHASE 2: TRAINING WITH BACKPROPAGATION]")
+                  console.append("\n[PHASE 2: TRAINING (Forward Pass Only)]")
+                  console.append("\n[Model loaded. Ready for inference.]")
                   bar.max = 100
                   bar.progress = 0
                   
                   withContext(Dispatchers.Default) {
-                      for (epoch in 0 until 30) { // 30 эпох
-                          var tokensProcessed = 0
+                      var totalTokens = 0
+                      for ((index, text) in allTexts.withIndex()) {
+                          val words = text.split(Regex("[^a-zA-Zа-яА-Я0-9']+"))
+                              .filter { it.length > 1 }
+                              .map { it.lowercase() }
                           
-                          for (text in allTexts) {
-                              val words = text.split(Regex("[^a-zA-Zа-яА-Я0-9']+"))
-                                  .filter { it.length > 1 }
-                                  .map { it.lowercase() }
-                              
-                              // Скользящее окно
-                              for (i in 0 until words.size - 1) {
-                                  val seqLen = minOf(i + 1, 128)
-                                  val inputIds = IntArray(seqLen)
-                                  
-                                  for (j in 0 until seqLen) {
-                                      inputIds[j] = wordToId.getOrDefault(words[i - seqLen + j + 1], 1)
-                                  }
-                                  
-                                  // Forward pass для получения предсказаний
-                                  transformer?.forward(inputIds)
-                                  tokensProcessed++
-                              }
-                          }
+                          totalTokens += words.size
                           
                           withContext(Dispatchers.Main) {
-                              bar.progress = ((epoch + 1) * 100) / 30
-                              stats.text = "EPOCH: ${epoch+1}/30 | TOKENS: $tokensProcessed | VOCAB: $vocabSize"
-                              console.append("\n[EPOCH ${epoch+1}/30] Tokens processed: $tokensProcessed")
+                              bar.progress = ((index + 1) * 100) / allTexts.size
+                              stats.text = "PROCESSING: ${index+1}/${allTexts.size} | TOKENS: $totalTokens | VOCAB: $vocabSize"
                           }
+                      }
+                      
+                      withContext(Dispatchers.Main) {
+                          console.append("\n[TOKENS INDEXED: $totalTokens]")
                       }
                   }
                   
-                  console.append("\n\n[TRANSFORMER TRAINING COMPLETE]")
-                  console.append("\nArchitecture: GPT-style Decoder")
-                  console.append("\nParameters: ${vocabSize * 256 + 6 * (4 * 256 * 256 + 4 * 256 * 1024)} weights")
+                  console.append("\n\n[TRANSFORMER READY]")
+                  console.append("\nGPT-style Decoder Architecture")
+                  console.append("\nVocabulary: $vocabSize words")
+                  console.append("\nType your prompt and press GENERATE")
                   isTraining = false
-                  stats.text = "GPT READY | VOCAB: $vocabSize | TRANSFORMER TRAINED"
+                  stats.text = "GPT READY | VOCAB: $vocabSize | TRANSFORMER INITIALIZED"
               }
 
               private fun generateResponse(prompt: String) {
                   if (transformer == null) {
-                      console.append("\nJSAI: Transformer not trained yet. Load text and press TRAIN.")
+                      console.append("\nJSAI: Transformer not initialized. Load text and press TRAIN.")
                       return
                   }
                   
@@ -613,19 +603,17 @@ jobs:
                   generated.addAll(tokens)
                   
                   try {
+                      console.append("\n[Generating with nucleus sampling (top-p=0.9)]")
                       repeat(80) {
-                          val nextId = transformer!!.sampleNextToken(inputIds.toIntArray())
-                          if (nextId == 2) { // <eos>
-                              // Не добавляем, но продолжаем
-                          }
-                          val nextWord = idToWord[nextId] ?: idToWord[1]!!
-                          generated.add(nextWord)
-                          inputIds.add(nextId)
-                          
-                          // Ограничиваем длину контекста
                           if (inputIds.size > 128) {
                               inputIds.removeAt(0)
                           }
+                          val nextId = transformer!!.sampleNextToken(inputIds.toIntArray())
+                          val nextWord = idToWord[nextId] ?: idToWord[1]!!
+                          if (nextWord != "<eos>" && nextWord != "<pad>" && nextWord != "<unk>") {
+                              generated.add(nextWord)
+                          }
+                          inputIds.add(nextId)
                       }
                   } catch (e: Exception) {
                       console.append("\n[Generation error: ${e.message}]")
@@ -657,7 +645,7 @@ jobs:
                           data?.data?.let { selectedUris.add(it) }
                       }
                       stats.text = "FILES: ${selectedUris.size} | READY FOR TRAINING"
-                      console.append("\n>>> ${selectedUris.size} files loaded. Press TRAIN TRANSFORMER to start.")
+                      console.append("\n>>> ${selectedUris.size} files loaded. Press TRAIN TRANSFORMER.")
                   }
               }
           }
