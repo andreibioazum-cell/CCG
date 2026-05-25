@@ -1,4 +1,4 @@
-name: JsAI Quantum Infinity - Stable Build
+name: JsAI Quantum Infinity - Ultra Stable
 
 on:
   push:
@@ -11,13 +11,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 1. Генерируем структуру проекта
+      # 1. Генерируем проект со всеми ресурсами
       - name: Generate Project
         run: |
           mkdir -p app/src/main/java/com/jsai/quantum
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
+          mkdir -p app/src/main/res/drawable
 
+          # settings.gradle
           cat > settings.gradle << 'EOF'
           pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
           dependencyResolutionManagement {
@@ -28,6 +30,7 @@ jobs:
           include ':app'
           EOF
 
+          # build.gradle (Root)
           cat > build.gradle << 'EOF'
           buildscript {
               repositories { google(); mavenCentral() }
@@ -36,8 +39,10 @@ jobs:
                   classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.20'
               }
           }
+          allprojects { repositories { google(); mavenCentral() } }
           EOF
 
+          # app/build.gradle
           cat > app/build.gradle << 'EOF'
           plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }
           android {
@@ -47,8 +52,8 @@ jobs:
                   applicationId "com.jsai.quantum"
                   minSdk 26
                   targetSdk 34
-                  versionCode 9
-                  versionName "Quantum-Infinity-4.2"
+                  versionCode 10
+                  versionName "Quantum-Infinity-4.3"
               }
               buildTypes { release { minifyEnabled true; proguardFiles getDefaultProguardFile('proguard-android-optimize.txt') } }
               compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
@@ -62,6 +67,16 @@ jobs:
           }
           EOF
 
+          # Добавляем базовые цвета и темы, чтобы билд не падал
+          cat > app/src/main/res/values/colors.xml << 'EOF'
+          <resources><color name="black">#FF000000</color><color name="white">#FFFFFFFF</color></resources>
+          EOF
+
+          cat > app/src/main/res/values/themes.xml << 'EOF'
+          <resources><style name="Theme.JsAI" parent="Theme.AppCompat.NoActionBar"/></resources>
+          EOF
+
+          # MainActivity.kt (Твой код Infinity)
           cat > app/src/main/java/com/jsai/quantum/MainActivity.kt << 'EOF'
           package com.jsai.quantum
           import android.app.Activity
@@ -182,9 +197,10 @@ jobs:
           }
           EOF
 
+          # Manifest
           cat > app/src/main/AndroidManifest.xml << 'EOF'
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="JsAI Infinity" android:largeHeap="true">
+              <application android:label="JsAI Infinity" android:theme="@style/Theme.JsAI" android:largeHeap="true">
                   <activity android:name=".MainActivity" android:exported="true">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/>
@@ -201,16 +217,17 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # 3. Установка СТАБИЛЬНОГО Gradle 8.5
+      # 3. Принудительная установка стабильного Gradle 8.2
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: 8.5
+          gradle-version: 8.2
 
-      # 4. Сборка APK через установленный Gradle
+      # 4. Сборка
       - name: Build APK
-        run: gradle assembleDebug
+        run: gradle assembleDebug --no-daemon
 
+      # 5. Выгрузка результата
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
