@@ -1,4 +1,4 @@
-name: JsAI Quantum Infinity - 100% Working Build
+name: JsAI Quantum Infinity - Final Stable Build
 
 on:
   push:
@@ -11,13 +11,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 1. Генерация ПРАВИЛЬНОЙ структуры проекта
+      # 1. Генерация полной структуры проекта
       - name: Generate Project
         run: |
           mkdir -p app/src/main/java/com/jsai/quantum
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
-          mkdir -p app/src/main/res/mipmap-mdpi
+
+          # ПРОВЕРКА: Добавление настроек AndroidX (обязательно!)
+          cat > gradle.properties << 'EOF'
+          android.useAndroidX=true
+          android.enableJetifier=true
+          EOF
 
           # settings.gradle
           cat > settings.gradle << 'EOF'
@@ -53,8 +58,8 @@ jobs:
                   applicationId "com.jsai.quantum"
                   minSdk 26
                   targetSdk 34
-                  versionCode 12
-                  versionName "Quantum-Infinity-4.5"
+                  versionCode 13
+                  versionName "Quantum-Infinity-4.6"
               }
               buildTypes {
                   release {
@@ -72,13 +77,13 @@ jobs:
           }
           EOF
 
-          # layout/activity_main.xml (ОБЯЗАТЕЛЬНО ДЛЯ ID)
+          # layout/activity_main.xml
           cat > app/src/main/res/layout/activity_main.xml << 'EOF'
           <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
               android:layout_width="match_parent" android:layout_height="match_parent"
               android:orientation="vertical" android:background="#000000" android:padding="16dp">
               <TextView android:id="@+id/stats" android:layout_width="match_parent" android:layout_height="wrap_content"
-                  android:textColor="#00FF00" android:fontFamily="monospace" android:textSize="10sp"/>
+                  android:textColor="#00FF00" android:fontFamily="monospace" android:textSize="10sp" android:text="READY"/>
               <ProgressBar android:id="@+id/progress" style="?android:attr/progressBarStyleHorizontal"
                   android:layout_width="match_parent" android:layout_height="wrap_content"/>
               <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
@@ -86,19 +91,20 @@ jobs:
                       android:textColor="#00E5FF" android:fontFamily="monospace" android:textSize="12sp"/>
               </ScrollView>
               <EditText android:id="@+id/input" android:layout_width="match_parent" android:layout_height="wrap_content"
-                  android:textColor="#FFFFFF" android:hint="Prompt..." android:setHintTextColor="#444444"/>
+                  android:textColor="#FFFFFF" android:hint="Prompt..." android:hintTextColor="#444444"/>
               <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-                  <Button android:id="@+id/loadBtn" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="DATA"/>
-                  <Button android:id="@+id/trainBtn" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="TRAIN"/>
-                  <Button android:id="@+id/sendBtn" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="SEND"/>
+                  <Button android:id="@+id/loadBtn" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="DATA"/>
+                  <Button android:id="@+id/trainBtn" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="TRAIN"/>
+                  <Button android:id="@+id/sendBtn" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="SEND"/>
               </LinearLayout>
           </LinearLayout>
           EOF
 
-          # Ресурсы
+          # strings.xml
           cat > app/src/main/res/values/strings.xml << 'EOF'
           <resources><string name="app_name">JsAI Infinity</string></resources>
           EOF
+          # themes.xml
           cat > app/src/main/res/values/themes.xml << 'EOF'
           <resources><style name="Theme.JsAI" parent="Theme.AppCompat.NoActionBar"/></resources>
           EOF
@@ -128,12 +134,10 @@ jobs:
               override fun onCreate(savedInstanceState: Bundle?) {
                   super.onCreate(savedInstanceState)
                   setContentView(R.layout.activity_main)
-                  
                   console = findViewById(R.id.console)
                   bar = findViewById(R.id.progress)
                   stats = findViewById(R.id.stats)
                   val input = findViewById<EditText>(R.id.input)
-
                   findViewById<Button>(R.id.loadBtn).setOnClickListener {
                       startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { type = "text/*" }, 101)
                   }
@@ -148,7 +152,7 @@ jobs:
                           generateResponse(p)
                       }
                   }
-                  console.text = ">>> JSAI QUANTUM INFINITY 4.5 READY\n"
+                  console.text = ">>> JSAI QUANTUM INFINITY 4.6\n>>> NO LIMITS MODE ENABLED\n"
               }
 
               private fun startInfinityTraining() = CoroutineScope(Dispatchers.Main).launch {
@@ -172,7 +176,7 @@ jobs:
                                       count++
                                   }
                                   buffer.add(word)
-                                  if (count % 5000 == 0) {
+                                  if (count % 10000 == 0) {
                                       withContext(Dispatchers.Main) { stats.text = "TOKENS: $count | NODES: ${brain.size}" }
                                   }
                               }
@@ -210,12 +214,15 @@ jobs:
 
               override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
                   super.onActivityResult(requestCode, resultCode, data)
-                  if (resultCode == Activity.RESULT_OK) selectedFileUri = data?.data
+                  if (resultCode == Activity.RESULT_OK) {
+                      selectedFileUri = data?.data
+                      console.append("\n[FILE SELECTED: ${selectedFileUri?.path}]")
+                  }
               }
           }
           EOF
 
-          # Android Manifest
+          # Manifest
           cat > app/src/main/AndroidManifest.xml << 'EOF'
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <application android:label="JsAI Infinity" android:theme="@style/Theme.JsAI" android:largeHeap="true">
