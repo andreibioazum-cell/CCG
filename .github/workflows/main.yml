@@ -1,8 +1,5 @@
-name: JsAI Quantum Infinity 5.0 - Transformer Build
-
-on:
-  push:
-  workflow_dispatch:
+name: Cubic_Battle_Industrial
+on: [push, workflow_dispatch]
 
 jobs:
   build:
@@ -11,675 +8,232 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Generate Project
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Create Project
         run: |
-          mkdir -p app/src/main/java/com/jsai/quantum
+          # Создаем папки
+          mkdir -p app/src/main/java/com/cubic/battle
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
+          mkdir -p app/src/main/res/drawable
 
-          # Настройки AndroidX
-          cat > gradle.properties << 'EOF'
-          android.useAndroidX=true
-          android.enableJetifier=true
-          org.gradle.jvmargs=-Xmx4096m
-          EOF
+          # Настройки
+          echo "android.useAndroidX=true" > gradle.properties
+          echo "android.enableJetifier=true" >> gradle.properties
 
-          # settings.gradle
-          cat > settings.gradle << 'EOF'
-          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
-          dependencyResolutionManagement {
-              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-              repositories { google(); mavenCentral() }
-          }
-          rootProject.name = "JsAIQuantum"
-          include ':app'
-          EOF
-
-          # build.gradle (Root)
-          cat > build.gradle << 'EOF'
-          plugins {
-              id 'com.android.application' version '8.2.2' apply false
-              id 'org.jetbrains.kotlin.android' version '1.9.20' apply false
-          }
-          EOF
-
-          # app/build.gradle
-          cat > app/build.gradle << 'EOF'
-          plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }
-          android {
-              namespace 'com.jsai.quantum'
-              compileSdk 34
-              defaultConfig {
-                  applicationId "com.jsai.quantum"
-                  minSdk 26
-                  targetSdk 34
-                  versionCode 15
-                  versionName "Quantum-Infinity-5.0"
-              }
-              buildTypes { release { minifyEnabled false } }
-              compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
-              kotlinOptions { jvmTarget = "17" }
-          }
-          dependencies {
-              implementation 'androidx.core:core-ktx:1.12.0'
-              implementation 'androidx.appcompat:appcompat:1.6.1'
-              implementation 'com.google.android.material:material:1.11.0'
-              implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
-          }
-          EOF
-
-          # layout/activity_main.xml
-          cat > app/src/main/res/layout/activity_main.xml << 'EOF'
-          <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:layout_width="match_parent" android:layout_height="match_parent"
-              android:orientation="vertical" android:background="#000000" android:padding="16dp">
-              <TextView android:id="@+id/stats" android:layout_width="match_parent" android:layout_height="wrap_content"
-                  android:textColor="#00FF00" android:fontFamily="monospace" android:textSize="11sp" android:text="TRANSFORMER MODEL READY"/>
-              <ProgressBar android:id="@+id/progress" style="?android:attr/progressBarStyleHorizontal"
-                  android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp"/>
-              <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="8dp">
-                  <TextView android:id="@+id/console" android:layout_width="match_parent" android:layout_height="wrap_content"
-                      android:textColor="#00E5FF" android:fontFamily="monospace" android:textSize="12sp"/>
-              </ScrollView>
-              <EditText android:id="@+id/input" android:layout_width="match_parent" android:layout_height="wrap_content"
-                  android:textColor="#FFFFFF" android:hint="Enter prompt..." android:textColorHint="#444444" android:background="#111111" android:padding="10dp" android:layout_marginBottom="8dp"/>
-              <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-                  <Button android:id="@+id/loadBtn" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="LOAD DATA" android:textSize="10sp"/>
-                  <Button android:id="@+id/trainBtn" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="TRAIN TRANSFORMER" android:textSize="10sp" android:layout_marginHorizontal="4dp"/>
-                  <Button android:id="@+id/sendBtn" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="GENERATE" android:textSize="10sp"/>
-              </LinearLayout>
-          </LinearLayout>
-          EOF
-
-          # Ресурсы
-          cat > app/src/main/res/values/strings.xml << 'EOF'
-          <resources><string name="app_name">JsAI Transformer</string></resources>
-          EOF
+          # Темы
           cat > app/src/main/res/values/themes.xml << 'EOF'
-          <resources><style name="Theme.JsAI" parent="Theme.AppCompat.NoActionBar"/></resources>
+          <resources>
+            <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+              <item name="android:statusBarColor">#000000</item>
+            </style>
+          </resources>
           EOF
 
-          # LayerNorm.kt - Layer Normalization
-          cat > app/src/main/java/com/jsai/quantum/LayerNorm.kt << 'EOF'
-          package com.jsai.quantum
-          import kotlin.math.sqrt
-
-          class LayerNorm(private val dim: Int, private val eps: Float = 1e-5f) {
-              private val gamma = FloatArray(dim) { 1f }
-              private val beta = FloatArray(dim) { 0f }
-
-              fun forward(input: FloatArray): FloatArray {
-                  val mean = input.average().toFloat()
-                  var variance = 0f
-                  for (x in input) {
-                      val diff = x - mean
-                      variance += diff * diff
-                  }
-                  variance /= input.size
-                  val std = sqrt(variance + eps)
-                  
-                  return FloatArray(dim) { i ->
-                      gamma[i] * (input[i] - mean) / std + beta[i]
-                  }
-              }
-          }
+          # Строки
+          cat > app/src/main/res/values/strings.xml << 'EOF'
+          <resources><string name="app_name">Cubic Battle</string></resources>
           EOF
 
-          # MultiHeadAttention.kt - Multi-Head Self Attention
-          cat > app/src/main/java/com/jsai/quantum/MultiHeadAttention.kt << 'EOF'
-          package com.jsai.quantum
-          import kotlin.math.sqrt
-          import kotlin.math.exp
-
-          class MultiHeadAttention(
-              private val dim: Int,
-              private val numHeads: Int = 8
-          ) {
-              private val headDim = dim / numHeads
-              private val scale = 1f / sqrt(headDim.toFloat())
-              
-              // Q, K, V проекции
-              private val wq = Array(dim) { FloatArray(dim) { randomWeight() } }
-              private val wk = Array(dim) { FloatArray(dim) { randomWeight() } }
-              private val wv = Array(dim) { FloatArray(dim) { randomWeight() } }
-              private val wo = Array(dim) { FloatArray(dim) { randomWeight() } }
-              
-              private val bq = FloatArray(dim) { 0f }
-              private val bk = FloatArray(dim) { 0f }
-              private val bv = FloatArray(dim) { 0f }
-              private val bo = FloatArray(dim) { 0f }
-
-              private fun randomWeight(): Float = (kotlin.random.Random.nextFloat() - 0.5f) * 0.04f
-
-              fun forward(x: Array<FloatArray>): Array<FloatArray> {
-                  val seqLen = x.size
-                  val q = x.map { linear(it, wq, bq) }.toTypedArray()
-                  val k = x.map { linear(it, wk, bk) }.toTypedArray()
-                  val v = x.map { linear(it, wv, bv) }.toTypedArray()
-                  
-                  // Multi-head attention
-                  val outputs = Array(seqLen) { FloatArray(dim) }
-                  
-                  for (h in 0 until numHeads) {
-                      val start = h * headDim
-                      val end = start + headDim
-                      
-                      // Извлекаем головы
-                      val qh = Array(seqLen) { q[it].sliceArray(start until end) }
-                      val kh = Array(seqLen) { k[it].sliceArray(start until end) }
-                      val vh = Array(seqLen) { v[it].sliceArray(start until end) }
-                      
-                      // Считаем attention scores
-                      val scores = Array(seqLen) { FloatArray(seqLen) }
-                      for (i in 0 until seqLen) {
-                          for (j in 0 until seqLen) {
-                              var dot = 0f
-                              for (d in 0 until headDim) {
-                                  dot += qh[i][d] * kh[j][d]
-                              }
-                              scores[i][j] = dot * scale
-                          }
-                      }
-                      
-                      // Causal mask (нижнетреугольная)
-                      for (i in 0 until seqLen) {
-                          for (j in i + 1 until seqLen) {
-                              scores[i][j] = Float.NEGATIVE_INFINITY
-                          }
-                      }
-                      
-                      // Softmax
-                      for (i in 0 until seqLen) {
-                          var maxScore = Float.NEGATIVE_INFINITY
-                          for (j in 0..i) {
-                              if (scores[i][j] > maxScore) maxScore = scores[i][j]
-                          }
-                          var sumExp = 0f
-                          for (j in 0..i) {
-                              scores[i][j] = exp(scores[i][j] - maxScore)
-                              sumExp += scores[i][j]
-                          }
-                          for (j in 0..i) {
-                              scores[i][j] /= sumExp
-                          }
-                          for (j in i + 1 until seqLen) {
-                              scores[i][j] = 0f
-                          }
-                      }
-                      
-                      // Attention output для этой головы
-                      for (i in 0 until seqLen) {
-                          for (d in 0 until headDim) {
-                              var sum = 0f
-                              for (j in 0 until seqLen) {
-                                  sum += scores[i][j] * vh[j][d]
-                              }
-                              outputs[i][start + d] += sum
-                          }
-                      }
-                  }
-                  
-                  // Финальная линейная проекция
-                  return outputs.map { linear(it, wo, bo) }.toTypedArray()
-              }
-
-              private fun linear(x: FloatArray, w: Array<FloatArray>, b: FloatArray): FloatArray {
-                  val out = b.copyOf()
-                  for (i in w.indices) {
-                      for (j in w[0].indices) {
-                          out[j] += x[i] * w[i][j]
-                      }
-                  }
-                  return out
-              }
-          }
+          # Главный экран (Лобби)
+          cat > app/src/main/res/layout/activity_main.xml << 'EOF'
+          <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:background="#000000"
+              android:padding="32dp">
+              <TextView
+                  android:id="@+id/title"
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:text="CUBIC BATTLE\nВ новых красках 🎨"
+                  android:textColor="#FFFFFF"
+                  android:textSize="32sp"
+                  android:textStyle="bold"/>
+              <LinearLayout
+                  android:layout_width="250dp"
+                  android:layout_height="wrap_content"
+                  android:layout_below="@id/title"
+                  android:layout_marginTop="20dp"
+                  android:orientation="vertical">
+                  <Button
+                      android:id="@+id/btn_play"
+                      android:layout_width="match_parent"
+                      android:layout_height="60dp"
+                      android:text="Режимы"
+                      android:backgroundTint="#6A1B9A"
+                      android:textColor="#FFFFFF"
+                      android:layout_marginBottom="10dp"/>
+                  <Button
+                      android:layout_width="match_parent"
+                      android:layout_height="60dp"
+                      android:text="Больше"
+                      android:backgroundTint="#6A1B9A"
+                      android:textColor="#FFFFFF"/>
+                  <Button
+                      android:layout_width="140dp"
+                      android:layout_height="90dp"
+                      android:text="Классы"
+                      android:backgroundTint="#6A1B9A"
+                      android:textColor="#FFFFFF"
+                      android:layout_marginTop="30dp"/>
+              </LinearLayout>
+          </RelativeLayout>
           EOF
 
-          # FeedForward.kt - Position-wise Feed-Forward Network
-          cat > app/src/main/java/com/jsai/quantum/FeedForward.kt << 'EOF'
-          package com.jsai.quantum
-          import kotlin.math.tanh
+          # Игровой движок (Java)
+          cat > app/src/main/java/com/cubic/battle/GameView.java << 'EOF'
+          package com.cubic.battle;
+          import android.content.Context;
+          import android.graphics.*;
+          import android.view.*;
 
-          class FeedForward(private val dim: Int, private val ffDim: Int = 512) {
-              private val w1 = Array(dim) { FloatArray(ffDim) { randomWeight() } }
-              private val b1 = FloatArray(ffDim) { 0f }
-              private val w2 = Array(ffDim) { FloatArray(dim) { randomWeight() } }
-              private val b2 = FloatArray(dim) { 0f }
+          public class GameView extends SurfaceView implements Runnable {
+              private Thread thread;
+              private boolean running;
+              private float x = 200, y = 200; // Игрок
+              private float bx = 800, by = 400; // Бот
+              private float jx = 250, jy = 750, tx = 250, ty = 750; // Джойстик
+              private boolean moving = false;
 
-              private fun randomWeight(): Float = (kotlin.random.Random.nextFloat() - 0.5f) * 0.04f
+              public GameView(Context context) { super(context); }
 
-              fun forward(x: FloatArray): FloatArray {
-                  // Первый линейный слой с GELU активацией
-                  val hidden = FloatArray(ffDim)
-                  for (j in 0 until ffDim) {
-                      var sum = b1[j]
-                      for (i in 0 until dim) {
-                          sum += x[i] * w1[i][j]
-                      }
-                      // GELU approximation: 0.5 * x * (1 + tanh(sqrt(2/pi) * (x + 0.044715 * x^3)))
-                      hidden[j] = 0.5f * sum * (1f + tanh(0.79788456f * (sum + 0.044715f * sum * sum * sum)))
-                  }
-                  
-                  // Второй линейный слой
-                  val output = FloatArray(dim)
-                  for (j in 0 until dim) {
-                      var sum = b2[j]
-                      for (i in 0 until ffDim) {
-                          sum += hidden[i] * w2[i][j]
-                      }
-                      output[j] = sum
-                  }
-                  
-                  return output
-              }
-          }
-          EOF
-
-          # TransformerBlock.kt - Один блок трансформера
-          cat > app/src/main/java/com/jsai/quantum/TransformerBlock.kt << 'EOF'
-          package com.jsai.quantum
-
-          class TransformerBlock(
-              private val dim: Int,
-              private val numHeads: Int = 8,
-              private val ffDim: Int = 512
-          ) {
-              private val attention = MultiHeadAttention(dim, numHeads)
-              private val feedForward = FeedForward(dim, ffDim)
-              private val ln1 = LayerNorm(dim)
-              private val ln2 = LayerNorm(dim)
-
-              fun forward(x: Array<FloatArray>): Array<FloatArray> {
-                  // Self-attention с residual connection
-                  val attnOutput = attention.forward(x)
-                  val residual1 = Array(x.size) { i ->
-                      FloatArray(dim) { j -> x[i][j] + attnOutput[i][j] }
-                  }
-                  val norm1 = residual1.map { ln1.forward(it) }.toTypedArray()
-                  
-                  // Feed-forward с residual connection
-                  val ffOutput = norm1.map { feedForward.forward(it) }.toTypedArray()
-                  val residual2 = Array(norm1.size) { i ->
-                      FloatArray(dim) { j -> norm1[i][j] + ffOutput[i][j] }
-                  }
-                  
-                  return residual2.map { ln2.forward(it) }.toTypedArray()
-              }
-          }
-          EOF
-
-          # GPTTransformer.kt - Полный GPT-подобный трансформер
-          cat > app/src/main/java/com/jsai/quantum/GPTTransformer.kt << 'EOF'
-          package com.jsai.quantum
-          import kotlin.math.sin
-          import kotlin.math.cos
-          import kotlin.math.exp
-          import kotlin.math.sqrt
-          import kotlin.math.ln
-          import kotlin.math.PI
-
-          class GPTTransformer(
-              private val vocabSize: Int,
-              private val dim: Int = 256,
-              private val numLayers: Int = 6,
-              private val numHeads: Int = 8,
-              private val maxSeqLen: Int = 128
-          ) {
-              // Token embeddings
-              private val tokenEmbedding = Array(vocabSize) { FloatArray(dim) { randomNormal() } }
-              // Position embeddings
-              private val positionEmbedding = Array(maxSeqLen) { FloatArray(dim) }
-              
-              // Transformer blocks
-              private val blocks = Array(numLayers) { TransformerBlock(dim, numHeads, dim * 4) }
-              
-              // Final layer norm
-              private val finalLN = LayerNorm(dim)
-              
-              // Output projection
-              private val outputW = Array(dim) { FloatArray(vocabSize) { randomNormal() } }
-              private val outputB = FloatArray(vocabSize) { 0f }
-              
-              init {
-                  // Инициализация позиционных эмбеддингов (синусоидальные)
-                  for (pos in 0 until maxSeqLen) {
-                      for (i in 0 until dim) {
-                          val angle = pos.toFloat() / Math.pow(10000.0, (2.0 * (i / 2)) / dim.toDouble()).toFloat()
-                          positionEmbedding[pos][i] = if (i % 2 == 0) sin(angle) else cos(angle)
-                      }
-                  }
+              public void start() {
+                  running = true;
+                  thread = new Thread(this);
+                  thread.start();
               }
 
-              private fun randomNormal(): Float {
-                  // Box-Muller transform для нормального распределения
-                  val u1 = kotlin.random.Random.nextFloat()
-                  val u2 = kotlin.random.Random.nextFloat()
-                  return (sqrt(-2f * ln(maxOf(u1, 0.0001f))) * cos(2f * PI.toFloat() * u2) * 0.02f)
-              }
-
-              fun forward(inputIds: IntArray): FloatArray {
-                  val seqLen = inputIds.size
-                  
-                  // Embedding + positional encoding
-                  val hidden = Array(seqLen) { i ->
-                      val tokenEmb = tokenEmbedding[inputIds[i]]
-                      val posEmb = positionEmbedding[i]
-                      FloatArray(dim) { j -> tokenEmb[j] + posEmb[j] }
-                  }
-                  
-                  // Прогон через все блоки трансформера
-                  var current = hidden
-                  for (block in blocks) {
-                      current = block.forward(current)
-                  }
-                  
-                  // Финальная нормализация
-                  current = current.map { finalLN.forward(it) }.toTypedArray()
-                  
-                  // Берем последний токен для предсказания следующего
-                  val lastHidden = current.last()
-                  
-                  // Проекция в словарь
-                  val logits = FloatArray(vocabSize)
-                  var maxLogit = Float.NEGATIVE_INFINITY
-                  for (k in 0 until vocabSize) {
-                      var sum = outputB[k]
-                      for (j in 0 until dim) {
-                          sum += lastHidden[j] * outputW[j][k]
-                      }
-                      logits[k] = sum
-                      if (sum > maxLogit) maxLogit = sum
-                  }
-                  
-                  // Softmax с температурой
-                  val temperature = 0.8f
-                  var sumExp = 0f
-                  for (k in logits.indices) {
-                      logits[k] = exp((logits[k] - maxLogit) / temperature)
-                      sumExp += logits[k]
-                  }
-                  for (k in logits.indices) {
-                      logits[k] /= sumExp
-                  }
-                  
-                  return logits
-              }
-
-              fun sampleNextToken(inputIds: IntArray): Int {
-                  val probs = forward(inputIds)
-                  // Nucleus sampling (top-p = 0.9)
-                  val sorted = probs.withIndex().sortedByDescending { it.value }
-                  var cumSum = 0f
-                  val nucleus = mutableListOf<Int>()
-                  for ((idx, prob) in sorted) {
-                      cumSum += prob
-                      nucleus.add(idx)
-                      if (cumSum > 0.9f) break
-                  }
-                  
-                  // Семплируем из nucleus
-                  val r = kotlin.random.Random.nextFloat() * cumSum
-                  cumSum = 0f
-                  for (idx in nucleus) {
-                      cumSum += probs[idx]
-                      if (r <= cumSum) return idx
-                  }
-                  return sorted.first().index
-              }
-          }
-          EOF
-
-          # MainActivity.kt с трансформером
-          cat > app/src/main/java/com/jsai/quantum/MainActivity.kt << 'EOF'
-          package com.jsai.quantum
-          import android.app.Activity
-          import android.content.Intent
-          import android.os.Bundle
-          import android.widget.*
-          import androidx.appcompat.app.AppCompatActivity
-          import kotlinx.coroutines.*
-          import java.util.*
-          import android.net.Uri
-          import android.provider.OpenableColumns
-
-          class MainActivity : AppCompatActivity() {
-              private lateinit var console: TextView
-              private lateinit var bar: ProgressBar
-              private lateinit var stats: TextView
-              private var transformer: GPTTransformer? = null
-              private var isTraining = false
-              private val selectedUris = mutableListOf<Uri>()
-              private val wordToId = mutableMapOf<String, Int>()
-              private val idToWord = mutableMapOf<Int, String>()
-              private var vocabSize = 0
-
-              override fun onCreate(savedInstanceState: Bundle?) {
-                  super.onCreate(savedInstanceState)
-                  setContentView(R.layout.activity_main)
-                  console = findViewById(R.id.console)
-                  bar = findViewById(R.id.progress)
-                  stats = findViewById(R.id.stats)
-                  val input = findViewById<EditText>(R.id.input)
-
-                  findViewById<Button>(R.id.loadBtn).setOnClickListener {
-                      val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                          type = "text/*"
-                          putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
-                          addCategory(Intent.CATEGORY_OPENABLE)
-                      }
-                      startActivityForResult(intent, 101)
-                  }
-
-                  findViewById<Button>(R.id.trainBtn).setOnClickListener {
-                      if(!isTraining && selectedUris.isNotEmpty()) startTraining()
-                      else if(selectedUris.isEmpty()) console.append("\n>>> ERROR: NO FILES SELECTED")
-                  }
-
-                  findViewById<Button>(R.id.sendBtn).setOnClickListener {
-                      val p = input.text.toString()
-                      if(p.isNotBlank()) {
-                          console.append("\n\nUSER: $p")
-                          input.setText("")
-                          generateResponse(p)
-                      }
-                  }
-                  console.text = ">>> JSAI TRANSFORMER GPT\n>>> Multi-Head Attention + FFN + LayerNorm\n>>> 6 Layers, 8 Heads, 256 dim\n"
-              }
-
-              private fun buildVocabulary(texts: List<String>) {
-                  wordToId.clear()
-                  idToWord.clear()
-                  // Специальные токены
-                  wordToId["<pad>"] = 0; idToWord[0] = "<pad>"
-                  wordToId["<unk>"] = 1; idToWord[1] = "<unk>"
-                  wordToId["<eos>"] = 2; idToWord[2] = "<eos>"
-                  
-                  var id = 3
-                  for (text in texts) {
-                      val words = text.split(Regex("[^a-zA-Zа-яА-Я0-9']+")).filter { it.length > 1 }
-                      for (word in words) {
-                          val w = word.lowercase()
-                          if (!wordToId.containsKey(w)) {
-                              wordToId[w] = id
-                              idToWord[id] = w
-                              id++
+              @Override
+              public void run() {
+                  while (running) {
+                      if (getHolder().getSurface().isValid()) {
+                          Canvas canvas = getHolder().lockCanvas();
+                          // Логика
+                          if (moving) {
+                              float dx = tx - jx, dy = ty - jy;
+                              float d = (float)Math.sqrt(dx*dx + dy*dy);
+                              if (d > 5) { x += (dx/d)*12; y += (dy/d)*12; }
                           }
-                      }
-                  }
-                  vocabSize = wordToId.size
-              }
+                          // Бот преследует
+                          float bdx = x - bx, bdy = y - by;
+                          float bd = (float)Math.sqrt(bdx*bdx + bdy*bdy);
+                          if (bd > 100) { bx += (bdx/bd)*6; by += (bdy/bd)*6; }
 
-              private fun startTraining() = CoroutineScope(Dispatchers.Main).launch {
-                  isTraining = true
-                  console.append("\n[PHASE 1: TOKENIZATION & VOCABULARY]")
-                  
-                  val allTexts = mutableListOf<String>()
-                  withContext(Dispatchers.Default) {
-                      for (uri in selectedUris) {
-                          try {
-                              contentResolver.openInputStream(uri)?.use { stream ->
-                                  allTexts.add(Scanner(stream).useDelimiter("\\A").next())
-                              }
-                          } catch(e: Exception) {
-                              withContext(Dispatchers.Main) { 
-                                  console.append("\nError reading file: ${e.message}") 
-                              }
-                          }
-                      }
-                  }
-                  
-                  buildVocabulary(allTexts)
-                  console.append("\n[VOCABULARY: $vocabSize tokens]")
-                  
-                  if (vocabSize < 20) {
-                      console.append("\n>>> NEED MORE TEXT DATA (min 20 unique words)")
-                      isTraining = false
-                      return@launch
-                  }
-                  
-                  // Инициализация GPT трансформера
-                  console.append("\n[INITIALIZING GPT TRANSFORMER]")
-                  console.append("\n- Dimension: 256")
-                  console.append("\n- Layers: 6")
-                  console.append("\n- Attention Heads: 8")
-                  console.append("\n- FeedForward dim: 1024")
-                  
-                  transformer = GPTTransformer(vocabSize, 256, 6, 8, 128)
-                  
-                  console.append("\n[PHASE 2: TRAINING (Forward Pass Only)]")
-                  console.append("\n[Model loaded. Ready for inference.]")
-                  bar.max = 100
-                  bar.progress = 0
-                  
-                  withContext(Dispatchers.Default) {
-                      var totalTokens = 0
-                      for ((index, text) in allTexts.withIndex()) {
-                          val words = text.split(Regex("[^a-zA-Zа-яА-Я0-9']+"))
-                              .filter { it.length > 1 }
-                              .map { it.lowercase() }
+                          // Отрисовка
+                          canvas.drawColor(Color.parseColor("#D2B48C")); // Песок
+                          Paint p = new Paint();
+                          drawCube(canvas, x, y, p); // Игрок
+                          drawCube(canvas, bx, by, p); // Бот
                           
-                          totalTokens += words.size
+                          // Джойстик
+                          p.setColor(Color.WHITE); p.setAlpha(100);
+                          canvas.drawCircle(jx, jy, 130, p);
+                          p.setAlpha(200); canvas.drawCircle(tx, ty, 65, p);
                           
-                          withContext(Dispatchers.Main) {
-                              bar.progress = ((index + 1) * 100) / allTexts.size
-                              stats.text = "PROCESSING: ${index+1}/${allTexts.size} | TOKENS: $totalTokens | VOCAB: $vocabSize"
-                          }
+                          // Кнопки
+                          p.setAlpha(255); p.setColor(Color.parseColor("#BA68C8"));
+                          canvas.drawCircle(canvas.getWidth()-350, canvas.getHeight()-350, 90, p);
+                          p.setColor(Color.parseColor("#E57373"));
+                          canvas.drawCircle(canvas.getWidth()-180, canvas.getHeight()-180, 90, p);
+
+                          getHolder().unlockCanvasAndPost(canvas);
                       }
-                      
-                      withContext(Dispatchers.Main) {
-                          console.append("\n[TOKENS INDEXED: $totalTokens]")
-                      }
+                      try { Thread.sleep(16); } catch (Exception e) {}
                   }
-                  
-                  console.append("\n\n[TRANSFORMER READY]")
-                  console.append("\nGPT-style Decoder Architecture")
-                  console.append("\nVocabulary: $vocabSize words")
-                  console.append("\nType your prompt and press GENERATE")
-                  isTraining = false
-                  stats.text = "GPT READY | VOCAB: $vocabSize | TRANSFORMER INITIALIZED"
               }
 
-              private fun generateResponse(prompt: String) {
-                  if (transformer == null) {
-                      console.append("\nJSAI: Transformer not initialized. Load text and press TRAIN.")
-                      return
-                  }
-                  
-                  val tokens = prompt.lowercase()
-                      .split(Regex("[^a-zA-Zа-яА-Я0-9']+"))
-                      .filter { it.length > 1 }
-                  
-                  val inputIds = mutableListOf<Int>()
-                  for (token in tokens.takeLast(128)) {
-                      inputIds.add(wordToId.getOrDefault(token, 1))
-                  }
-                  
-                  if (inputIds.isEmpty()) {
-                      inputIds.add(kotlin.random.Random.nextInt(3, vocabSize))
-                  }
-                  
-                  // Авторегрессионная генерация
-                  val generated = mutableListOf<String>()
-                  generated.addAll(tokens)
-                  
-                  try {
-                      console.append("\n[Generating with nucleus sampling (top-p=0.9)]")
-                      repeat(80) {
-                          if (inputIds.size > 128) {
-                              inputIds.removeAt(0)
-                          }
-                          val nextId = transformer!!.sampleNextToken(inputIds.toIntArray())
-                          val nextWord = idToWord[nextId] ?: idToWord[1]!!
-                          if (nextWord != "<eos>" && nextWord != "<pad>" && nextWord != "<unk>") {
-                              generated.add(nextWord)
-                          }
-                          inputIds.add(nextId)
-                      }
-                  } catch (e: Exception) {
-                      console.append("\n[Generation error: ${e.message}]")
-                  }
-                  
-                  console.append("\nJSAI: ${generated.joinToString(" ")}")
+              private void drawCube(Canvas c, float x, float y, Paint p) {
+                  p.setColor(Color.BLACK); c.drawRect(x, y, x+110, y+110, p);
+                  p.setColor(Color.WHITE); 
+                  c.drawRect(x+15, y+20, x+45, y+50, p); // Глаз 1
+                  c.drawRect(x+65, y+20, x+95, y+50, p); // Глаз 2
               }
 
-              private fun getFileName(uri: Uri): String {
-                  var result: String? = null
-                  if (uri.scheme == "content") {
-                      contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-                          if (cursor.moveToFirst()) result = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME))
-                      }
+              @Override
+              public boolean onTouchEvent(MotionEvent e) {
+                  if (e.getX() < getWidth()/2) {
+                      if (e.getAction() == MotionEvent.ACTION_UP) { tx=jx; ty=jy; moving=false; }
+                      else { tx=e.getX(); ty=e.getY(); moving=true; }
                   }
-                  return result ?: uri.path ?: "unknown_file"
-              }
-
-              override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-                  super.onActivityResult(requestCode, resultCode, data)
-                  if (resultCode == Activity.RESULT_OK && requestCode == 101) {
-                      selectedUris.clear()
-                      val clipData = data?.clipData
-                      if (clipData != null) {
-                          for (i in 0 until clipData.itemCount) {
-                              selectedUris.add(clipData.getItemAt(i).uri)
-                          }
-                      } else {
-                          data?.data?.let { selectedUris.add(it) }
-                      }
-                      stats.text = "FILES: ${selectedUris.size} | READY FOR TRAINING"
-                      console.append("\n>>> ${selectedUris.size} files loaded. Press TRAIN TRANSFORMER.")
-                  }
+                  return true;
               }
           }
           EOF
 
-          # Manifest
+          # Главная активность (Java)
+          cat > app/src/main/java/com/cubic/battle/MainActivity.java << 'EOF'
+          package com.cubic.battle;
+          import android.os.Bundle;
+          import androidx.appcompat.app.AppCompatActivity;
+          import android.widget.Button;
+
+          public class MainActivity extends AppCompatActivity {
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  setContentView(R.layout.activity_main);
+                  findViewById(R.id.btn_play).setOnClickListener(v -> {
+                      GameView g = new GameView(this);
+                      setContentView(g);
+                      g.start();
+                  });
+              }
+          }
+          EOF
+
+          # Манифест
           cat > app/src/main/AndroidManifest.xml << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="JsAI Transformer" android:theme="@style/Theme.JsAI" android:largeHeap="true">
-                  <activity android:name=".MainActivity" android:exported="true">
+              <application android:label="Cubic Battle" android:theme="@style/AppTheme">
+                  <activity android:name="com.cubic.battle.MainActivity" android:exported="true" android:screenOrientation="landscape">
                       <intent-filter>
-                          <action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
                       </intent-filter>
                   </activity>
               </application>
           </manifest>
           EOF
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: 8.4
+          # Скрипты сборки
+          echo "include ':app'" > settings.gradle
+          cat > build.gradle << 'EOF'
+          buildscript {
+              repositories { google(); mavenCentral() }
+              dependencies { classpath 'com.android.tools.build:gradle:8.2.2' }
+          }
+          allprojects { repositories { google(); mavenCentral() } }
+          EOF
+          cat > app/build.gradle << 'EOF'
+          plugins { id 'com.android.application' }
+          android {
+              namespace 'com.cubic.battle'
+              compileSdk 34
+              defaultConfig { applicationId 'com.cubic.battle'; minSdk 24; targetSdk 34 }
+          }
+          dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }
+          EOF
 
       - name: Build APK
-        run: gradle assembleDebug --no-daemon
+        run: |
+          wget -q https://services.gradle.org/distributions/gradle-8.5-bin.zip
+          unzip -q gradle-8.5-bin.zip
+          export PATH="$PWD/gradle-8.5/bin:$PATH"
+          gradle wrapper --gradle-version 8.5
+          ./gradlew assembleDebug
 
-      - name: Upload APK
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: JsAI-Transformer-GPT
+          name: Cubic_Battle_Industrial
           path: app/build/outputs/apk/debug/app-debug.apk
