@@ -8,13 +8,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: 'gradle'
-
+      # ШАГ 1: СНАЧАЛА СОЗДАЕМ ФАЙЛЫ ПРОЕКТА
       - name: Create Project Files
         run: |
           mkdir -p app/src/main/java/com/jsai/craft
@@ -141,13 +135,13 @@ jobs:
                                   public void messageArrived(String topic, MqttMessage msg) {
                                       try {
                                           String[] parts = new String(msg.getPayload()).split(",");
-                                          if(parts[1].equals(myId)) return; // Игнорируем свои пакеты
+                                          if(parts[1].equals(myId)) return;
                                           
-                                          if(parts[0].equals("P")) { // Позиция
+                                          if(parts[0].equals("P")) { 
                                               peers.put(parts[1], new float[]{
                                                   Float.parseFloat(parts[2]), Float.parseFloat(parts[3]), Float.parseFloat(parts[4]), System.currentTimeMillis()
                                               });
-                                          } else if(parts[0].equals("B")) { // Блоки
+                                          } else if(parts[0].equals("B")) { 
                                               renderer.setBRemote(Integer.parseInt(parts[2]), Integer.parseInt(parts[3]), Integer.parseInt(parts[4]), Byte.parseByte(parts[5]));
                                           }
                                       } catch(Exception e) {}
@@ -157,13 +151,11 @@ jobs:
                               
                               client.subscribe("jsaicraft/global/v11/#");
                               
-                              // Цикл отправки позиции (около 12 раз в секунду)
                               while(client.isConnected()) {
                                   Thread.sleep(80); 
                                   String msg = "P," + myId + "," + curX + "," + curY + "," + curZ;
                                   client.publish("jsaicraft/global/v11/pos", msg.getBytes(), 0, false);
                                   
-                                  // Удаляем игроков, от которых нет сигнала более 3 секунд
                                   long now = System.currentTimeMillis();
                                   peers.entrySet().removeIf(e -> now - e.getValue()[3] > 3000);
                               }
@@ -215,10 +207,10 @@ jobs:
                       public void run() {
                           if(GlobalManager.isConnected) {
                               tvOnline.setText("ГЛОБАЛЬНЫЙ ОНЛАЙН: " + (GlobalManager.peers.size() + 1));
-                              tvOnline.setTextColor(0xFF00FF00); // Зеленый
+                              tvOnline.setTextColor(0xFF00FF00);
                           } else {
                               tvOnline.setText("Подключение к серверу...");
-                              tvOnline.setTextColor(0xFFFF0000); // Красный
+                              tvOnline.setTextColor(0xFFFF0000);
                           }
                           h.postDelayed(this, 1000);
                       }
@@ -351,7 +343,6 @@ jobs:
                   
                   net = new GlobalManager(this);
                   
-                  // Генерация мира (общая для всех, так как алгоритм детерминирован)
                   for(int x=0; x<128; x++) for(int z=0; z<128; z++) {
                       int h = (int)(Math.sin(x*0.12)*Math.cos(z*0.12)*4 + 10);
                       for(int y=0; y<h; y++) setB(x,y,z,(byte)(y==h-1?1:y<h-3?2:3));
@@ -359,7 +350,7 @@ jobs:
                   
                   for(int x=15; x<110; x+=22) {
                       for(int z=15; z<110; z+=22) {
-                          if((x*z) % 7 > 2) { // Детерминированный рандом для спавна деревень
+                          if((x*z) % 7 > 2) { 
                               int baseY = (int)(Math.sin(x*0.12)*Math.cos(z*0.12)*4 + 10);
                               buildHouse(x, baseY, z);
                           }
@@ -417,7 +408,7 @@ jobs:
                       if(getB(pX,pY,pZ) == 0 && 
                          !(Math.abs(this.px-pX)<0.8f && Math.abs(this.py-pY)<1.8f && Math.abs(this.pz-pZ)<0.8f)) {
                           setB(pX, pY, pZ, selectedBlock);
-                          net.sendBlock(pX, pY, pZ, selectedBlock); // Отправляем в интернет
+                          net.sendBlock(pX, pY, pZ, selectedBlock); 
                           lastPlaced = new int[]{pX, pY, pZ};
                           placeStart = System.currentTimeMillis();
                       }
@@ -451,7 +442,7 @@ jobs:
                       breakProgress = Math.min(1.0f, elapsed / (float)BREAK_TIME);
                       if(breakProgress >= 1.0f) {
                           setB(sel[0], sel[1], sel[2], (byte)0);
-                          net.sendBlock(sel[0], sel[1], sel[2], (byte)0); // Удаляем в интернете
+                          net.sendBlock(sel[0], sel[1], sel[2], (byte)0); 
                           isBreaking = false;
                           breakProgress = 0;
                       }
@@ -494,9 +485,7 @@ jobs:
                       }
                   }
                   
-                  // Рисуем ДРУГИХ игроков из интернета
                   for (float[] pos : GlobalManager.peers.values()) {
-                      // Тело другого игрока (Два красных блока)
                       block.draw(mvp, pos[0]-0.5f, pos[1], pos[2]-0.5f, false, 5, 0.95f, 1.0f); 
                       block.draw(mvp, pos[0]-0.5f, pos[1]+1, pos[2]-0.5f, false, 5, 0.95f, 1.0f); 
                   }
@@ -611,7 +600,7 @@ jobs:
                   else if(type==2) { r=0.6f; g=0.6f; b=0.6f; }
                   else if(type==3) { r=0.55f; g=0.35f; b=0.2f; }
                   else if(type==4) { r=0.54f; g=0.35f; b=0.17f; } 
-                  else if(type==5) { r=0.85f; g=0.2f; b=0.2f; } // Другие игроки (Красные)
+                  else if(type==5) { r=0.85f; g=0.2f; b=0.2f; } 
                   
                   GLES30.glUniform3f(ch, r, g, b);
                   GLES30.glUniform1f(ah, alpha);
@@ -642,6 +631,14 @@ jobs:
               </application>
           </manifest>
           EOF
+
+      # ШАГ 2: ТЕПЕРЬ НАСТРАИВАЕМ JAVA, КОГДА build.gradle УЖЕ СУЩЕСТВУЕТ
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
 
       - name: Turbo Build
         run: |
