@@ -1,4 +1,4 @@
-name: JsAI_Craft_V11_GL46_ULTRA_OPTIMIZED
+name: JsAI_Craft_V12_LUSH_CAVES_OPTIMIZED
 on: [push, workflow_dispatch]
 
 jobs:
@@ -41,34 +41,29 @@ jobs:
           cat > app/build.gradle << 'EOF'
           plugins { id 'com.android.application' }
           android { namespace 'com.jsai.craft'; compileSdk 34; defaultConfig { applicationId 'com.jsai.craft'; minSdk 24; targetSdk 34 } }
-          dependencies { implementation 'org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5' }
           EOF
 
           cat > app/src/main/res/layout/main.xml << 'EOF'
-          <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:clipChildren="false" android:clipToPadding="false"><android.opengl.GLSurfaceView android:id="@+id/gl" android:layout_width="match_parent" android:layout_height="match_parent"/><View android:layout_width="3dp" android:layout_height="3dp" android:background="@drawable/dot" android:layout_centerInParent="true"/><TextView android:id="@+id/tv" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_margin="10dp" android:textColor="#0F0" android:shadowColor="#000" android:shadowDx="2" android:shadowDy="2" android:shadowRadius="2"/><LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_centerHorizontal="true" android:layout_marginTop="10dp"><Button android:id="@+id/b1" android:layout_width="50dp" android:layout_height="50dp" android:background="@drawable/b1" android:text="1" android:textColor="#FFF"/><Button android:id="@+id/b2" android:layout_width="50dp" android:layout_height="50dp" android:background="@drawable/b2" android:text="2" android:textColor="#FFF" android:layout_marginLeft="5dp"/><Button android:id="@+id/b3" android:layout_width="50dp" android:layout_height="50dp" android:background="@drawable/b3" android:text="3" android:textColor="#FFF" android:layout_marginLeft="5dp"/></LinearLayout><FrameLayout android:id="@+id/jz" android:layout_width="90dp" android:layout_height="90dp" android:layout_alignParentBottom="true" android:layout_margin="35dp" android:background="@drawable/jb" android:clipChildren="false" android:clipToPadding="false"><View android:id="@+id/jh" android:layout_width="34dp" android:layout_height="34dp" android:layout_gravity="center" android:background="@drawable/jh"/></FrameLayout><LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_alignParentBottom="true" android:layout_alignParentRight="true" android:layout_margin="10dp" android:orientation="vertical"><LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"><Button android:id="@+id/brk" android:layout_width="65dp" android:layout_height="65dp" android:text="BRK"/><Button android:id="@+id/plc" android:layout_width="65dp" android:layout_height="65dp" android:text="PLC" android:layout_marginLeft="5dp"/></LinearLayout><Button android:id="@+id/jmp" android:layout_width="135dp" android:layout_height="70dp" android:text="JUMP" android:layout_marginTop="5dp"/></LinearLayout></RelativeLayout>
+          <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:clipChildren="false" android:clipToPadding="false"><android.opengl.GLSurfaceView android:id="@+id/gl" android:layout_width="match_parent" android:layout_height="match_parent"/><View android:layout_width="3dp" android:layout_height="3dp" android:background="@drawable/dot" android:layout_centerInParent="true"/><LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_centerHorizontal="true" android:layout_marginTop="10dp"><Button android:id="@+id/b1" android:layout_width="50dp" android:layout_height="50dp" android:background="@drawable/b1" android:text="1" android:textColor="#FFF"/><Button android:id="@+id/b2" android:layout_width="50dp" android:layout_height="50dp" android:background="@drawable/b2" android:text="2" android:textColor="#FFF" android:layout_marginLeft="5dp"/><Button android:id="@+id/b3" android:layout_width="50dp" android:layout_height="50dp" android:background="@drawable/b3" android:text="3" android:textColor="#FFF" android:layout_marginLeft="5dp"/></LinearLayout><FrameLayout android:id="@+id/jz" android:layout_width="90dp" android:layout_height="90dp" android:layout_alignParentBottom="true" android:layout_margin="35dp" android:background="@drawable/jb" android:clipChildren="false" android:clipToPadding="false"><View android:id="@+id/jh" android:layout_width="34dp" android:layout_height="34dp" android:layout_gravity="center" android:background="@drawable/jh"/></FrameLayout><LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_alignParentBottom="true" android:layout_alignParentRight="true" android:layout_margin="10dp" android:orientation="vertical"><LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"><Button android:id="@+id/brk" android:layout_width="65dp" android:layout_height="65dp" android:text="BRK"/><Button android:id="@+id/plc" android:layout_width="65dp" android:layout_height="65dp" android:text="PLC" android:layout_marginLeft="5dp"/></LinearLayout><Button android:id="@+id/jmp" android:layout_width="135dp" android:layout_height="70dp" android:text="JUMP" android:layout_marginTop="5dp"/></LinearLayout></RelativeLayout>
           EOF
 
           cat > app/src/main/java/com/jsai/craft/App.java << 'EOF'
           package com.jsai.craft;
-          import android.app.Activity; import android.os.*; import android.view.*; import android.widget.*;
-          import android.opengl.*; import java.nio.*; import java.util.concurrent.ConcurrentHashMap;
-          import org.eclipse.paho.client.mqttv3.*; import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
-          import javax.microedition.khronos.egl.EGLConfig; import javax.microedition.khronos.opengles.GL10;
+          import android.app.Activity; import android.os.Bundle; import android.view.*; import android.widget.*;
+          import android.opengl.*; import java.nio.*; import javax.microedition.khronos.egl.EGLConfig; import javax.microedition.khronos.opengles.GL10;
 
           public class App extends Activity {
-              Rnd r; TextView tv;
+              Rnd r;
               protected void onCreate(Bundle b) {
-                  super.onCreate(b); requestWindowFeature(Window.FEATURE_NO_TITLE);
-                  getWindow().setFlags(1024,1024); setContentView(R.layout.main);
-                  tv=findViewById(R.id.tv); GLSurfaceView gl=findViewById(R.id.gl);
-                  gl.setEGLContextClientVersion(3); gl.setEGLConfigChooser(8,8,8,8,16,0);
+                  super.onCreate(b); requestWindowFeature(1); getWindow().setFlags(1024,1024); setContentView(R.layout.main);
+                  GLSurfaceView gl=findViewById(R.id.gl); gl.setEGLContextClientVersion(3); gl.setEGLConfigChooser(8,8,8,8,16,0);
                   r=new Rnd(); gl.setRenderer(r); gl.setRenderMode(1);
                   gl.setOnTouchListener((v,e)->{
                       float x=e.getX(), y=e.getY(); if(e.getAction()==0&&x>v.getWidth()/2f){r.isP=true;r.lx=x;r.ly=y;}
-                      else if(e.getAction()==2&&r.isP){r.yw-=(x-r.lx)*0.3f;r.pt+=(y-r.ly)*0.3f;if(r.pt>89)r.pt=89;if(r.pt<-89)r.pt=-89;r.lx=x;r.ly=y;}
+                      else if(e.getAction()==2&&r.isP){r.yw-=(x-r.lx)*.3f;r.pt+=(y-r.ly)*.3f;if(r.pt>89)r.pt=89;if(r.pt<-89)r.pt=-89;r.lx=x;r.ly=y;}
                       else if(e.getAction()==1)r.isP=false; return true;
                   });
-                  findViewById(R.id.jmp).setOnClickListener(v->r.vy=Math.abs(r.vy)<0.02f?0.218f:r.vy);
+                  findViewById(R.id.jmp).setOnClickListener(v->r.vy=Math.abs(r.vy)<.02f?.218f:r.vy);
                   findViewById(R.id.brk).setOnTouchListener((v,e)->{if(e.getAction()==0)r.brk=System.currentTimeMillis();else if(e.getAction()==1)r.brk=0;return true;});
                   findViewById(R.id.plc).setOnClickListener(v->r.plc());
                   findViewById(R.id.b1).setOnClickListener(v->r.sb=1); findViewById(R.id.b2).setOnClickListener(v->r.sb=2); findViewById(R.id.b3).setOnClickListener(v->r.sb=3);
@@ -78,99 +73,106 @@ jobs:
                       float rad=v.getWidth()/2f, dx=e.getX()-rad, dy=e.getY()-rad, d=(float)Math.sqrt(dx*dx+dy*dy);
                       if(d>rad){dx=dx/d*rad;dy=dy/d*rad;} jh.setTranslationX(dx);jh.setTranslationY(dy);r.mx=dx/rad;r.mz=-dy/rad;}return true;
                   });
-                  new Handler().post(new Runnable(){public void run(){tv.setText(Net.ok?"ОНЛАЙН: "+(Net.p.size()+1):"Ищем сервер...");tv.setTextColor(Net.ok?0xFF00FF00:0xFFFF0000);new Handler().postDelayed(this,1000);}});
               }
           }
 
           class Rnd implements GLSurfaceView.Renderer {
-              float yw=0, pt=0, px=64, py=25, pz=64, vy=0, mx=0, mz=0, lx, ly; boolean isP=false;
-              float[] m=new float[16], pr=new float[16], v=new float[16]; byte[] w=new byte[1048576];
-              int[] vis=new int[15000]; int vC=0, lCx=-1, lCz=-1, lbI=-1;
-              int[] sel, pA, lP; long brk=0, pSt=0; byte sb=1; Blk b; Net n;
+              float yw=0, pt=0, px=64, py=35, pz=64, vy=0, mx=0, mz=0, lx, ly; boolean isP=false;
+              float[] m=new float[16], pr=new float[16], v=new float[16]; byte[] w=new byte[1048576], hm=new byte[16384];
+              int[] vis=new int[15000]; int vC=0, lCx=-1, lCz=-1, lbI=-1, lpI=-1;
+              int[] sel, pA, lP; long brk=0, pSt=0; byte sb=1; Blk b;
               
               public void onSurfaceCreated(GL10 g, EGLConfig c) {
-                  GLES30.glClearColor(0.5f,0.8f,1f,1f); GLES30.glEnable(2929); GLES30.glEnable(2884); GLES30.glEnable(3042); GLES30.glBlendFunc(770,771);
-                  b=new Blk(); n=new Net(this);
-                  for(int x=0;x<128;x++)for(int z=0;z<128;z++){int h=(int)(Math.sin(x*.12)*Math.cos(z*.12)*4+10);for(int y=0;y<h;y++)sB(x,y,z,(byte)(y==h-1?1:y<h-3?2:3));}
-                  for(int x=15;x<110;x+=22)for(int z=15;z<110;z+=22)if((x*z)%7>2){int by=(int)(Math.sin(x*.12)*Math.cos(z*.12)*4+10);for(int i=-2;i<=2;i++)for(int j=-2;j<=2;j++)for(int h=0;h<5;h++)sB(x+i,by+h,z+j,(byte)(h==4?4:(i==-2||i==2||j==-2||j==2)?2:0));sB(x,by,z+2,(byte)0);sB(x,by+1,z+2,(byte)0);}
+                  GLES30.glClearColor(.5f,.8f,1f,1f); GLES30.glEnable(2929); GLES30.glEnable(2884); GLES30.glEnable(3042); GLES30.glBlendFunc(770,771);
+                  b=new Blk();
+                  for(int x=0;x<128;x++)for(int z=0;z<128;z++){
+                      int h=(int)(Math.sin(x*.12)*Math.cos(z*.12)*5+20);
+                      for(int y=0;y<h;y++){
+                          float n=(float)(Math.sin(x*.2)+Math.sin(y*.3)+Math.sin(z*.2));
+                          if(n>1.2f)continue; // Воздушные пузыри (Пышные пещеры)
+                          sB(x,y,z,(byte)(n>1f?5:y==h-1?1:y<h-3?2:3)); // 5 - Мхи на стенах пещер
+                      }
+                  }
+                  for(int x=15;x<110;x+=22)for(int z=15;z<110;z+=22)if((x*z)%7>2){ // Деревни
+                      int by=(int)(Math.sin(x*.12)*Math.cos(z*.12)*5+20);
+                      for(int i=-2;i<=2;i++)for(int j=-2;j<=2;j++)for(int h=0;h<5;h++)sB(x+i,by+h,z+j,(byte)(h==4?4:(i==-2||i==2||j==-2||j==2)?2:0));
+                      sB(x,by,z+2,(byte)0);sB(x,by+1,z+2,(byte)0);
+                  }
               }
-              public void sB(int x,int y,int z,byte t){if(x>=0&&x<128&&y>=0&&y<64&&z>=0&&z<128){w[x|(y<<7)|(z<<13)]=t;lCx=-1;}}
+              void updHm(int x,int z){for(int y=63;y>=0;y--)if(gB(x,y,z)>0){hm[x|(z<<7)]=(byte)y;return;}hm[x|(z<<7)]=0;}
+              public void sB(int x,int y,int z,byte t){if(x>=0&&x<128&&y>=0&&y<64&&z>=0&&z<128){w[x|(y<<7)|(z<<13)]=t;lCx=-1;updHm(x,z);}}
               byte gB(int x,int y,int z){return(x>=0&&x<128&&y>=0&&y<64&&z>=0&&z<128)?w[x|(y<<7)|(z<<13)]:0;}
-              public void plc(){if(pA!=null&&sel!=null&&gB(pA[0],pA[1],pA[2])==0&&!(Math.abs(px-pA[0])<.8f&&Math.abs(py-pA[1])<1.8f&&Math.abs(pz-pA[2])<.8f)){sB(pA[0],pA[1],pA[2],sb);n.b(pA[0],pA[1],pA[2],sb);lP=pA;pSt=System.currentTimeMillis();lCx=-1;}}
+              public void plc(){if(pA!=null&&sel!=null&&gB(pA[0],pA[1],pA[2])==0&&!(Math.abs(px-pA[0])<.8f&&Math.abs(py-pA[1])<1.8f&&Math.abs(pz-pA[2])<.8f)){sB(pA[0],pA[1],pA[2],sb);lP=pA;pSt=System.currentTimeMillis();lCx=-1;}}
               boolean cl(float cx,float cy,float cz){return gB((int)cx,(int)cy,(int)cz)>0||gB((int)cx,(int)(cy+1),(int)cz)>0||gB((int)cx,(int)(cy+1.5f),(int)cz)>0;}
 
               public void onDrawFrame(GL10 g) {
                   float s=(float)Math.sin(Math.toRadians(yw)), cs=(float)Math.cos(Math.toRadians(yw)), dx=(mz*s-mx*cs)*.108f, dz=(mz*cs+mx*s)*.108f;
                   if(!cl(px+dx+(dx>0?.3f:-.3f),py,pz))px+=dx; if(!cl(px,py,pz+dz+(dz>0?.3f:-.3f)))pz+=dz;
                   if(vy>0&&gB((int)px,(int)(py+1.8f),(int)pz)>0)vy=0; vy-=.0115f;py+=vy;
-                  if(cl(px,py,pz)){py=(int)py+1;vy=0;} if(py<-10){px=64;py=30;pz=64;vy=0;} n.up(px,py,pz);
+                  if(cl(px,py,pz)){py=(int)py+1;vy=0;} if(py<-10){px=64;py=40;pz=64;vy=0;}
                   
                   GLES30.glClear(16640);
                   float lX=(float)(Math.cos(Math.toRadians(pt))*Math.sin(Math.toRadians(yw))), lY=(float)(-Math.sin(Math.toRadians(pt))), lZ=(float)(Math.cos(Math.toRadians(pt))*Math.cos(Math.toRadians(yw)));
                   Matrix.setLookAtM(v,0,px,py+1.6f,pz,px+lX,py+1.6f+lY,pz+lZ,0,1,0); Matrix.multiplyMM(m,0,pr,0,v,0);
                   
                   sel=pA=null; for(float d=0;d<6;d+=.1f){int tx=(int)(px+lX*d),ty=(int)(py+1.6f+lY*d),tz=(int)(pz+lZ*d);if(gB(tx,ty,tz)>0){sel=new int[]{tx,ty,tz};pA=new int[]{(int)(px+lX*(d-.1f)),(int)(py+1.6f+lY*(d-.1f)),(int)(pz+lZ*(d-.1f))};break;}}
-                  float bp=0; if(brk>0&&sel!=null){bp=Math.min(1f,(System.currentTimeMillis()-brk)/800f);if(bp>=1f){sB(sel[0],sel[1],sel[2],(byte)0);n.b(sel[0],sel[1],sel[2],0);brk=0;bp=0;lCx=-1;}}
+                  float bp=0; if(brk>0&&sel!=null){bp=Math.min(1f,(System.currentTimeMillis()-brk)/800f);if(bp>=1f){sB(sel[0],sel[1],sel[2],(byte)0);brk=0;bp=0;lCx=-1;}}
                   
-                  int cx=(int)px>>3, cz=(int)pz>>3, bI=(brk>0&&sel!=null)?(sel[0]|(sel[1]<<7)|(sel[2]<<13)):-1;
-                  if(cx!=lCx||cz!=lCz||bI!=lbI){vC=0; for(int x=(int)px-28;x<(int)px+28&&vC<14999;x++)for(int z=(int)pz-28;z<(int)pz+28&&vC<14999;z++)for(int y=(int)py-28;y<(int)py+28&&vC<14999;y++){
-                      if(x<1||x>126||y<1||y>62||z<1||z>126)continue; int i=x|(y<<7)|(z<<13); byte t=w[i]; if(t==0)continue;
-                      if(w[i+1]>0&&i+1!=bI && w[i-1]>0&&i-1!=bI && w[i+128]>0&&i+128!=bI && w[i-128]>0&&i-128!=bI && w[i+8192]>0&&i+8192!=bI && w[i-8192]>0&&i-8192!=bI)continue;
-                      vis[vC++]=i|(t<<20);
-                  } lCx=cx;lCz=cz;lbI=bI;}
-
-                  GLES30.glUseProgram(b.p); GLES30.glUniformMatrix4fv(b.uM,1,false,m,0); GLES30.glEnableVertexAttribArray(0); GLES30.glVertexAttribPointer(0,3,5126,false,0,b.vb);
                   int bX=-1,bY=-1,bZ=-1,pX=-1,pY=-1,pZ=-1; float bs=1,ba=1,ps=1,pa=1; byte bt=0,ptT=0;
                   if(brk>0&&sel!=null){bX=sel[0];bY=sel[1];bZ=sel[2];bs=1f-(bp*.7f);ba=1f-bp;bt=gB(bX,bY,bZ);}
-                  if(lP!=null){long e=System.currentTimeMillis()-pSt;if(e<400){float prg=e/400f;pX=lP[0];pY=lP[1];pZ=lP[2];ps=.3f+(prg*.7f);pa=prg;ptT=gB(pX,pY,pZ);}else lP=null;}
+                  // 80ms (0.08s) анимация ставки
+                  if(lP!=null){long e=System.currentTimeMillis()-pSt;if(e<80){float prg=e/80f;pX=lP[0];pY=lP[1];pZ=lP[2];ps=.3f+(prg*.7f);pa=prg;ptT=gB(pX,pY,pZ);}else lP=null;}
 
+                  int cx=(int)px>>3, cz=(int)pz>>3, bI=bt>0?(bX|(bY<<7)|(bZ<<13)):-1, pI=ptT>0?(pX|(pY<<7)|(pZ<<13)):-1;
+                  if(cx!=lCx||cz!=lCz||bI!=lbI||pI!=lpI){vC=0; for(int x=(int)px-28;x<(int)px+28&&vC<14999;x++)for(int z=(int)pz-28;z<(int)pz+28&&vC<14999;z++)for(int y=(int)py-28;y<(int)py+28&&vC<14999;y++){
+                      if(x<1||x>126||y<1||y>62||z<1||z>126)continue; int i=x|(y<<7)|(z<<13); byte t=w[i]; if(t==0)continue;
+                      // Фикс X-Ray: Исключаем анимированные блоки (bI, pI) из отсечения, чтобы сквозь них рисовались соседние грани
+                      boolean oc=true; for(int d:new int[]{1,-1,128,-128,8192,-8192}){int a=i+d;if(w[a]==0||a==bI||a==pI){oc=false;break;}} if(oc)continue;
+                      vis[vC++]=i|(t<<20);
+                  } lCx=cx;lCz=cz;lbI=bI;lpI=pI;}
+
+                  GLES30.glUseProgram(b.p); GLES30.glUniformMatrix4fv(b.uM,1,false,m,0); GLES30.glEnableVertexAttribArray(0); GLES30.glVertexAttribPointer(0,3,5126,false,0,b.vb);
                   GLES30.glDepthMask(true);
                   for(int k=0;k<vC;k++){
                       int i=vis[k],x=i&127,y=(i>>7)&63,z=(i>>13)&127,t=i>>20;
                       float d1=x-px, d2=z-pz; if((d1*lX+d2*lZ)/(float)Math.sqrt(d1*d1+d2*d2)<-0.3f&&d1*d1+d2*d2>25f)continue;
                       if((x==bX&&y==bY&&z==bZ)||(x==pX&&y==pY&&z==pZ))continue; 
-                      b.d(x,y,z,sel!=null&&x==sel[0]&&y==sel[1]&&z==sel[2],t,1,1);
+                      // Расчет простых теней на основе карты высот (глубина)
+                      float sh=Math.max(.4f,1f-(hm[x|(z<<7)]-y)*.12f);
+                      b.d(x,y,z,sel!=null&&x==sel[0]&&y==sel[1]&&z==sel[2],t,1,1,sh);
                   }
-                  
                   GLES30.glDepthMask(false);
-                  for(float[] p:Net.p.values()){b.d(p[0]-.5f,p[1],p[2]-.5f,false,5,.95f,1); b.d(p[0]-.5f,p[1]+1,p[2]-.5f,false,5,.95f,1);}
-                  if(bt>0)b.d(bX,bY,bZ,true,bt,bs,ba); if(ptT>0)b.d(pX,pY,pZ,false,ptT,ps,pa);
+                  if(bt>0)b.d(bX,bY,bZ,true,bt,bs,ba,Math.max(.4f,1f-(hm[bX|(bZ<<7)]-bY)*.12f)); 
+                  if(ptT>0)b.d(pX,pY,pZ,false,ptT,ps,pa,Math.max(.4f,1f-(hm[pX|(pZ<<7)]-pY)*.12f));
                   GLES30.glDepthMask(true);
               }
               public void onSurfaceChanged(GL10 g, int w, int h) {GLES30.glViewport(0,0,w,h); Matrix.perspectiveM(pr,0,75,(float)w/h,.1f,150f);}
           }
 
           class Blk {
-              int p, uM, uP, uC, uS, uA; FloatBuffer vb, wb;
-              float[] v={0,0,0,0,1,0,1,1,0,0,0,0,1,1,0,1,0,0,0,0,1,1,0,1,1,1,1,0,0,1,1,1,1,0,1,1,0,0,0,0,0,1,0,1,1,0,0,0,0,1,1,0,1,0,1,0,0,1,1,0,1,1,1,1,0,0,1,1,1,1,0,1,0,1,0,0,1,1,1,1,1,0,1,0,1,1,1,1,1,0,0,0,0,1,0,0,1,0,1,0,0,0,1,0,1,0,0,1},
-                      w={0,0,0,1,0,0, 1,0,0,1,0,1, 1,0,1,0,0,1, 0,0,1,0,0,0, 0,1,0,1,1,0, 1,1,0,1,1,1, 1,1,1,0,1,1, 0,1,1,0,1,0, 0,0,0,0,1,0, 1,0,0,1,1,0, 1,0,1,1,1,1, 0,0,1,0,1,1};
+              int p, uM, uP, uC, uS, uA; FloatBuffer vb;
+              float[] vw={
+                  0,0,0,0,1,0,1,1,0,0,0,0,1,1,0,1,0,0,0,0,1,1,0,1,1,1,1,0,0,1,1,1,1,0,1,1,0,0,0,0,0,1,0,1,1,0,0,0,0,1,1,0,1,0,1,0,0,1,1,0,1,1,1,1,0,0,1,1,1,1,0,1,0,1,0,0,1,1,1,1,1,0,1,0,1,1,1,1,1,0,0,0,0,1,0,0,1,0,1,0,0,0,1,0,1,0,0,1,
+                  0,0,0,1,0,0, 1,0,0,1,0,1, 1,0,1,0,0,1, 0,0,1,0,0,0, 0,1,0,1,1,0, 1,1,0,1,1,1, 1,1,1,0,1,1, 0,1,1,0,1,0, 0,0,0,0,1,0, 1,0,0,1,1,0, 1,0,1,1,1,1, 0,0,1,0,1,1
+              };
               Blk() {
-                  vb=ByteBuffer.allocateDirect(v.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(v);vb.position(0);
-                  wb=ByteBuffer.allocateDirect(w.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(w);wb.position(0);
+                  vb=ByteBuffer.allocateDirect(vw.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(vw);vb.position(0);
                   int vs=GLES30.glCreateShader(35633); GLES30.glShaderSource(vs,"#version 300 es\nlayout(location=0) in vec4 p; uniform mat4 vp; uniform vec3 pos; uniform float s; out vec3 vP; void main(){gl_Position=vp*vec4((p.xyz-0.5)*s+0.5+pos,1.0); vP=p.xyz;}"); GLES30.glCompileShader(vs);
                   int fs=GLES30.glCreateShader(35632); GLES30.glShaderSource(fs,"#version 300 es\nprecision mediump float; in vec3 vP; uniform vec3 c; uniform float a; out vec4 fColor; void main(){fColor=vec4(c*(vP.y*0.3+0.7),a);}"); GLES30.glCompileShader(fs);
                   p=GLES30.glCreateProgram(); GLES30.glAttachShader(p,vs); GLES30.glAttachShader(p,fs); GLES30.glLinkProgram(p);
                   uM=GLES30.glGetUniformLocation(p,"vp"); uP=GLES30.glGetUniformLocation(p,"pos"); uC=GLES30.glGetUniformLocation(p,"c"); uS=GLES30.glGetUniformLocation(p,"s"); uA=GLES30.glGetUniformLocation(p,"a");
               }
-              void d(float x,float y,float z,boolean sL,int t,float s,float a) {
+              void d(float x,float y,float z,boolean sL,int t,float s,float a,float sh) {
                   GLES30.glUniform3f(uP,x,y,z); GLES30.glUniform1f(uS,s); GLES30.glUniform1f(uA,a);
-                  float r=.5f,g=.5f,b=.5f; if(t==1){r=.35f;g=.75f;b=.25f;}else if(t==2){r=.6f;g=.6f;b=.6f;}else if(t==3){r=.55f;g=.35f;b=.2f;}else if(t==4){r=.54f;g=.35f;b=.17f;}else if(t==5){r=.9f;g=.2f;b=.2f;}
-                  GLES30.glUniform3f(uC,r,g,b); GLES30.glDrawArrays(4,0,36);
-                  if(sL){GLES30.glUniform1f(uS,1.02f); GLES30.glUniform3f(uC,1,1,1); GLES30.glUniform1f(uA,1); GLES30.glLineWidth(4f); GLES30.glVertexAttribPointer(0,3,5126,false,0,wb); GLES30.glDrawArrays(1,0,24); GLES30.glVertexAttribPointer(0,3,5126,false,0,vb);}
+                  float r=.5f,g=.5f,b=.5f; if(t==1){r=.35f;g=.75f;b=.25f;}else if(t==2){r=.6f;g=.6f;b=.6f;}else if(t==3){r=.55f;g=.35f;b=.2f;}else if(t==4){r=.54f;g=.35f;b=.17f;}else if(t==5){r=.2f;g=.8f;b=.2f;} // Мхи
+                  GLES30.glUniform3f(uC,r*sh,g*sh,b*sh); GLES30.glDrawArrays(4,0,36);
+                  if(sL){GLES30.glUniform1f(uS,1.02f);GLES30.glUniform3f(uC,1,1,1);GLES30.glUniform1f(uA,1);GLES30.glLineWidth(4f);GLES30.glDrawArrays(1,36,24);}
               }
-          }
-
-          class Net {
-              static ConcurrentHashMap<String,float[]> p=new ConcurrentHashMap<>(); static String id=java.util.UUID.randomUUID().toString().substring(0,5); static boolean ok=false;
-              MqttClient c;
-              Net(Rnd r){new Thread(()->{while(true){try{c=new MqttClient("ssl://broker.hivemq.com:8883","js_"+id,new MemoryPersistence());MqttConnectOptions o=new MqttConnectOptions();o.setCleanSession(true);o.setConnectionTimeout(5);c.connect(o);ok=true;c.setCallback(new MqttCallback(){public void connectionLost(Throwable t){ok=false;}public void messageArrived(String tp,MqttMessage m){try{String[] pts=new String(m.getPayload()).split(",");if(pts[1].equals(id))return;if(pts[0].equals("P"))p.put(pts[1],new float[]{Float.parseFloat(pts[2]),Float.parseFloat(pts[3]),Float.parseFloat(pts[4]),System.currentTimeMillis()});else if(pts[0].equals("B"))r.sB(Integer.parseInt(pts[2]),Integer.parseInt(pts[3]),Integer.parseInt(pts[4]),Byte.parseByte(pts[5]));}catch(Exception e){}}public void deliveryComplete(IMqttDeliveryToken t){}});c.subscribe("js/v11/#");while(c.isConnected()){Thread.sleep(80);long n=System.currentTimeMillis();p.entrySet().removeIf(e->n-e.getValue()[3]>3000);}}catch(Exception e){ok=false;try{Thread.sleep(2000);}catch(Exception ex){}}}}).start();}
-              void up(float x,float y,float z){try{if(c!=null&&c.isConnected())c.publish("js/v11/p",("P,"+id+","+x+","+y+","+z).getBytes(),0,false);}catch(Exception e){}}
-              void b(int x,int y,int z,int t){try{if(c!=null&&c.isConnected())c.publish("js/v11/b",("B,"+id+","+x+","+y+","+z+","+t).getBytes(),0,false);}catch(Exception e){}}
           }
           EOF
 
           cat > app/src/main/AndroidManifest.xml << 'EOF'
-          <?xml version="1.0" encoding="utf-8"?><manifest xmlns:android="http://schemas.android.com/apk/res/android"><uses-permission android:name="android.permission.INTERNET"/><uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/><uses-feature android:glEsVersion="0x00030000" android:required="true"/><application android:label="JsAI Craft ULTRA" android:hardwareAccelerated="true" android:usesCleartextTraffic="true"><activity android:name="com.jsai.craft.App" android:exported="true" android:screenOrientation="landscape"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity></application></manifest>
+          <?xml version="1.0" encoding="utf-8"?><manifest xmlns:android="http://schemas.android.com/apk/res/android"><uses-feature android:glEsVersion="0x00030000" android:required="true"/><application android:label="JsAI Craft ULTRA" android:hardwareAccelerated="true"><activity android:name="com.jsai.craft.App" android:exported="true" android:screenOrientation="landscape"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity></application></manifest>
           EOF
 
       - name: Setup Java
@@ -191,5 +193,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: JsAI_Craft_V11_ULTRA
+          name: JsAI_Craft_V12_LUSH_CAVES
           path: app/build/outputs/apk/debug/app-debug.apk
