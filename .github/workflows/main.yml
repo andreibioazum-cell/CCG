@@ -1,4 +1,4 @@
-name: JsAI_Python_Studio_MegaFast
+name: JsAI_Python_Studio_MegaFast_Fixed
 on: [push, workflow_dispatch]
 
 jobs:
@@ -8,13 +8,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
       - name: Create Studio Structure
         run: |
           mkdir -p app/src/main/java/com/jsai/studio
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
 
-          # --- GRADLE SETUP (CHAQUOPY) ---
+          # --- ИСПРАВЛЕННЫЙ GRADLE SETUP ДЛЯ CHAQUOPY ---
           cat > settings.gradle << 'EOF'
           pluginManagement {
               repositories {
@@ -31,17 +36,29 @@ jobs:
 
           cat > build.gradle << 'EOF'
           buildscript {
-              repositories { google(); mavenCentral(); maven { url "https://chaquo.com/maven" } }
+              repositories {
+                  google()
+                  mavenCentral()
+                  maven { url "https://chaquo.com/maven" }
+              }
               dependencies {
                   classpath 'com.android.tools.build:gradle:8.2.2'
                   classpath 'com.chaquo.python:gradle:14.0.2'
               }
           }
-          allprojects { repositories { google(); mavenCentral(); maven { url "https://chaquo.com/maven" } } }
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+                  maven { url "https://chaquo.com/maven" }
+              }
+          }
           EOF
           
           cat > app/build.gradle << 'EOF'
-          plugins { id 'com.android.application'; id 'com.chaquo.python' }
+          apply plugin: 'com.android.application'
+          apply plugin: 'com.chaquo.python'
+
           android {
               namespace 'com.jsai.studio'
               compileSdk 34
@@ -52,7 +69,13 @@ jobs:
                   ndk { abiFilters "armeabi-v7a", "arm64-v8a" }
               }
           }
-          chaquopy { defaultConfig { version = "3.8" } }
+          
+          chaquopy {
+              defaultConfig {
+                  version = "3.10"
+                  buildPython "python3"
+              }
+          }
           EOF
 
           # --- STUDIO UI ---
