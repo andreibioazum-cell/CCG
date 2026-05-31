@@ -1,4 +1,4 @@
-name: DPI_Bypass_PRO_Tecno_Spark_Go
+name: Tecno_Spark_Go_A14_PRO
 on: [push, workflow_dispatch]
 
 jobs:
@@ -20,11 +20,7 @@ jobs:
           #include <cstring>
           #include <arpa/inet.h>
           #include <vector>
-          #include <map>
-          #include <unordered_map>
           #include <algorithm>
-          #include <random>
-          #include <chrono>
           #include <android/log.h>
 
           #define LOG(...) __android_log_print(ANDROID_LOG_INFO, "DPIBypassPRO", __VA_ARGS__)
@@ -44,23 +40,17 @@ jobs:
               uint16_t win, csum, urp;
           } __attribute__((packed));
 
-          enum StrategyType {
-              STRAT_NONE = 0, STRAT_FRAG_SMALL = 1, STRAT_FRAG_MEDIUM = 2,
-              STRAT_FRAG_SNI = 3, STRAT_FAKE_SYN = 4, STRAT_TTL_TRICK = 5,
-              STRAT_DISORDER = 6, STRAT_SPLIT2 = 7, STRAT_MD5SIG = 8,
-              STRAT_HTTP_SPLIT = 9, STRAT_COMBINED = 10
-          };
+          enum StrategyType { STRAT_NONE = 0, STRAT_FRAG = 1 };
 
           struct Strategy {
               StrategyType type;
-              int param1; int param2;
-              float success_rate; int test_count;
-              Strategy() : type(STRAT_NONE), param1(0), param2(0), success_rate(0.5f), test_count(0) {}
-              Strategy(StrategyType t, int p1, int p2) : type(t), param1(p1), param2(p2), success_rate(0.5f), test_count(0) {}
+              int param1;
+              Strategy() : type(STRAT_NONE), param1(0) {}
+              Strategy(StrategyType t, int p) : type(t), param1(p) {}
           };
 
-          static long g_total_packets = 0;
-          static long g_modified_packets = 0;
+          static long g_total = 0;
+          static long g_mod = 0;
 
           uint16_t checksum(const uint16_t* buf, int len) {
               uint32_t sum = 0;
@@ -70,46 +60,22 @@ jobs:
               return ~sum;
           }
 
-          void fix_checksums(uint8_t* pkt, int len) {
+          void fix_chk(uint8_t* pkt, int len) {
               IPHeader* ip = (IPHeader*)pkt;
               ip->csum = 0;
               ip->csum = checksum((uint16_t*)ip, (ip->ver_ihl & 0x0F) * 4);
               if(ip->proto == 6) {
-                  int ip_hlen = (ip->ver_ihl & 0x0F) * 4;
-                  TCPHeader* tcp = (TCPHeader*)(pkt + ip_hlen);
-                  int tcp_len = ntohs(ip->len) - ip_hlen;
+                  int ih = (ip->ver_ihl & 0x0F) * 4;
+                  TCPHeader* tcp = (TCPHeader*)(pkt + ih);
+                  int tl = ntohs(ip->len) - ih;
                   tcp->csum = 0;
-                  uint32_t sum = (ip->src >> 16) + (ip->src & 0xFFFF) + (ip->dst >> 16) + (ip->dst & 0xFFFF) + htons(6) + htons(tcp_len);
-                  uint16_t* tcp_p = (uint16_t*)tcp;
-                  for(int i = 0; i < tcp_len / 2; i++) sum += tcp_p[i];
-                  if(tcp_len & 1) sum += pkt[len-1];
+                  uint32_t sum = (ip->src >> 16) + (ip->src & 0xFFFF) + (ip->dst >> 16) + (ip->dst & 0xFFFF) + htons(6) + htons(tl);
+                  uint16_t* tp = (uint16_t*)tcp;
+                  for(int i = 0; i < tl / 2; i++) sum += tp[i];
+                  if(tl & 1) sum += pkt[len-1];
                   while(sum >> 16) sum = (sum & 0xFFFF) + (sum >> 16);
                   tcp->csum = ~sum;
               }
-          }
-
-          std::vector<std::vector<uint8_t>> apply_frag(uint8_t* pkt, int len, int split) {
-              std::vector<std::vector<uint8_t>> res;
-              IPHeader* ip = (IPHeader*)pkt;
-              int ip_h_len = (ip->ver_ihl & 0x0F) * 4;
-              TCPHeader* tcp = (TCPHeader*)(pkt + ip_h_len);
-              int tcp_h_len = ((tcp->off_res >> 4) & 0x0F) * 4;
-              int hlen = ip_h_len + tcp_h_len;
-
-              if(len <= hlen + split) { res.push_back(std::vector<uint8_t>(pkt, pkt+len)); return res; }
-              
-              std::vector<uint8_t> p1(pkt, pkt + hlen + split);
-              ((IPHeader*)p1.data())->len = htons(p1.size());
-              fix_checksums(p1.data(), p1.size());
-              res.push_back(p1);
-
-              std::vector<uint8_t> p2(pkt, pkt + hlen);
-              p2.insert(p2.end(), pkt + hlen + split, pkt + len);
-              ((IPHeader*)p2.data())->len = htons(p2.size());
-              ((TCPHeader*)(p2.data() + ip_h_len))->seq = htonl(ntohl(tcp->seq) + split);
-              fix_checksums(p2.data(), p2.size());
-              res.push_back(p2);
-              return res;
           }
 
           extern "C" JNIEXPORT jobject JNICALL
@@ -117,23 +83,33 @@ jobs:
               jbyte* data = env->GetByteArrayElements(packet, nullptr);
               int len = env->GetArrayLength(packet);
               uint8_t* pkt = (uint8_t*)data;
-              g_total_packets++;
+              g_total++;
 
               std::vector<std::vector<uint8_t>> out;
               IPHeader* ip = (IPHeader*)pkt;
 
-              if (ip->proto != 6) {
-                  out.push_back(std::vector<uint8_t>(pkt, pkt + len));
-              } else {
-                  int ip_h = (ip->ver_ihl & 0x0F) * 4;
-                  int payload_off = ip_h + (((TCPHeader*)(pkt + ip_h))->off_res >> 4) * 4;
-                  if (len > payload_off && pkt[payload_off] == 0x16) {
-                      out = apply_frag(pkt, len, 2);
-                      g_modified_packets++;
-                  } else {
-                      out.push_back(std::vector<uint8_t>(pkt, pkt + len));
+              if (ip->proto == 6 && len > 60) {
+                  int ih = (ip->ver_ihl & 0x0F) * 4;
+                  int po = ih + (((TCPHeader*)(pkt + ih))->off_res >> 4) * 4;
+                  if (len > po && pkt[po] == 0x16) {
+                      g_mod++;
+                      // Split TLS ClientHello into 2 bytes and the rest
+                      int split = 2;
+                      std::vector<uint8_t> p1(pkt, pkt + po + split);
+                      ((IPHeader*)p1.data())->len = htons(p1.size());
+                      fix_chk(p1.data(), p1.size());
+                      out.push_back(p1);
+
+                      std::vector<uint8_t> p2(pkt, pkt + po);
+                      p2.insert(p2.end(), pkt + po + split, pkt + len);
+                      ((IPHeader*)p2.data())->len = htons(p2.size());
+                      ((TCPHeader*)(p2.data() + ih))->seq = htonl(ntohl(((TCPHeader*)(pkt + ih))->seq) + split);
+                      fix_chk(p2.data(), p2.size());
+                      out.push_back(p2);
                   }
               }
+              
+              if(out.empty()) out.push_back(std::vector<uint8_t>(pkt, pkt + len));
 
               env->ReleaseByteArrayElements(packet, data, 0);
               jclass alc = env->FindClass("java/util/ArrayList");
@@ -149,8 +125,8 @@ jobs:
               return res;
           }
 
-          extern "C" JNIEXPORT jlong JNICALL Java_com_dpibypass_pro_PacketEngine_getTotalPackets(JNIEnv*, jobject) { return g_total_packets; }
-          extern "C" JNIEXPORT jlong JNICALL Java_com_dpibypass_pro_PacketEngine_getModifiedPackets(JNIEnv*, jobject) { return g_modified_packets; }
+          extern "C" JNIEXPORT jlong JNICALL Java_com_dpibypass_pro_PacketEngine_getTotal(JNIEnv*, jobject) { return g_total; }
+          extern "C" JNIEXPORT jlong JNICALL Java_com_dpibypass_pro_PacketEngine_getMod(JNIEnv*, jobject) { return g_mod; }
           CPPEOF
 
       - name: Create CMakeLists
@@ -171,12 +147,12 @@ jobs:
           public class PacketEngine {
               static { System.loadLibrary("dpibypass"); }
               public native ArrayList<byte[]> processPacket(byte[] packet);
-              public native long getTotalPackets();
-              public native long getModifiedPackets();
+              public native long getTotal();
+              public native long getMod();
           }
           JAVAEOF
 
-      - name: Create VPN Service
+      - name: Create VPN Service (Android 14 Optimized)
         run: |
           cat > app/src/main/java/com/dpibypass/pro/VpnService.java << 'JAVAEOF'
           package com.dpibypass.pro;
@@ -193,7 +169,7 @@ jobs:
               public int onStartCommand(Intent intent, int flags, int startId) {
                   if (running) return START_STICKY;
                   Builder builder = new Builder();
-                  builder.setSession("DPI Bypass TECNO").setMtu(1500)
+                  builder.setSession("Tecno PRO").setMtu(1500)
                          .addAddress("10.0.0.2", 24)
                          .addRoute("0.0.0.0", 0)
                          .addDnsServer("1.1.1.1").addDnsServer("8.8.8.8");
@@ -210,9 +186,9 @@ jobs:
                           while (running) {
                               int len = in.read(buf);
                               if (len > 0) {
-                                  byte[] pkt = new byte[len]; System.arraycopy(buf, 0, pkt, 0, len);
-                                  ArrayList<byte[]> res = engine.processPacket(pkt);
-                                  for(byte[] p : res) out.write(p);
+                                  byte[] p = new byte[len]; System.arraycopy(buf, 0, p, 0, len);
+                                  ArrayList<byte[]> res = engine.processPacket(p);
+                                  for(byte[] r : res) out.write(r);
                               }
                           }
                       } catch (Exception e) {}
@@ -232,7 +208,7 @@ jobs:
           }
           JAVAEOF
 
-      - name: Create MainActivity (С проверкой Tecno Spark Go)
+      - name: Create MainActivity
         run: |
           cat > app/src/main/java/com/dpibypass/pro/MainActivity.java << 'JAVAEOF'
           package com.dpibypass.pro;
@@ -248,34 +224,25 @@ jobs:
               @Override
               protected void onCreate(Bundle b) {
                   super.onCreate(b);
-                  
-                  // ЖЕСТКАЯ ПРОВЕРКА УСТРОЙСТВА
-                  String manufacturer = Build.MANUFACTURER.toUpperCase();
-                  String model = Build.MODEL.toUpperCase();
-                  if (!manufacturer.contains("TECNO") || !model.contains("SPARK")) {
-                      Toast.makeText(this, "ОШИБКА: Только для Tecno Spark Go 1 (Android 14)", Toast.LENGTH_LONG).show();
-                      finish(); return;
-                  }
-
                   LinearLayout root = new LinearLayout(this);
                   root.setOrientation(LinearLayout.VERTICAL);
-                  root.setPadding(40, 40, 40, 40);
-                  root.setBackgroundColor(0xFF0F172A);
+                  root.setPadding(50, 50, 50, 50);
+                  root.setBackgroundColor(0xFF0a0a0a);
 
                   TextView title = new TextView(this);
-                  title.setText("🛡️ DPI BYPASS TECNO v14");
-                  title.setTextSize(24); title.setTextColor(Color.CYAN);
+                  title.setText("TECNO SPARK BYPASS PRO");
+                  title.setTextSize(22); title.setTextColor(Color.YELLOW);
                   root.addView(title);
 
-                  TextView devInfo = new TextView(this);
-                  devInfo.setText("Device: " + Build.MODEL + " | Android: " + Build.VERSION.RELEASE);
-                  devInfo.setTextColor(Color.GRAY);
-                  root.addView(devInfo);
+                  TextView info = new TextView(this);
+                  info.setText("Производитель: " + Build.MANUFACTURER + "\nМодель: " + Build.MODEL);
+                  info.setTextColor(Color.WHITE);
+                  info.setPadding(0, 20, 0, 20);
+                  root.addView(info);
 
                   mainSwitch = new Switch(this);
-                  mainSwitch.setText("Защита активна");
+                  mainSwitch.setText("АКТИВИРОВАТЬ");
                   mainSwitch.setTextColor(Color.WHITE);
-                  mainSwitch.setPadding(0, 40, 0, 40);
                   mainSwitch.setOnCheckedChangeListener((v, c) -> {
                       if(c) startVpn(); else stopVpn();
                   });
@@ -284,6 +251,7 @@ jobs:
                   statusView = new TextView(this);
                   statusView.setText("● СТАТУС: ВЫКЛЮЧЕНО");
                   statusView.setTextColor(Color.RED);
+                  statusView.setPadding(0, 30, 0, 10);
                   root.addView(statusView);
 
                   statsView = new TextView(this);
@@ -302,13 +270,9 @@ jobs:
                   else startService(new Intent(this, VpnService.class));
               }
               private void stopVpn() { stopService(new Intent(this, VpnService.class)); }
-              
               private void updateStats() {
-                  runOnUiThread(() -> {
-                      statsView.setText("Traffic: " + engine.getTotalPackets() + " pkts | Bypass: " + engine.getModifiedPackets());
-                  });
+                  runOnUiThread(() -> statsView.setText("Пакетов: " + engine.getTotal() + " | Обход: " + engine.getMod()));
               }
-
               public static void updateStatus(boolean a) {
                   if(statusView != null) statusView.post(() -> {
                       statusView.setText(a ? "● СТАТУС: ЗАЩИЩЕНО" : "● СТАТУС: ВЫКЛЮЧЕНО");
@@ -318,7 +282,7 @@ jobs:
           }
           JAVAEOF
 
-      - name: Create Manifest
+      - name: Create Manifest (Android 14 API 34)
         run: |
           cat > app/src/main/AndroidManifest.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
@@ -327,7 +291,7 @@ jobs:
               <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
               <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
               
-              <application android:label="Tecno DPI PRO" android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+              <application android:label="Tecno Bypass" android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
                   <activity android:name=".MainActivity" android:exported="true">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/>
@@ -335,6 +299,7 @@ jobs:
                       </intent-filter>
                   </activity>
                   <service android:name=".VpnService" android:exported="true"
+                           android:foregroundServiceType="specialUse"
                            android:permission="android.permission.BIND_VPN_SERVICE">
                       <intent-filter>
                           <action android:name="android.net.VpnService"/>
@@ -344,7 +309,7 @@ jobs:
           </manifest>
           EOF
 
-      - name: Create Build Files (Android 14 ONLY)
+      - name: Create Build Files
         run: |
           cat > build.gradle << 'EOF'
           buildscript {
@@ -363,8 +328,8 @@ jobs:
                   applicationId 'com.dpibypass.pro'
                   minSdk 34
                   targetSdk 34
-                  versionCode 14
-                  versionName "14.0-TECNO"
+                  versionCode 1
+                  versionName "3.0"
                   ndk { abiFilters 'arm64-v8a' }
               }
               externalNativeBuild { cmake { path 'src/main/cpp/CMakeLists.txt' } }
@@ -388,5 +353,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: DPI_Bypass_Tecno_Spark_Go_A14
+          name: DPI_Tecno_A14_Fixed
           path: app/build/outputs/apk/debug/app-debug.apk
