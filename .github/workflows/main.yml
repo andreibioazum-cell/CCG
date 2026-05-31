@@ -12,7 +12,7 @@ jobs:
         run: |
           mkdir -p app/src/main/{java/com/dpibypass/pro,cpp,res/{layout,values,drawable}}
 
-      - name: Create Advanced Packet Engine
+      - name: Create Advanced Packet Engine (C++)
         run: |
           cat > app/src/main/cpp/advanced_engine.cpp << 'CPPEOF'
           #include <jni.h>
@@ -20,11 +20,7 @@ jobs:
           #include <cstring>
           #include <arpa/inet.h>
           #include <vector>
-          #include <map>
-          #include <unordered_map>
           #include <algorithm>
-          #include <random>
-          #include <chrono>
           #include <android/log.h>
 
           #define LOG(...) __android_log_print(ANDROID_LOG_INFO, "DPIBypassPRO", __VA_ARGS__)
@@ -44,59 +40,7 @@ jobs:
               uint16_t win, csum, urp;
           } __attribute__((packed));
 
-          struct UDPHeader {
-              uint16_t sport, dport, len, csum;
-          } __attribute__((packed));
-
-          enum StrategyType {
-              STRAT_NONE = 0,
-              STRAT_FRAG_SMALL = 1,
-              STRAT_FRAG_MEDIUM = 2,
-              STRAT_FRAG_SNI = 3,
-              STRAT_FAKE_SYN = 4,
-              STRAT_TTL_TRICK = 5,
-              STRAT_DISORDER = 6,
-              STRAT_SPLIT2 = 7,
-              STRAT_MD5SIG = 8,
-              STRAT_HTTP_SPLIT = 9,
-              STRAT_COMBINED = 10
-          };
-
-          struct Strategy {
-              StrategyType type;
-              int param1;
-              int param2;
-              float success_rate;
-              int test_count;
-              uint64_t last_used;
-              
-              Strategy() : type(STRAT_NONE), param1(0), param2(0), success_rate(0.5f), test_count(0), last_used(0) {}
-              
-              Strategy(StrategyType t, int p1, int p2) : 
-                  type(t), param1(p1), param2(p2), success_rate(0.5f), test_count(0), last_used(0) {}
-          };
-
-          struct DomainStats {
-              std::string domain;
-              std::vector<Strategy> tested_strategies;
-              Strategy best_strategy;
-              int total_attempts;
-              int successful_attempts;
-              uint64_t last_success_time;
-          };
-
-          static std::unordered_map<std::string, DomainStats> g_domain_cache;
-          static std::mt19937 g_rng(std::chrono::steady_clock::now().time_since_epoch().count());
-          static long g_total_packets = 0;
-          static long g_modified_packets = 0;
-          static bool g_auto_mode = true;
-          static std::vector<std::string> g_whitelist;
-          static std::vector<std::string> g_blacklist;
-
-          uint64_t get_timestamp_ms() {
-              return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
-          }
-
+          // Вычисление контрольной суммы
           uint16_t checksum(const uint16_t* buf, int len) {
               uint32_t sum = 0;
               for(int i = 0; i < len / 2; i++) sum += buf[i];
@@ -105,320 +49,99 @@ jobs:
               return ~sum;
           }
 
-          void fix_ip_checksum(uint8_t* pkt) {
+          void fix_checksums(uint8_t* pkt, int len) {
               IPHeader* ip = (IPHeader*)pkt;
               ip->csum = 0;
               ip->csum = checksum((uint16_t*)ip, (ip->ver_ihl & 0x0F) * 4);
-          }
-
-          void fix_tcp_checksum(uint8_t* pkt, int total_len) {
-              IPHeader* ip = (IPHeader*)pkt;
-              int ip_hlen = (ip->ver_ihl & 0x0F) * 4;
-              TCPHeader* tcp = (TCPHeader*)(pkt + ip_hlen);
-              int tcp_len = ntohs(ip->len) - ip_hlen;
-              tcp->csum = 0;
-              uint32_t sum = 0;
-              sum += (ip->src >> 16) + (ip->src & 0xFFFF);
-              sum += (ip->dst >> 16) + (ip->dst & 0xFFFF);
-              sum += htons(6); sum += htons(tcp_len);
-              uint8_t* tcp_data = (uint8_t*)tcp;
-              for(int i = 0; i < tcp_len / 2; i++) sum += ((uint16_t*)tcp_data)[i];
-              if(tcp_len & 1) sum += tcp_data[tcp_len - 1];
-              while(sum >> 16) sum = (sum & 0xFFFF) + (sum >> 16);
-              tcp->csum = ~sum;
-          }
-
-          std::string extract_sni(const uint8_t* tls, int len) {
-              if(len < 43 || tls[0] != 0x16 || tls[5] != 0x01) return "";
-              int pos = 43;
-              if(pos >= len) return "";
-              int session_len = tls[pos]; pos += 1 + session_len;
-              if(pos + 2 > len) return "";
-              int cipher_len = ntohs(*(uint16_t*)(tls + pos)); pos += 2 + cipher_len;
-              if(pos + 1 > len) return "";
-              int comp_len = tls[pos]; pos += 1 + comp_len;
-              if(pos + 2 > len) return "";
-              int ext_len = ntohs(*(uint16_t*)(tls + pos)); pos += 2;
-              int ext_end = pos + ext_len;
-              while(pos + 4 <= ext_end && pos + 4 <= len) {
-                  uint16_t ext_type = ntohs(*(uint16_t*)(tls + pos));
-                  uint16_t ext_data_len = ntohs(*(uint16_t*)(tls + pos + 2));
-                  pos += 4;
-                  if(ext_type == 0 && pos + 5 + ext_data_len <= len) {
-                      int name_len = ntohs(*(uint16_t*)(tls + pos + 3));
-                      if(pos + 5 + name_len <= len) return std::string((char*)(tls + pos + 5), name_len);
-                  }
-                  pos += ext_data_len;
-              }
-              return "";
-          }
-
-          int find_sni_position(const uint8_t* tls, int len) {
-              if(len < 43 || tls[0] != 0x16 || tls[5] != 0x01) return -1;
-              int pos = 43;
-              int session_len = tls[pos]; pos += 1 + session_len;
-              int cipher_len = ntohs(*(uint16_t*)(tls + pos)); pos += 2 + cipher_len;
-              int comp_len = tls[pos]; pos += 1 + comp_len;
-              int ext_len = ntohs(*(uint16_t*)(tls + pos)); pos += 2;
-              int ext_end = pos + ext_len;
-              while(pos + 4 <= ext_end && pos + 4 <= len) {
-                  uint16_t ext_type = ntohs(*(uint16_t*)(tls + pos));
-                  uint16_t ext_data_len = ntohs(*(uint16_t*)(tls + pos + 2));
-                  if(ext_type == 0) return pos;
-                  pos += 4 + ext_data_len;
-              }
-              return -1;
-          }
-
-          bool is_domain_match(const std::string& domain, const std::vector<std::string>& list) {
-              for(const auto& pattern : list) {
-                  if(pattern[0] == '*') {
-                      std::string suffix = pattern.substr(1);
-                      if(domain.size() >= suffix.size() && domain.compare(domain.size() - suffix.size(), suffix.size(), suffix) == 0) return true;
-                  } else if(pattern == domain) return true;
-              }
-              return false;
-          }
-
-          bool should_process_domain(const std::string& domain) {
-              if(!g_whitelist.empty() && is_domain_match(domain, g_whitelist)) return false;
-              if(!g_blacklist.empty() && !is_domain_match(domain, g_blacklist)) return false;
-              return true;
-          }
-
-          std::vector<std::vector<uint8_t>> fragment_tls(uint8_t* pkt, int len, int frag_size) {
-              std::vector<std::vector<uint8_t>> result;
-              IPHeader* ip = (IPHeader*)pkt;
-              int ip_hlen = (ip->ver_ihl & 0x0F) * 4;
-              TCPHeader* tcp = (TCPHeader*)(pkt + ip_hlen);
-              int tcp_hlen = ((tcp->off_res >> 4) & 0x0F) * 4;
-              int payload_offset = ip_hlen + tcp_hlen;
-              int payload_len = len - payload_offset;
-              if(payload_len <= frag_size) { result.push_back(std::vector<uint8_t>(pkt, pkt + len)); return result; }
-              std::vector<uint8_t> frag1(pkt, pkt + payload_offset + frag_size);
-              IPHeader* ip1 = (IPHeader*)frag1.data(); ip1->len = htons(payload_offset + frag_size);
-              fix_ip_checksum(frag1.data()); fix_tcp_checksum(frag1.data(), frag1.size());
-              result.push_back(frag1);
-              std::vector<uint8_t> frag2(payload_offset); memcpy(frag2.data(), pkt, payload_offset);
-              frag2.insert(frag2.end(), pkt + payload_offset + frag_size, pkt + len);
-              IPHeader* ip2 = (IPHeader*)frag2.data();
-              TCPHeader* tcp2 = (TCPHeader*)(frag2.data() + ip_hlen);
-              tcp2->seq = htonl(ntohl(tcp2->seq) + frag_size); ip2->len = htons(frag2.size());
-              fix_ip_checksum(frag2.data()); fix_tcp_checksum(frag2.data(), frag2.size());
-              result.push_back(frag2);
-              return result;
-          }
-
-          std::vector<std::vector<uint8_t>> fragment_before_sni(uint8_t* pkt, int len) {
-              IPHeader* ip = (IPHeader*)pkt;
-              int ip_hlen = (ip->ver_ihl & 0x0F) * 4;
-              TCPHeader* tcp = (TCPHeader*)(pkt + ip_hlen);
-              int tcp_hlen = ((tcp->off_res >> 4) & 0x0F) * 4;
-              int payload_offset = ip_hlen + tcp_hlen;
-              int sni_pos = find_sni_position(pkt + payload_offset, len - payload_offset);
-              if(sni_pos > 5) return fragment_tls(pkt, len, sni_pos - 2);
-              return fragment_tls(pkt, len, 40);
-          }
-
-          std::vector<uint8_t> create_fake_syn(uint8_t* real_pkt, int ttl = 1) {
-              IPHeader* ip = (IPHeader*)real_pkt;
-              int ip_hlen = (ip->ver_ihl & 0x0F) * 4;
-              TCPHeader* tcp = (TCPHeader*)(real_pkt + ip_hlen);
-              std::vector<uint8_t> fake(ip_hlen + 20); memcpy(fake.data(), real_pkt, ip_hlen + 20);
-              IPHeader* fake_ip = (IPHeader*)fake.data();
-              TCPHeader* fake_tcp = (TCPHeader*)(fake.data() + ip_hlen);
-              fake_ip->len = htons(ip_hlen + 20); fake_ip->ttl = ttl;
-              fake_tcp->seq = htonl(ntohl(tcp->seq) - 1); fake_tcp->flags = 0x02; fake_tcp->win = htons(512);
-              fix_ip_checksum(fake.data()); fix_tcp_checksum(fake.data(), fake.size());
-              return fake;
-          }
-
-          void apply_ttl(uint8_t* pkt, int ttl) {
-              IPHeader* ip = (IPHeader*)pkt; ip->ttl = ttl; fix_ip_checksum(pkt);
-          }
-
-          std::vector<std::vector<uint8_t>> apply_disorder(uint8_t* pkt, int len, int frag_size) {
-              auto frags = fragment_tls(pkt, len, frag_size);
-              if(frags.size() == 2) std::reverse(frags.begin(), frags.end());
-              return frags;
-          }
-
-          std::vector<std::vector<uint8_t>> apply_split2(uint8_t* pkt, int len) {
-              std::vector<std::vector<uint8_t>> result;
-              auto first_split = fragment_tls(pkt, len, 2);
-              if(first_split.size() < 2) return first_split;
-              auto second_split = fragment_tls(first_split[1].data(), first_split[1].size(), 40);
-              result.push_back(first_split[0]); result.insert(result.end(), second_split.begin(), second_split.end());
-              return result;
-          }
-
-          std::vector<uint8_t> create_md5sig_fake(uint8_t* real_pkt) {
-              IPHeader* ip = (IPHeader*)real_pkt;
-              int ip_hlen = (ip->ver_ihl & 0x0F) * 4;
-              std::vector<uint8_t> fake(ip_hlen + 40); memcpy(fake.data(), real_pkt, ip_hlen + 20);
-              IPHeader* fake_ip = (IPHeader*)fake.data();
-              TCPHeader* fake_tcp = (TCPHeader*)(fake.data() + ip_hlen);
-              uint8_t* options = fake.data() + ip_hlen + 20;
-              options[0] = 19; options[1] = 18; memset(options + 2, 0, 16);
-              fake_tcp->off_res = (((20 + 20) / 4) << 4);
-              fake_tcp->seq = htonl(ntohl(fake_tcp->seq) - 100);
-              fake_tcp->flags = 0x02; fake_ip->ttl = 1; fake_ip->len = htons(ip_hlen + 40);
-              fix_ip_checksum(fake.data()); fix_tcp_checksum(fake.data(), fake.size());
-              return fake;
-          }
-
-          std::vector<std::vector<uint8_t>> split_http(uint8_t* pkt, int len) {
-              std::vector<std::vector<uint8_t>> result;
-              IPHeader* ip = (IPHeader*)pkt;
-              int ip_hlen = (ip->ver_ihl & 0x0F) * 4;
-              TCPHeader* tcp = (TCPHeader*)(pkt + ip_hlen);
-              int tcp_hlen = ((tcp->off_res >> 4) & 0x0F) * 4;
-              int payload_offset = ip_hlen + tcp_hlen;
-              std::string http((char*)(pkt + payload_offset), len - payload_offset);
-              size_t host_pos = http.find("Host:");
-              if(host_pos != std::string::npos && host_pos > 10) {
-                  std::vector<uint8_t> part1(pkt, pkt + payload_offset + host_pos);
-                  IPHeader* ip1 = (IPHeader*)part1.data(); ip1->len = htons(payload_offset + host_pos);
-                  fix_ip_checksum(part1.data()); fix_tcp_checksum(part1.data(), part1.size());
-                  result.push_back(part1);
-                  std::vector<uint8_t> part2(payload_offset); memcpy(part2.data(), pkt, payload_offset);
-                  part2.insert(part2.end(), pkt + payload_offset + host_pos, pkt + len);
-                  IPHeader* ip2 = (IPHeader*)part2.data();
-                  TCPHeader* tcp2 = (TCPHeader*)(part2.data() + ip_hlen);
-                  tcp2->seq = htonl(ntohl(tcp2->seq) + host_pos); ip2->len = htons(part2.size());
-                  fix_ip_checksum(part2.data()); fix_tcp_checksum(part2.data(), part2.size());
-                  result.push_back(part2);
-                  return result;
-              }
-              result.push_back(std::vector<uint8_t>(pkt, pkt + len)); return result;
-          }
-
-          Strategy select_strategy_for_domain(const std::string& domain) {
-              auto it = g_domain_cache.find(domain);
-              if(it != g_domain_cache.end() && it->second.best_strategy.test_count > 0) return it->second.best_strategy;
-              if(it == g_domain_cache.end()) {
-                  g_domain_cache[domain] = DomainStats();
-                  g_domain_cache[domain].domain = domain;
-              }
               
-              std::vector<Strategy> test_strategies;
-              test_strategies.push_back(Strategy(STRAT_FRAG_SMALL, 2, 0));
-              test_strategies.push_back(Strategy(STRAT_FRAG_MEDIUM, 40, 0));
-              test_strategies.push_back(Strategy(STRAT_FRAG_SNI, 0, 0));
-              test_strategies.push_back(Strategy(STRAT_FAKE_SYN, 1, 0));
-              
-              for(const auto& strat : test_strategies) {
-                  bool tested = false;
-                  for(auto& t : g_domain_cache[domain].tested_strategies) if(t.type == strat.type) tested = true;
-                  if(!tested) return strat;
-              }
-              return Strategy(STRAT_FRAG_MEDIUM, 40, 0);
-          }
-
-          void update_strategy_stats(const std::string& domain, const Strategy& strat, bool success) {
-              auto& stats = g_domain_cache[domain];
-              bool found = false;
-              for(auto& tested : stats.tested_strategies) {
-                  if(tested.type == strat.type) {
-                      tested.test_count++;
-                      tested.success_rate = tested.success_rate * 0.8f + (success ? 0.2f : 0.0f);
-                      found = true; break;
-                  }
-              }
-              if(!found) {
-                  Strategy ns = strat; ns.test_count = 1; ns.success_rate = success ? 1.0f : 0.0f;
-                  stats.tested_strategies.push_back(ns);
+              if (ip->proto == 6) { // TCP
+                  int ip_hlen = (ip->ver_ihl & 0x0F) * 4;
+                  TCPHeader* tcp = (TCPHeader*)(pkt + ip_hlen);
+                  int tcp_len = ntohs(ip->len) - ip_hlen;
+                  tcp->csum = 0;
+                  uint32_t sum = (ip->src >> 16) + (ip->src & 0xFFFF) + (ip->dst >> 16) + (ip->dst & 0xFFFF) + htons(6) + htons(tcp_len);
+                  uint16_t* tcp_p = (uint16_t*)tcp;
+                  for(int i = 0; i < tcp_len / 2; i++) sum += tcp_p[i];
+                  if(tcp_len & 1) sum += pkt[len - 1];
+                  while(sum >> 16) sum = (sum & 0xFFFF) + (sum >> 16);
+                  tcp->csum = ~sum;
               }
           }
 
-          std::vector<std::vector<uint8_t>> apply_strategy(uint8_t* pkt, int len, const Strategy& strat) {
+          // Стратегия: Фрагментация (разрез пакета на 2 части)
+          std::vector<std::vector<uint8_t>> fragment_packet(uint8_t* pkt, int len, int split_at) {
               std::vector<std::vector<uint8_t>> res;
-              switch(strat.type) {
-                  case STRAT_FRAG_SMALL: res = fragment_tls(pkt, len, 2); break;
-                  case STRAT_FRAG_MEDIUM: res = fragment_tls(pkt, len, 40); break;
-                  case STRAT_FRAG_SNI: res = fragment_before_sni(pkt, len); break;
-                  case STRAT_FAKE_SYN: res.push_back(create_fake_syn(pkt)); res.push_back(std::vector<uint8_t>(pkt, pkt + len)); break;
-                  case STRAT_TTL_TRICK: res.push_back(std::vector<uint8_t>(pkt, pkt + len)); apply_ttl(res[0].data(), 1); break;
-                  case STRAT_DISORDER: res = apply_disorder(pkt, len, 40); break;
-                  case STRAT_SPLIT2: res = apply_split2(pkt, len); break;
-                  case STRAT_MD5SIG: res.push_back(create_md5sig_fake(pkt)); res.push_back(std::vector<uint8_t>(pkt, pkt + len)); break;
-                  default: res.push_back(std::vector<uint8_t>(pkt, pkt + len));
+              IPHeader* ip = (IPHeader*)pkt;
+              int ip_h_len = (ip->ver_ihl & 0x0F) * 4;
+              int tcp_h_len = (((TCPHeader*)(pkt + ip_h_len))->off_res >> 4) * 4;
+              int header_len = ip_h_len + tcp_h_len;
+              int payload_len = len - header_len;
+
+              if (payload_len <= split_at) {
+                  res.push_back(std::vector<uint8_t>(pkt, pkt + len));
+                  return res;
               }
+
+              // Часть 1
+              std::vector<uint8_t> p1(pkt, pkt + header_len + split_at);
+              ((IPHeader*)p1.data())->len = htons(header_len + split_at);
+              fix_checksums(p1.data(), p1.size());
+              res.push_back(p1);
+
+              // Часть 2
+              std::vector<uint8_t> p2(pkt, pkt + header_len); // копируем заголовки
+              p2.insert(p2.end(), pkt + header_len + split_at, pkt + len);
+              IPHeader* ip2 = (IPHeader*)p2.data();
+              TCPHeader* tcp2 = (TCPHeader*)(p2.data() + ip_h_len);
+              ip2->len = htons(p2.size());
+              tcp2->seq = htonl(ntohl(tcp2->seq) + split_at);
+              fix_checksums(p2.data(), p2.size());
+              res.push_back(p2);
+
               return res;
           }
 
           extern "C" JNIEXPORT jobject JNICALL
           Java_com_dpibypass_pro_PacketEngine_processPacket(JNIEnv* env, jobject, jbyteArray packet) {
-              jbyte* pkt_data = env->GetByteArrayElements(packet, nullptr);
-              jsize pkt_len = env->GetArrayLength(packet);
-              uint8_t* pkt = (uint8_t*)pkt_data;
-              g_total_packets++;
-              if(pkt_len < 20 || (pkt[0] >> 4) != 4) { env->ReleaseByteArrayElements(packet, pkt_data, 0); return nullptr; }
+              jbyte* data = env->GetByteArrayElements(packet, nullptr);
+              int len = env->GetArrayLength(packet);
+              uint8_t* pkt = (uint8_t*)data;
+
+              std::vector<std::vector<uint8_t>> output;
               IPHeader* ip = (IPHeader*)pkt;
-              std::vector<std::vector<uint8_t>> out;
-              bool processed = false;
-              if(ip->proto == 6) {
-                  int ip_h = (ip->ver_ihl & 0x0F) * 4;
-                  TCPHeader* tcp = (TCPHeader*)(pkt + ip_h);
-                  int payload_off = ip_h + ((tcp->off_res >> 4) & 0x0F) * 4;
-                  int payload_len = pkt_len - payload_off;
-                  if(payload_len > 5 && pkt[payload_off] == 0x16) {
-                      std::string domain = extract_sni(pkt + payload_off, payload_len);
-                      if(!domain.empty() && should_process_domain(domain)) {
-                          Strategy s = g_auto_mode ? select_strategy_for_domain(domain) : Strategy(STRAT_FRAG_MEDIUM, 40, 0);
-                          out = apply_strategy(pkt, pkt_len, s);
-                          processed = true; g_modified_packets++;
-                          update_strategy_stats(domain, s, true);
-                      }
-                  } else if (payload_len > 4 && memcmp(pkt + payload_off, "GET ", 4) == 0) {
-                      out = split_http(pkt, pkt_len);
-                      processed = true; g_modified_packets++;
+
+              // Если это TCP (6) и есть данные (TLS ClientHello начинается с 0x16)
+              if (ip->proto == 6 && len > 60) {
+                  int ip_h_len = (ip->ver_ihl & 0x0F) * 4;
+                  int tcp_h_len = (((TCPHeader*)(pkt + ip_h_len))->off_res >> 4) * 4;
+                  uint8_t* payload = pkt + ip_h_len + tcp_h_len;
+
+                  if (payload[0] == 0x16) { // TLS Handshake
+                      LOG("TLS Detected! Applying Bypass...");
+                      output = fragment_packet(pkt, len, 2); // Режем на 2 байта
+                  } else {
+                      output.push_back(std::vector<uint8_t>(pkt, pkt + len));
                   }
+              } else {
+                  // Все остальное (UDP/ICMP/DNS) пропускаем как есть
+                  output.push_back(std::vector<uint8_t>(pkt, pkt + len));
               }
-              env->ReleaseByteArrayElements(packet, pkt_data, 0);
-              if(!processed) out.push_back(std::vector<uint8_t>(pkt, pkt + pkt_len));
+
+              env->ReleaseByteArrayElements(packet, data, 0);
+
               jclass alc = env->FindClass("java/util/ArrayList");
               jmethodID ali = env->GetMethodID(alc, "<init>", "()V");
               jmethodID ala = env->GetMethodID(alc, "add", "(Ljava/lang/Object;)Z");
-              jobject res = env->NewObject(alc, ali);
-              for(const auto& p : out) {
+              jobject res_list = env->NewObject(alc, ali);
+
+              for (auto& p : output) {
                   jbyteArray arr = env->NewByteArray(p.size());
                   env->SetByteArrayRegion(arr, 0, p.size(), (jbyte*)p.data());
-                  env->CallBooleanMethod(res, ala, arr);
+                  env->CallBooleanMethod(res_list, ala, arr);
                   env->DeleteLocalRef(arr);
               }
-              return res;
+              return res_list;
           }
-
-          extern "C" JNIEXPORT jlong JNICALL Java_com_dpibypass_pro_PacketEngine_getTotalPackets(JNIEnv*, jobject) { return g_total_packets; }
-          extern "C" JNIEXPORT jlong JNICALL Java_com_dpibypass_pro_PacketEngine_getModifiedPackets(JNIEnv*, jobject) { return g_modified_packets; }
-          extern "C" JNIEXPORT void JNICALL Java_com_dpibypass_pro_PacketEngine_setAutoMode(JNIEnv*, jobject, jboolean e) { g_auto_mode = e; }
-          extern "C" JNIEXPORT void JNICALL Java_com_dpibypass_pro_PacketEngine_setWhitelist(JNIEnv* env, jobject, jobjectArray d) { 
-              g_whitelist.clear();
-              int len = env->GetArrayLength(d);
-              for(int i=0; i<len; i++) {
-                  jstring s = (jstring)env->GetObjectArrayElement(d, i);
-                  const char* c = env->GetStringUTFChars(s, 0);
-                  g_whitelist.push_back(c);
-                  env->ReleaseStringUTFChars(s, c);
-              }
-          }
-          extern "C" JNIEXPORT void JNICALL Java_com_dpibypass_pro_PacketEngine_setBlacklist(JNIEnv* env, jobject, jobjectArray d) { 
-              g_blacklist.clear();
-              int len = env->GetArrayLength(d);
-              for(int i=0; i<len; i++) {
-                  jstring s = (jstring)env->GetObjectArrayElement(d, i);
-                  const char* c = env->GetStringUTFChars(s, 0);
-                  g_blacklist.push_back(c);
-                  env->ReleaseStringUTFChars(s, c);
-              }
-          }
-          extern "C" JNIEXPORT jstring JNICALL Java_com_dpibypass_pro_PacketEngine_getStrategyStats(JNIEnv* env, jobject) { 
-              std::string s = "DPI Stats:\n";
-              for(auto const& [domain, stats] : g_domain_cache) s += domain + " processed\n";
-              return env->NewStringUTF(s.c_str()); 
-          }
-          extern "C" JNIEXPORT void JNICALL Java_com_dpibypass_pro_PacketEngine_resetStats(JNIEnv*, jobject) { g_total_packets = 0; g_modified_packets = 0; g_domain_cache.clear(); }
           CPPEOF
 
       - name: Create CMakeLists
@@ -439,58 +162,70 @@ jobs:
           public class PacketEngine {
               static { System.loadLibrary("dpibypass"); }
               public native ArrayList<byte[]> processPacket(byte[] packet);
-              public native long getTotalPackets();
-              public native long getModifiedPackets();
-              public native void setAutoMode(boolean enabled);
-              public native void setWhitelist(String[] domains);
-              public native void setBlacklist(String[] domains);
-              public native String getStrategyStats();
-              public native void resetStats();
           }
           JAVAEOF
 
-      - name: Create VPN Service
+      - name: Create VPN Service (С поддержкой UDP и DNS)
         run: |
           cat > app/src/main/java/com/dpibypass/pro/VpnService.java << 'JAVAEOF'
           package com.dpibypass.pro;
-          import android.content.Intent; import android.os.ParcelFileDescriptor;
-          import java.io.*; import java.nio.ByteBuffer; import java.util.*;
+          import android.content.Intent;
+          import android.os.ParcelFileDescriptor;
+          import java.io.*;
+          import java.nio.ByteBuffer;
+          import java.util.ArrayList;
+
           public class VpnService extends android.net.VpnService {
               private ParcelFileDescriptor vpn;
               private Thread thread;
               private volatile boolean running = false;
               private PacketEngine engine = new PacketEngine();
+
               @Override
               public int onStartCommand(Intent intent, int flags, int startId) {
-                  if(running) return START_STICKY;
-                  boolean auto = intent.getBooleanExtra("auto_mode", true);
-                  engine.setAutoMode(auto);
+                  if (running) return START_STICKY;
+
                   Builder builder = new Builder();
-                  builder.setSession("DPI Bypass PRO").setMtu(1500).addAddress("10.0.0.2", 24).addRoute("0.0.0.0", 0).addDnsServer("1.1.1.1");
+                  builder.setSession("DPI Bypass PRO")
+                         .setMtu(1500)
+                         .addAddress("10.0.0.2", 24)
+                         .addRoute("0.0.0.0", 0)
+                         .addDnsServer("1.1.1.1")
+                         .addDnsServer("8.8.8.8");
+
                   vpn = builder.establish();
                   running = true;
+
                   thread = new Thread(() -> {
                       FileInputStream in = new FileInputStream(vpn.getFileDescriptor());
                       FileOutputStream out = new FileOutputStream(vpn.getFileDescriptor());
-                      ByteBuffer buffer = ByteBuffer.allocate(32768);
+                      byte[] buffer = new byte[32768];
+
                       try {
-                          while(running) {
-                              int len = in.read(buffer.array());
-                              if(len > 0) {
-                                  byte[] pkt = new byte[len]; System.arraycopy(buffer.array(), 0, pkt, 0, len);
-                                  ArrayList<byte[]> res = engine.processPacket(pkt);
-                                  if(res != null) for(byte[] p : res) out.write(p);
+                          while (running) {
+                              int len = in.read(buffer);
+                              if (len > 0) {
+                                  byte[] packet = new byte[len];
+                                  System.arraycopy(buffer, 0, packet, 0, len);
+                                  
+                                  ArrayList<byte[]> result = engine.processPacket(packet);
+                                  for (byte[] p : result) {
+                                      out.write(p);
+                                  }
                               }
                           }
-                      } catch(Exception e) {}
+                      } catch (Exception e) {}
                   });
                   thread.start();
+
                   MainActivity.updateStatus(true);
                   return START_STICKY;
               }
+
               @Override
               public void onDestroy() {
                   running = false;
+                  if (thread != null) thread.interrupt();
                   try { if(vpn != null) vpn.close(); } catch(Exception e) {}
                   MainActivity.updateStatus(false);
                   super.onDestroy();
@@ -502,37 +237,56 @@ jobs:
         run: |
           cat > app/src/main/java/com/dpibypass/pro/MainActivity.java << 'JAVAEOF'
           package com.dpibypass.pro;
-          import android.app.Activity; import android.content.*; import android.os.Bundle;
-          import android.widget.*; import android.graphics.Color;
+          import android.app.Activity;
+          import android.content.*;
+          import android.os.Bundle;
+          import android.widget.*;
+          import android.graphics.Color;
+
           public class MainActivity extends Activity {
               private static TextView statusView;
               private Switch mainSwitch;
+
               @Override
               protected void onCreate(Bundle b) {
                   super.onCreate(b);
                   LinearLayout root = new LinearLayout(this);
                   root.setOrientation(LinearLayout.VERTICAL);
                   root.setPadding(40, 40, 40, 40);
+                  root.setBackgroundColor(0xFF0F172A);
+
+                  TextView title = new TextView(this);
+                  title.setText("🛡️ DPI BYPASS PRO v2.2");
+                  title.setTextSize(24);
+                  title.setTextColor(Color.WHITE);
+                  root.addView(title);
+
                   statusView = new TextView(this);
-                  statusView.setText("● ВЫКЛЮЧЕНО");
+                  statusView.setText("● СТАТУС: ВЫКЛЮЧЕНО");
                   statusView.setTextColor(Color.RED);
+                  statusView.setPadding(0, 30, 0, 30);
+                  root.addView(statusView);
+
                   mainSwitch = new Switch(this);
-                  mainSwitch.setText("Защита DPI");
-                  mainSwitch.setOnCheckedChangeListener((v, c) -> {
-                      if(c) startVpn(); else stopVpn();
+                  mainSwitch.setText("АКТИВИРОВАТЬ ОБХОД");
+                  mainSwitch.setTextColor(Color.LTGRAY);
+                  mainSwitch.setOnCheckedChangeListener((v, isChecked) -> {
+                      if (isChecked) {
+                          Intent intent = android.net.VpnService.prepare(this);
+                          if (intent != null) startActivityForResult(intent, 0);
+                          else startService(new Intent(this, VpnService.class));
+                      } else {
+                          stopService(new Intent(this, VpnService.class));
+                      }
                   });
-                  root.addView(mainSwitch); root.addView(statusView);
+                  root.addView(mainSwitch);
                   setContentView(root);
               }
-              private void startVpn() {
-                  Intent intent = android.net.VpnService.prepare(this);
-                  if(intent != null) startActivityForResult(intent, 100);
-                  else startService(new Intent(this, VpnService.class));
-              }
-              private void stopVpn() { stopService(new Intent(this, VpnService.class)); }
+
               public static void updateStatus(boolean active) {
-                  if(statusView != null) statusView.post(() -> {
-                      statusView.setText(active ? "● АКТИВНО" : "● ВЫКЛЮЧЕНО");
+                  if (statusView == null) return;
+                  statusView.post(() -> {
+                      statusView.setText(active ? "● СТАТУС: ЗАЩИЩЕНО" : "● СТАТУС: ВЫКЛЮЧЕНО");
                       statusView.setTextColor(active ? Color.GREEN : Color.RED);
                   });
               }
@@ -546,17 +300,14 @@ jobs:
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <uses-permission android:name="android.permission.INTERNET"/>
               <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-              
-              <application android:label="DPI Bypass PRO" android:allowBackup="false">
-                  <activity android:name=".MainActivity" android:exported="true"
-                            android:theme="@android:style/Theme.Material.NoActionBar">
+              <application android:label="DPI Bypass PRO" android:theme="@android:style/Theme.DeviceDefault">
+                  <activity android:name=".MainActivity" android:exported="true">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/>
                           <category android:name="android.intent.category.LAUNCHER"/>
                       </intent-filter>
                   </activity>
-                  
-                  <service android:name=".VpnService"
+                  <service android:name=".VpnService" 
                            android:permission="android.permission.BIND_VPN_SERVICE"
                            android:exported="true">
                       <intent-filter>
@@ -576,10 +327,7 @@ jobs:
           }
           allprojects { repositories { google(); mavenCentral() } }
           EOF
-          
           echo "include ':app'" > settings.gradle
-          echo "android.useAndroidX=true" > gradle.properties
-          
           cat > app/build.gradle << 'EOF'
           plugins { id 'com.android.application' }
           android {
@@ -589,8 +337,7 @@ jobs:
                   applicationId 'com.dpibypass.pro'
                   minSdk 24
                   targetSdk 34
-                  versionCode 1
-                  versionName "2.0-PRO"
+                  versionCode 5
                   ndk { abiFilters 'arm64-v8a', 'armeabi-v7a' }
               }
               externalNativeBuild { cmake { path 'src/main/cpp/CMakeLists.txt' } }
@@ -609,10 +356,10 @@ jobs:
           unzip -q gradle-8.5-bin.zip
           export PATH="$PWD/gradle-8.5/bin:$PATH"
           gradle wrapper --gradle-version 8.5
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: DPI_Bypass_PRO_v2
+          name: DPI_Bypass_PRO_Final
           path: app/build/outputs/apk/debug/app-debug.apk
