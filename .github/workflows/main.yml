@@ -69,7 +69,11 @@ jobs:
               float success_rate;
               int test_count;
               uint64_t last_used;
+              
               Strategy() : type(STRAT_NONE), param1(0), param2(0), success_rate(0.5f), test_count(0), last_used(0) {}
+              
+              Strategy(StrategyType t, int p1, int p2) : 
+                  type(t), param1(p1), param2(p2), success_rate(0.5f), test_count(0), last_used(0) {}
           };
 
           struct DomainStats {
@@ -296,13 +300,19 @@ jobs:
                   g_domain_cache[domain] = DomainStats();
                   g_domain_cache[domain].domain = domain;
               }
-              std::vector<Strategy> test_strategies = {{STRAT_FRAG_SMALL, 2, 0}, {STRAT_FRAG_MEDIUM, 40, 0}, {STRAT_FRAG_SNI, 0, 0}, {STRAT_FAKE_SYN, 1, 0}};
-              for(auto& strat : test_strategies) {
+              
+              std::vector<Strategy> test_strategies;
+              test_strategies.push_back(Strategy(STRAT_FRAG_SMALL, 2, 0));
+              test_strategies.push_back(Strategy(STRAT_FRAG_MEDIUM, 40, 0));
+              test_strategies.push_back(Strategy(STRAT_FRAG_SNI, 0, 0));
+              test_strategies.push_back(Strategy(STRAT_FAKE_SYN, 1, 0));
+              
+              for(const auto& strat : test_strategies) {
                   bool tested = false;
                   for(auto& t : g_domain_cache[domain].tested_strategies) if(t.type == strat.type) tested = true;
                   if(!tested) return strat;
               }
-              return {STRAT_FRAG_MEDIUM, 40, 0};
+              return Strategy(STRAT_FRAG_MEDIUM, 40, 0);
           }
 
           void update_strategy_stats(const std::string& domain, const Strategy& strat, bool success) {
@@ -328,6 +338,10 @@ jobs:
                   case STRAT_FRAG_MEDIUM: res = fragment_tls(pkt, len, 40); break;
                   case STRAT_FRAG_SNI: res = fragment_before_sni(pkt, len); break;
                   case STRAT_FAKE_SYN: res.push_back(create_fake_syn(pkt)); res.push_back(std::vector<uint8_t>(pkt, pkt + len)); break;
+                  case STRAT_TTL_TRICK: res.push_back(std::vector<uint8_t>(pkt, pkt + len)); apply_ttl(res[0].data(), 1); break;
+                  case STRAT_DISORDER: res = apply_disorder(pkt, len, 40); break;
+                  case STRAT_SPLIT2: res = apply_split2(pkt, len); break;
+                  case STRAT_MD5SIG: res.push_back(create_md5sig_fake(pkt)); res.push_back(std::vector<uint8_t>(pkt, pkt + len)); break;
                   default: res.push_back(std::vector<uint8_t>(pkt, pkt + len));
               }
               return res;
@@ -351,12 +365,14 @@ jobs:
                   if(payload_len > 5 && pkt[payload_off] == 0x16) {
                       std::string domain = extract_sni(pkt + payload_off, payload_len);
                       if(!domain.empty() && should_process_domain(domain)) {
-                          Strategy s = g_auto_mode ? select_strategy_for_domain(domain) : Strategy();
-                          if(!g_auto_mode) s.type = STRAT_FRAG_MEDIUM;
+                          Strategy s = g_auto_mode ? select_strategy_for_domain(domain) : Strategy(STRAT_FRAG_MEDIUM, 40, 0);
                           out = apply_strategy(pkt, pkt_len, s);
                           processed = true; g_modified_packets++;
                           update_strategy_stats(domain, s, true);
                       }
+                  } else if (payload_len > 4 && memcmp(pkt + payload_off, "GET ", 4) == 0) {
+                      out = split_http(pkt, pkt_len);
+                      processed = true; g_modified_packets++;
                   }
               }
               env->ReleaseByteArrayElements(packet, pkt_data, 0);
@@ -377,10 +393,32 @@ jobs:
           extern "C" JNIEXPORT jlong JNICALL Java_com_dpibypass_pro_PacketEngine_getTotalPackets(JNIEnv*, jobject) { return g_total_packets; }
           extern "C" JNIEXPORT jlong JNICALL Java_com_dpibypass_pro_PacketEngine_getModifiedPackets(JNIEnv*, jobject) { return g_modified_packets; }
           extern "C" JNIEXPORT void JNICALL Java_com_dpibypass_pro_PacketEngine_setAutoMode(JNIEnv*, jobject, jboolean e) { g_auto_mode = e; }
-          extern "C" JNIEXPORT void JNICALL Java_com_dpibypass_pro_PacketEngine_setWhitelist(JNIEnv* env, jobject, jobjectArray d) { /* impl simplified */ }
-          extern "C" JNIEXPORT void JNICALL Java_com_dpibypass_pro_PacketEngine_setBlacklist(JNIEnv* env, jobject, jobjectArray d) { /* impl simplified */ }
-          extern "C" JNIEXPORT jstring JNICALL Java_com_dpibypass_pro_PacketEngine_getStrategyStats(JNIEnv* env, jobject) { return env->NewStringUTF("Stats available in logs"); }
-          extern "C" JNIEXPORT void JNICALL Java_com_dpibypass_pro_PacketEngine_resetStats(JNIEnv*, jobject) { g_total_packets = 0; g_modified_packets = 0; }
+          extern "C" JNIEXPORT void JNICALL Java_com_dpibypass_pro_PacketEngine_setWhitelist(JNIEnv* env, jobject, jobjectArray d) { 
+              g_whitelist.clear();
+              int len = env->GetArrayLength(d);
+              for(int i=0; i<len; i++) {
+                  jstring s = (jstring)env->GetObjectArrayElement(d, i);
+                  const char* c = env->GetStringUTFChars(s, 0);
+                  g_whitelist.push_back(c);
+                  env->ReleaseStringUTFChars(s, c);
+              }
+          }
+          extern "C" JNIEXPORT void JNICALL Java_com_dpibypass_pro_PacketEngine_setBlacklist(JNIEnv* env, jobject, jobjectArray d) { 
+              g_blacklist.clear();
+              int len = env->GetArrayLength(d);
+              for(int i=0; i<len; i++) {
+                  jstring s = (jstring)env->GetObjectArrayElement(d, i);
+                  const char* c = env->GetStringUTFChars(s, 0);
+                  g_blacklist.push_back(c);
+                  env->ReleaseStringUTFChars(s, c);
+              }
+          }
+          extern "C" JNIEXPORT jstring JNICALL Java_com_dpibypass_pro_PacketEngine_getStrategyStats(JNIEnv* env, jobject) { 
+              std::string s = "DPI Stats:\n";
+              for(auto const& [domain, stats] : g_domain_cache) s += domain + " processed\n";
+              return env->NewStringUTF(s.c_str()); 
+          }
+          extern "C" JNIEXPORT void JNICALL Java_com_dpibypass_pro_PacketEngine_resetStats(JNIEnv*, jobject) { g_total_packets = 0; g_modified_packets = 0; g_domain_cache.clear(); }
           CPPEOF
 
       - name: Create CMakeLists
@@ -425,6 +463,8 @@ jobs:
               @Override
               public int onStartCommand(Intent intent, int flags, int startId) {
                   if(running) return START_STICKY;
+                  boolean auto = intent.getBooleanExtra("auto_mode", true);
+                  engine.setAutoMode(auto);
                   Builder builder = new Builder();
                   builder.setSession("DPI Bypass PRO").setMtu(1500).addAddress("10.0.0.2", 24).addRoute("0.0.0.0", 0).addDnsServer("1.1.1.1");
                   vpn = builder.establish();
@@ -467,7 +507,6 @@ jobs:
           public class MainActivity extends Activity {
               private static TextView statusView;
               private Switch mainSwitch;
-              private PacketEngine engine = new PacketEngine();
               @Override
               protected void onCreate(Bundle b) {
                   super.onCreate(b);
@@ -551,7 +590,7 @@ jobs:
                   minSdk 24
                   targetSdk 34
                   versionCode 1
-                  versionName "1.0"
+                  versionName "2.0-PRO"
                   ndk { abiFilters 'arm64-v8a', 'armeabi-v7a' }
               }
               externalNativeBuild { cmake { path 'src/main/cpp/CMakeLists.txt' } }
@@ -575,5 +614,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: DPI_Bypass_PRO
+          name: DPI_Bypass_PRO_v2
           path: app/build/outputs/apk/debug/app-debug.apk
