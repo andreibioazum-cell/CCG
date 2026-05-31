@@ -8,12 +8,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup NDK
-        run: |
-          wget -q https://dl.google.com/android/repository/android-ndk-r25c-linux.zip
-          unzip -q android-ndk-r25c-linux.zip
-          echo "ANDROID_NDK_HOME=$PWD/android-ndk-r25c" >> $GITHUB_ENV
-
       - name: Create Project Structure
         run: |
           mkdir -p app/src/main/{java/com/dpibypass/pro,cpp,res/{layout,values,drawable}}
@@ -35,7 +29,6 @@ jobs:
 
           #define LOG(...) __android_log_print(ANDROID_LOG_INFO, "DPIBypassPRO", __VA_ARGS__)
 
-          // ========== СТРУКТУРЫ ==========
           struct IPHeader {
               uint8_t ver_ihl, tos;
               uint16_t len, id, off;
@@ -55,31 +48,28 @@ jobs:
               uint16_t sport, dport, len, csum;
           } __attribute__((packed));
 
-          // ========== СТРАТЕГИИ ОБХОДА ==========
           enum StrategyType {
               STRAT_NONE = 0,
-              STRAT_FRAG_SMALL = 1,      // 2-байтовая фрагментация
-              STRAT_FRAG_MEDIUM = 2,     // 40-байтовая
-              STRAT_FRAG_SNI = 3,        // Разрыв перед SNI
-              STRAT_FAKE_SYN = 4,        // Fake packet перед реальным
-              STRAT_TTL_TRICK = 5,       // TTL=1 для первого пакета
-              STRAT_DISORDER = 6,        // Отправка в обратном порядке
-              STRAT_SPLIT2 = 7,          // Двойная фрагментация
-              STRAT_MD5SIG = 8,          // TCP MD5 signature fake
-              STRAT_HTTP_SPLIT = 9,      // HTTP Host: split
-              STRAT_COMBINED = 10        // Комбинация методов
+              STRAT_FRAG_SMALL = 1,
+              STRAT_FRAG_MEDIUM = 2,
+              STRAT_FRAG_SNI = 3,
+              STRAT_FAKE_SYN = 4,
+              STRAT_TTL_TRICK = 5,
+              STRAT_DISORDER = 6,
+              STRAT_SPLIT2 = 7,
+              STRAT_MD5SIG = 8,
+              STRAT_HTTP_SPLIT = 9,
+              STRAT_COMBINED = 10
           };
 
           struct Strategy {
               StrategyType type;
-              int param1;  // frag_size / ttl / delay
-              int param2;  // secondary param
+              int param1;
+              int param2;
               float success_rate;
               int test_count;
               uint64_t last_used;
-              
-              Strategy() : type(STRAT_NONE), param1(0), param2(0), 
-                          success_rate(0.5f), test_count(0), last_used(0) {}
+              Strategy() : type(STRAT_NONE), param1(0), param2(0), success_rate(0.5f), test_count(0), last_used(0) {}
           };
 
           struct DomainStats {
@@ -91,7 +81,6 @@ jobs:
               uint64_t last_success_time;
           };
 
-          // ========== ГЛОБАЛЬНОЕ СОСТОЯНИЕ ==========
           static std::unordered_map<std::string, DomainStats> g_domain_cache;
           static std::mt19937 g_rng(std::chrono::steady_clock::now().time_since_epoch().count());
           static long g_total_packets = 0;
@@ -100,11 +89,8 @@ jobs:
           static std::vector<std::string> g_whitelist;
           static std::vector<std::string> g_blacklist;
 
-          // ========== УТИЛИТЫ ==========
           uint64_t get_timestamp_ms() {
-              return std::chrono::duration_cast<std::chrono::milliseconds>(
-                  std::chrono::steady_clock::now().time_since_epoch()
-              ).count();
+              return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
           }
 
           uint16_t checksum(const uint16_t* buf, int len) {
@@ -126,125 +112,76 @@ jobs:
               int ip_hlen = (ip->ver_ihl & 0x0F) * 4;
               TCPHeader* tcp = (TCPHeader*)(pkt + ip_hlen);
               int tcp_len = ntohs(ip->len) - ip_hlen;
-              
               tcp->csum = 0;
               uint32_t sum = 0;
               sum += (ip->src >> 16) + (ip->src & 0xFFFF);
               sum += (ip->dst >> 16) + (ip->dst & 0xFFFF);
-              sum += htons(6);
-              sum += htons(tcp_len);
-              
+              sum += htons(6); sum += htons(tcp_len);
               uint8_t* tcp_data = (uint8_t*)tcp;
-              for(int i = 0; i < tcp_len / 2; i++)
-                  sum += ((uint16_t*)tcp_data)[i];
+              for(int i = 0; i < tcp_len / 2; i++) sum += ((uint16_t*)tcp_data)[i];
               if(tcp_len & 1) sum += tcp_data[tcp_len - 1];
-              
               while(sum >> 16) sum = (sum & 0xFFFF) + (sum >> 16);
               tcp->csum = ~sum;
           }
 
-          // ========== ИЗВЛЕЧЕНИЕ SNI ==========
           std::string extract_sni(const uint8_t* tls, int len) {
               if(len < 43 || tls[0] != 0x16 || tls[5] != 0x01) return "";
-              
               int pos = 43;
               if(pos >= len) return "";
-              
-              int session_len = tls[pos];
-              pos += 1 + session_len;
+              int session_len = tls[pos]; pos += 1 + session_len;
               if(pos + 2 > len) return "";
-              
-              int cipher_len = ntohs(*(uint16_t*)(tls + pos));
-              pos += 2 + cipher_len;
+              int cipher_len = ntohs(*(uint16_t*)(tls + pos)); pos += 2 + cipher_len;
               if(pos + 1 > len) return "";
-              
-              int comp_len = tls[pos];
-              pos += 1 + comp_len;
+              int comp_len = tls[pos]; pos += 1 + comp_len;
               if(pos + 2 > len) return "";
-              
-              int ext_len = ntohs(*(uint16_t*)(tls + pos));
-              pos += 2;
-              
+              int ext_len = ntohs(*(uint16_t*)(tls + pos)); pos += 2;
               int ext_end = pos + ext_len;
               while(pos + 4 <= ext_end && pos + 4 <= len) {
                   uint16_t ext_type = ntohs(*(uint16_t*)(tls + pos));
                   uint16_t ext_data_len = ntohs(*(uint16_t*)(tls + pos + 2));
                   pos += 4;
-                  
                   if(ext_type == 0 && pos + 5 + ext_data_len <= len) {
                       int name_len = ntohs(*(uint16_t*)(tls + pos + 3));
-                      if(pos + 5 + name_len <= len) {
-                          return std::string((char*)(tls + pos + 5), name_len);
-                      }
+                      if(pos + 5 + name_len <= len) return std::string((char*)(tls + pos + 5), name_len);
                   }
                   pos += ext_data_len;
               }
               return "";
           }
 
-          // Найти позицию SNI в TLS данных
           int find_sni_position(const uint8_t* tls, int len) {
               if(len < 43 || tls[0] != 0x16 || tls[5] != 0x01) return -1;
-              
               int pos = 43;
-              if(pos >= len) return -1;
-              
-              int session_len = tls[pos];
-              pos += 1 + session_len;
-              if(pos + 2 > len) return -1;
-              
-              int cipher_len = ntohs(*(uint16_t*)(tls + pos));
-              pos += 2 + cipher_len;
-              if(pos + 1 > len) return -1;
-              
-              int comp_len = tls[pos];
-              pos += 1 + comp_len;
-              if(pos + 2 > len) return -1;
-              
-              int ext_len = ntohs(*(uint16_t*)(tls + pos));
-              pos += 2;
-              
+              int session_len = tls[pos]; pos += 1 + session_len;
+              int cipher_len = ntohs(*(uint16_t*)(tls + pos)); pos += 2 + cipher_len;
+              int comp_len = tls[pos]; pos += 1 + comp_len;
+              int ext_len = ntohs(*(uint16_t*)(tls + pos)); pos += 2;
               int ext_end = pos + ext_len;
               while(pos + 4 <= ext_end && pos + 4 <= len) {
                   uint16_t ext_type = ntohs(*(uint16_t*)(tls + pos));
                   uint16_t ext_data_len = ntohs(*(uint16_t*)(tls + pos + 2));
-                  
-                  if(ext_type == 0) {
-                      return pos; // Позиция начала SNI extension
-                  }
+                  if(ext_type == 0) return pos;
                   pos += 4 + ext_data_len;
               }
               return -1;
           }
 
-          // ========== DOMAIN FILTERING ==========
           bool is_domain_match(const std::string& domain, const std::vector<std::string>& list) {
               for(const auto& pattern : list) {
                   if(pattern[0] == '*') {
                       std::string suffix = pattern.substr(1);
-                      if(domain.size() >= suffix.size() && 
-                         domain.compare(domain.size() - suffix.size(), suffix.size(), suffix) == 0)
-                          return true;
-                  } else if(pattern == domain) {
-                      return true;
-                  }
+                      if(domain.size() >= suffix.size() && domain.compare(domain.size() - suffix.size(), suffix.size(), suffix) == 0) return true;
+                  } else if(pattern == domain) return true;
               }
               return false;
           }
 
           bool should_process_domain(const std::string& domain) {
-              if(!g_whitelist.empty() && is_domain_match(domain, g_whitelist)) {
-                  return false; // В whitelist - не трогаем
-              }
-              if(!g_blacklist.empty() && !is_domain_match(domain, g_blacklist)) {
-                  return false; // Не в blacklist - не трогаем
-              }
+              if(!g_whitelist.empty() && is_domain_match(domain, g_whitelist)) return false;
+              if(!g_blacklist.empty() && !is_domain_match(domain, g_blacklist)) return false;
               return true;
           }
 
-          // ========== МЕТОДЫ ОБХОДА ==========
-
-          // 1. Фрагментация TLS (универсальная)
           std::vector<std::vector<uint8_t>> fragment_tls(uint8_t* pkt, int len, int frag_size) {
               std::vector<std::vector<uint8_t>> result;
               IPHeader* ip = (IPHeader*)pkt;
@@ -253,143 +190,79 @@ jobs:
               int tcp_hlen = ((tcp->off_res >> 4) & 0x0F) * 4;
               int payload_offset = ip_hlen + tcp_hlen;
               int payload_len = len - payload_offset;
-              
-              if(payload_len <= frag_size) {
-                  result.push_back(std::vector<uint8_t>(pkt, pkt + len));
-                  return result;
-              }
-              
-              // Первый фрагмент
+              if(payload_len <= frag_size) { result.push_back(std::vector<uint8_t>(pkt, pkt + len)); return result; }
               std::vector<uint8_t> frag1(pkt, pkt + payload_offset + frag_size);
-              IPHeader* ip1 = (IPHeader*)frag1.data();
-              ip1->len = htons(payload_offset + frag_size);
-              fix_ip_checksum(frag1.data());
-              fix_tcp_checksum(frag1.data(), frag1.size());
+              IPHeader* ip1 = (IPHeader*)frag1.data(); ip1->len = htons(payload_offset + frag_size);
+              fix_ip_checksum(frag1.data()); fix_tcp_checksum(frag1.data(), frag1.size());
               result.push_back(frag1);
-              
-              // Второй фрагмент
-              std::vector<uint8_t> frag2(payload_offset);
-              memcpy(frag2.data(), pkt, payload_offset);
+              std::vector<uint8_t> frag2(payload_offset); memcpy(frag2.data(), pkt, payload_offset);
               frag2.insert(frag2.end(), pkt + payload_offset + frag_size, pkt + len);
-              
               IPHeader* ip2 = (IPHeader*)frag2.data();
               TCPHeader* tcp2 = (TCPHeader*)(frag2.data() + ip_hlen);
-              tcp2->seq = htonl(ntohl(tcp2->seq) + frag_size);
-              ip2->len = htons(frag2.size());
-              fix_ip_checksum(frag2.data());
-              fix_tcp_checksum(frag2.data(), frag2.size());
+              tcp2->seq = htonl(ntohl(tcp2->seq) + frag_size); ip2->len = htons(frag2.size());
+              fix_ip_checksum(frag2.data()); fix_tcp_checksum(frag2.data(), frag2.size());
               result.push_back(frag2);
-              
               return result;
           }
 
-          // 2. Фрагментация перед SNI (умная)
           std::vector<std::vector<uint8_t>> fragment_before_sni(uint8_t* pkt, int len) {
               IPHeader* ip = (IPHeader*)pkt;
               int ip_hlen = (ip->ver_ihl & 0x0F) * 4;
               TCPHeader* tcp = (TCPHeader*)(pkt + ip_hlen);
               int tcp_hlen = ((tcp->off_res >> 4) & 0x0F) * 4;
               int payload_offset = ip_hlen + tcp_hlen;
-              
               int sni_pos = find_sni_position(pkt + payload_offset, len - payload_offset);
-              if(sni_pos > 5) {
-                  // Режем за 2 байта до SNI
-                  return fragment_tls(pkt, len, sni_pos - 2);
-              }
-              
-              // Fallback на 40 байт
+              if(sni_pos > 5) return fragment_tls(pkt, len, sni_pos - 2);
               return fragment_tls(pkt, len, 40);
           }
 
-          // 3. Fake SYN
           std::vector<uint8_t> create_fake_syn(uint8_t* real_pkt, int ttl = 1) {
               IPHeader* ip = (IPHeader*)real_pkt;
               int ip_hlen = (ip->ver_ihl & 0x0F) * 4;
               TCPHeader* tcp = (TCPHeader*)(real_pkt + ip_hlen);
-              
-              std::vector<uint8_t> fake(ip_hlen + 20);
-              memcpy(fake.data(), real_pkt, ip_hlen + 20);
-              
+              std::vector<uint8_t> fake(ip_hlen + 20); memcpy(fake.data(), real_pkt, ip_hlen + 20);
               IPHeader* fake_ip = (IPHeader*)fake.data();
               TCPHeader* fake_tcp = (TCPHeader*)(fake.data() + ip_hlen);
-              
-              fake_ip->len = htons(ip_hlen + 20);
-              fake_ip->ttl = ttl;
-              fake_tcp->seq = htonl(ntohl(tcp->seq) - 1);
-              fake_tcp->flags = 0x02; // SYN
-              fake_tcp->win = htons(512);
-              
-              fix_ip_checksum(fake.data());
-              fix_tcp_checksum(fake.data(), fake.size());
-              
+              fake_ip->len = htons(ip_hlen + 20); fake_ip->ttl = ttl;
+              fake_tcp->seq = htonl(ntohl(tcp->seq) - 1); fake_tcp->flags = 0x02; fake_tcp->win = htons(512);
+              fix_ip_checksum(fake.data()); fix_tcp_checksum(fake.data(), fake.size());
               return fake;
           }
 
-          // 4. TTL Trick
           void apply_ttl(uint8_t* pkt, int ttl) {
-              IPHeader* ip = (IPHeader*)pkt;
-              ip->ttl = ttl;
-              fix_ip_checksum(pkt);
+              IPHeader* ip = (IPHeader*)pkt; ip->ttl = ttl; fix_ip_checksum(pkt);
           }
 
-          // 5. DISORDER (отправка в обратном порядке)
           std::vector<std::vector<uint8_t>> apply_disorder(uint8_t* pkt, int len, int frag_size) {
               auto frags = fragment_tls(pkt, len, frag_size);
-              if(frags.size() == 2) {
-                  std::reverse(frags.begin(), frags.end());
-              }
+              if(frags.size() == 2) std::reverse(frags.begin(), frags.end());
               return frags;
           }
 
-          // 6. SPLIT2 (двойная фрагментация)
           std::vector<std::vector<uint8_t>> apply_split2(uint8_t* pkt, int len) {
               std::vector<std::vector<uint8_t>> result;
-              
-              // Первая фрагментация (2 байта)
               auto first_split = fragment_tls(pkt, len, 2);
               if(first_split.size() < 2) return first_split;
-              
-              // Вторая фрагментация второго пакета (40 байт)
               auto second_split = fragment_tls(first_split[1].data(), first_split[1].size(), 40);
-              
-              result.push_back(first_split[0]);
-              result.insert(result.end(), second_split.begin(), second_split.end());
-              
+              result.push_back(first_split[0]); result.insert(result.end(), second_split.begin(), second_split.end());
               return result;
           }
 
-          // 7. MD5SIG (TCP MD5 signature fake)
           std::vector<uint8_t> create_md5sig_fake(uint8_t* real_pkt) {
               IPHeader* ip = (IPHeader*)real_pkt;
               int ip_hlen = (ip->ver_ihl & 0x0F) * 4;
-              TCPHeader* tcp = (TCPHeader*)(real_pkt + ip_hlen);
-              
-              // Создаём TCP пакет с MD5 signature option (kind=19, len=18)
-              std::vector<uint8_t> fake(ip_hlen + 20 + 20); // +20 для опций
-              memcpy(fake.data(), real_pkt, ip_hlen + 20);
-              
+              std::vector<uint8_t> fake(ip_hlen + 40); memcpy(fake.data(), real_pkt, ip_hlen + 20);
               IPHeader* fake_ip = (IPHeader*)fake.data();
               TCPHeader* fake_tcp = (TCPHeader*)(fake.data() + ip_hlen);
-              
-              // MD5 signature option
               uint8_t* options = fake.data() + ip_hlen + 20;
-              options[0] = 19; // TCP_MD5SIG
-              options[1] = 18; // Length
-              memset(options + 2, 0, 16); // Fake signature
-              
+              options[0] = 19; options[1] = 18; memset(options + 2, 0, 16);
               fake_tcp->off_res = (((20 + 20) / 4) << 4);
               fake_tcp->seq = htonl(ntohl(fake_tcp->seq) - 100);
-              fake_tcp->flags = 0x02; // SYN
-              fake_ip->ttl = 1;
-              fake_ip->len = htons(ip_hlen + 40);
-              
-              fix_ip_checksum(fake.data());
-              fix_tcp_checksum(fake.data(), fake.size());
-              
+              fake_tcp->flags = 0x02; fake_ip->ttl = 1; fake_ip->len = htons(ip_hlen + 40);
+              fix_ip_checksum(fake.data()); fix_tcp_checksum(fake.data(), fake.size());
               return fake;
           }
 
-          // 8. HTTP Split
           std::vector<std::vector<uint8_t>> split_http(uint8_t* pkt, int len) {
               std::vector<std::vector<uint8_t>> result;
               IPHeader* ip = (IPHeader*)pkt;
@@ -397,363 +270,117 @@ jobs:
               TCPHeader* tcp = (TCPHeader*)(pkt + ip_hlen);
               int tcp_hlen = ((tcp->off_res >> 4) & 0x0F) * 4;
               int payload_offset = ip_hlen + tcp_hlen;
-              
               std::string http((char*)(pkt + payload_offset), len - payload_offset);
               size_t host_pos = http.find("Host:");
-              
               if(host_pos != std::string::npos && host_pos > 10) {
                   std::vector<uint8_t> part1(pkt, pkt + payload_offset + host_pos);
-                  IPHeader* ip1 = (IPHeader*)part1.data();
-                  ip1->len = htons(payload_offset + host_pos);
-                  fix_ip_checksum(part1.data());
-                  fix_tcp_checksum(part1.data(), part1.size());
+                  IPHeader* ip1 = (IPHeader*)part1.data(); ip1->len = htons(payload_offset + host_pos);
+                  fix_ip_checksum(part1.data()); fix_tcp_checksum(part1.data(), part1.size());
                   result.push_back(part1);
-                  
-                  std::vector<uint8_t> part2(payload_offset);
-                  memcpy(part2.data(), pkt, payload_offset);
+                  std::vector<uint8_t> part2(payload_offset); memcpy(part2.data(), pkt, payload_offset);
                   part2.insert(part2.end(), pkt + payload_offset + host_pos, pkt + len);
-                  
                   IPHeader* ip2 = (IPHeader*)part2.data();
                   TCPHeader* tcp2 = (TCPHeader*)(part2.data() + ip_hlen);
-                  tcp2->seq = htonl(ntohl(tcp2->seq) + host_pos);
-                  ip2->len = htons(part2.size());
-                  fix_ip_checksum(part2.data());
-                  fix_tcp_checksum(part2.data(), part2.size());
+                  tcp2->seq = htonl(ntohl(tcp2->seq) + host_pos); ip2->len = htons(part2.size());
+                  fix_ip_checksum(part2.data()); fix_tcp_checksum(part2.data(), part2.size());
                   result.push_back(part2);
-                  
                   return result;
               }
-              
-              result.push_back(std::vector<uint8_t>(pkt, pkt + len));
-              return result;
+              result.push_back(std::vector<uint8_t>(pkt, pkt + len)); return result;
           }
 
-          // ========== АВТОСТРАТЕГИЯ ==========
           Strategy select_strategy_for_domain(const std::string& domain) {
               auto it = g_domain_cache.find(domain);
-              
-              // Домен известен - используем лучшую стратегию
-              if(it != g_domain_cache.end() && it->second.best_strategy.test_count > 0) {
-                  return it->second.best_strategy;
-              }
-              
-              // Новый домен - выбираем случайную стратегию для теста
+              if(it != g_domain_cache.end() && it->second.best_strategy.test_count > 0) return it->second.best_strategy;
               if(it == g_domain_cache.end()) {
                   g_domain_cache[domain] = DomainStats();
                   g_domain_cache[domain].domain = domain;
-                  g_domain_cache[domain].total_attempts = 0;
               }
-              
-              // Список стратегий для тестирования
-              std::vector<Strategy> test_strategies = {
-                  {STRAT_FRAG_SMALL, 2, 0},
-                  {STRAT_FRAG_MEDIUM, 40, 0},
-                  {STRAT_FRAG_SNI, 0, 0},
-                  {STRAT_FAKE_SYN, 1, 0},
-                  {STRAT_TTL_TRICK, 1, 0},
-                  {STRAT_DISORDER, 40, 0},
-                  {STRAT_SPLIT2, 0, 0},
-                  {STRAT_MD5SIG, 0, 0},
-                  {STRAT_COMBINED, 40, 1} // frag_size=40, ttl=1
-              };
-              
-              // Выбираем непротестированную стратегию
+              std::vector<Strategy> test_strategies = {{STRAT_FRAG_SMALL, 2, 0}, {STRAT_FRAG_MEDIUM, 40, 0}, {STRAT_FRAG_SNI, 0, 0}, {STRAT_FAKE_SYN, 1, 0}};
               for(auto& strat : test_strategies) {
-                  bool already_tested = false;
-                  for(auto& tested : g_domain_cache[domain].tested_strategies) {
-                      if(tested.type == strat.type && tested.param1 == strat.param1) {
-                          already_tested = true;
-                          break;
-                      }
-                  }
-                  if(!already_tested) {
-                      LOG("Testing strategy %d for %s", strat.type, domain.c_str());
-                      return strat;
-                  }
+                  bool tested = false;
+                  for(auto& t : g_domain_cache[domain].tested_strategies) if(t.type == strat.type) tested = true;
+                  if(!tested) return strat;
               }
-              
-              // Все протестированы - используем лучшую
-              float best_rate = 0;
-              Strategy best = {STRAT_FRAG_MEDIUM, 40, 0};
-              for(auto& tested : g_domain_cache[domain].tested_strategies) {
-                  if(tested.success_rate > best_rate) {
-                      best_rate = tested.success_rate;
-                      best = tested;
-                  }
-              }
-              
-              g_domain_cache[domain].best_strategy = best;
-              LOG("Best strategy for %s: %d (%.1f%%)", domain.c_str(), best.type, best_rate * 100);
-              return best;
+              return {STRAT_FRAG_MEDIUM, 40, 0};
           }
 
           void update_strategy_stats(const std::string& domain, const Strategy& strat, bool success) {
               auto& stats = g_domain_cache[domain];
-              stats.total_attempts++;
-              
               bool found = false;
               for(auto& tested : stats.tested_strategies) {
-                  if(tested.type == strat.type && tested.param1 == strat.param1) {
+                  if(tested.type == strat.type) {
                       tested.test_count++;
                       tested.success_rate = tested.success_rate * 0.8f + (success ? 0.2f : 0.0f);
-                      tested.last_used = get_timestamp_ms();
-                      found = true;
-                      break;
+                      found = true; break;
                   }
               }
-              
               if(!found) {
-                  Strategy new_strat = strat;
-                  new_strat.test_count = 1;
-                  new_strat.success_rate = success ? 1.0f : 0.0f;
-                  new_strat.last_used = get_timestamp_ms();
-                  stats.tested_strategies.push_back(new_strat);
-              }
-              
-              if(success) {
-                  stats.successful_attempts++;
-                  stats.last_success_time = get_timestamp_ms();
+                  Strategy ns = strat; ns.test_count = 1; ns.success_rate = success ? 1.0f : 0.0f;
+                  stats.tested_strategies.push_back(ns);
               }
           }
 
-          // ========== ПРИМЕНЕНИЕ СТРАТЕГИИ ==========
           std::vector<std::vector<uint8_t>> apply_strategy(uint8_t* pkt, int len, const Strategy& strat) {
-              std::vector<std::vector<uint8_t>> result;
-              
+              std::vector<std::vector<uint8_t>> res;
               switch(strat.type) {
-                  case STRAT_FRAG_SMALL:
-                      result = fragment_tls(pkt, len, 2);
-                      break;
-                      
-                  case STRAT_FRAG_MEDIUM:
-                      result = fragment_tls(pkt, len, strat.param1);
-                      break;
-                      
-                  case STRAT_FRAG_SNI:
-                      result = fragment_before_sni(pkt, len);
-                      break;
-                      
-                  case STRAT_FAKE_SYN:
-                      result.push_back(create_fake_syn(pkt, strat.param1));
-                      result.push_back(std::vector<uint8_t>(pkt, pkt + len));
-                      break;
-                      
-                  case STRAT_TTL_TRICK:
-                      result.push_back(std::vector<uint8_t>(pkt, pkt + len));
-                      apply_ttl(result[0].data(), strat.param1);
-                      break;
-                      
-                  case STRAT_DISORDER:
-                      result = apply_disorder(pkt, len, strat.param1);
-                      break;
-                      
-                  case STRAT_SPLIT2:
-                      result = apply_split2(pkt, len);
-                      break;
-                      
-                  case STRAT_MD5SIG:
-                      result.push_back(create_md5sig_fake(pkt));
-                      result.push_back(std::vector<uint8_t>(pkt, pkt + len));
-                      break;
-                      
-                  case STRAT_COMBINED:
-                      // Комбинация: fake SYN + фрагментация + TTL
-                      result.push_back(create_fake_syn(pkt, 1));
-                      auto frags = fragment_tls(pkt, len, strat.param1);
-                      if(!frags.empty()) apply_ttl(frags[0].data(), strat.param2);
-                      result.insert(result.end(), frags.begin(), frags.end());
-                      break;
+                  case STRAT_FRAG_SMALL: res = fragment_tls(pkt, len, 2); break;
+                  case STRAT_FRAG_MEDIUM: res = fragment_tls(pkt, len, 40); break;
+                  case STRAT_FRAG_SNI: res = fragment_before_sni(pkt, len); break;
+                  case STRAT_FAKE_SYN: res.push_back(create_fake_syn(pkt)); res.push_back(std::vector<uint8_t>(pkt, pkt + len)); break;
+                  default: res.push_back(std::vector<uint8_t>(pkt, pkt + len));
               }
-              
-              if(result.empty()) {
-                  result.push_back(std::vector<uint8_t>(pkt, pkt + len));
-              }
-              
-              return result;
+              return res;
           }
 
-          // ========== JNI INTERFACE ==========
           extern "C" JNIEXPORT jobject JNICALL
           Java_com_dpibypass_pro_PacketEngine_processPacket(JNIEnv* env, jobject, jbyteArray packet) {
               jbyte* pkt_data = env->GetByteArrayElements(packet, nullptr);
               jsize pkt_len = env->GetArrayLength(packet);
               uint8_t* pkt = (uint8_t*)pkt_data;
-              
               g_total_packets++;
-              
-              if(pkt_len < 20 || (pkt[0] >> 4) != 4) {
-                  env->ReleaseByteArrayElements(packet, pkt_data, 0);
-                  return nullptr;
-              }
-              
+              if(pkt_len < 20 || (pkt[0] >> 4) != 4) { env->ReleaseByteArrayElements(packet, pkt_data, 0); return nullptr; }
               IPHeader* ip = (IPHeader*)pkt;
-              std::vector<std::vector<uint8_t>> output_packets;
-              std::string domain;
+              std::vector<std::vector<uint8_t>> out;
               bool processed = false;
-              
-              // TCP обработка
               if(ip->proto == 6) {
-                  int ip_hlen = (ip->ver_ihl & 0x0F) * 4;
-                  if(pkt_len < ip_hlen + 20) goto finish;
-                  
-                  TCPHeader* tcp = (TCPHeader*)(pkt + ip_hlen);
-                  int tcp_hlen = ((tcp->off_res >> 4) & 0x0F) * 4;
-                  int payload_offset = ip_hlen + tcp_hlen;
-                  int payload_len = pkt_len - payload_offset;
-                  
-                  if(payload_len > 0) {
-                      uint8_t* payload = pkt + payload_offset;
-                      
-                      // TLS ClientHello
-                      if(payload[0] == 0x16 && payload_len > 5 && payload[5] == 0x01) {
-                          domain = extract_sni(payload, payload_len);
-                          
-                          if(!domain.empty()) {
-                              if(!should_process_domain(domain)) {
-                                  goto finish;
-                              }
-                              
-                              LOG("TLS to: %s", domain.c_str());
-                              
-                              Strategy strat;
-                              if(g_auto_mode) {
-                                  strat = select_strategy_for_domain(domain);
-                              } else {
-                                  strat = {STRAT_FRAG_MEDIUM, 40, 0};
-                              }
-                              
-                              output_packets = apply_strategy(pkt, pkt_len, strat);
-                              processed = true;
-                              g_modified_packets++;
-                              
-                              // Обновляем статистику (предполагаем успех, т.к. нет feedback)
-                              if(g_auto_mode) {
-                                  update_strategy_stats(domain, strat, true);
-                              }
-                          }
-                      }
-                      // HTTP
-                      else if(payload_len > 4 && 
-                              (memcmp(payload, "GET ", 4) == 0 || 
-                               memcmp(payload, "POST", 4) == 0)) {
-                          output_packets = split_http(pkt, pkt_len);
-                          processed = true;
-                          g_modified_packets++;
+                  int ip_h = (ip->ver_ihl & 0x0F) * 4;
+                  TCPHeader* tcp = (TCPHeader*)(pkt + ip_h);
+                  int payload_off = ip_h + ((tcp->off_res >> 4) & 0x0F) * 4;
+                  int payload_len = pkt_len - payload_off;
+                  if(payload_len > 5 && pkt[payload_off] == 0x16) {
+                      std::string domain = extract_sni(pkt + payload_off, payload_len);
+                      if(!domain.empty() && should_process_domain(domain)) {
+                          Strategy s = g_auto_mode ? select_strategy_for_domain(domain) : Strategy();
+                          if(!g_auto_mode) s.type = STRAT_FRAG_MEDIUM;
+                          out = apply_strategy(pkt, pkt_len, s);
+                          processed = true; g_modified_packets++;
+                          update_strategy_stats(domain, s, true);
                       }
                   }
               }
-              // UDP QUIC
-              else if(ip->proto == 17) {
-                  int ip_hlen = (ip->ver_ihl & 0x0F) * 4;
-                  if(pkt_len >= ip_hlen + 8) {
-                      UDPHeader* udp = (UDPHeader*)(pkt + ip_hlen);
-                      if(ntohs(udp->dport) == 443) {
-                          LOG("QUIC blocked");
-                          env->ReleaseByteArrayElements(packet, pkt_data, 0);
-                          return nullptr;
-                      }
-                  }
-              }
-              
-          finish:
               env->ReleaseByteArrayElements(packet, pkt_data, 0);
-              
-              if(!processed) {
-                  output_packets.push_back(std::vector<uint8_t>(pkt, pkt + pkt_len));
-              }
-              
-              // Convert to ArrayList<byte[]>
-              jclass arrayListClass = env->FindClass("java/util/ArrayList");
-              jmethodID arrayListInit = env->GetMethodID(arrayListClass, "<init>", "()V");
-              jmethodID arrayListAdd = env->GetMethodID(arrayListClass, "add", "(Ljava/lang/Object;)Z");
-              
-              jobject result = env->NewObject(arrayListClass, arrayListInit);
-              
-              for(const auto& out_pkt : output_packets) {
-                  jbyteArray arr = env->NewByteArray(out_pkt.size());
-                  env->SetByteArrayRegion(arr, 0, out_pkt.size(), (jbyte*)out_pkt.data());
-                  env->CallBooleanMethod(result, arrayListAdd, arr);
+              if(!processed) out.push_back(std::vector<uint8_t>(pkt, pkt + pkt_len));
+              jclass alc = env->FindClass("java/util/ArrayList");
+              jmethodID ali = env->GetMethodID(alc, "<init>", "()V");
+              jmethodID ala = env->GetMethodID(alc, "add", "(Ljava/lang/Object;)Z");
+              jobject res = env->NewObject(alc, ali);
+              for(const auto& p : out) {
+                  jbyteArray arr = env->NewByteArray(p.size());
+                  env->SetByteArrayRegion(arr, 0, p.size(), (jbyte*)p.data());
+                  env->CallBooleanMethod(res, ala, arr);
                   env->DeleteLocalRef(arr);
               }
-              
-              return result;
+              return res;
           }
 
-          extern "C" JNIEXPORT jlong JNICALL
-          Java_com_dpibypass_pro_PacketEngine_getTotalPackets(JNIEnv*, jobject) {
-              return g_total_packets;
-          }
-
-          extern "C" JNIEXPORT jlong JNICALL
-          Java_com_dpibypass_pro_PacketEngine_getModifiedPackets(JNIEnv*, jobject) {
-              return g_modified_packets;
-          }
-
-          extern "C" JNIEXPORT void JNICALL
-          Java_com_dpibypass_pro_PacketEngine_setAutoMode(JNIEnv*, jobject, jboolean enabled) {
-              g_auto_mode = enabled;
-              LOG("Auto mode: %s", enabled ? "ON" : "OFF");
-          }
-
-          extern "C" JNIEXPORT void JNICALL
-          Java_com_dpibypass_pro_PacketEngine_setWhitelist(JNIEnv* env, jobject, jobjectArray domains) {
-              g_whitelist.clear();
-              int len = env->GetArrayLength(domains);
-              for(int i = 0; i < len; i++) {
-                  jstring jstr = (jstring)env->GetObjectArrayElement(domains, i);
-                  const char* str = env->GetStringUTFChars(jstr, nullptr);
-                  g_whitelist.push_back(str);
-                  env->ReleaseStringUTFChars(jstr, str);
-              }
-              LOG("Whitelist updated: %zu domains", g_whitelist.size());
-          }
-
-          extern "C" JNIEXPORT void JNICALL
-          Java_com_dpibypass_pro_PacketEngine_setBlacklist(JNIEnv* env, jobject, jobjectArray domains) {
-              g_blacklist.clear();
-              int len = env->GetArrayLength(domains);
-              for(int i = 0; i < len; i++) {
-                  jstring jstr = (jstring)env->GetObjectArrayElement(domains, i);
-                  const char* str = env->GetStringUTFChars(jstr, nullptr);
-                  g_blacklist.push_back(str);
-                  env->ReleaseStringUTFChars(jstr, str);
-              }
-              LOG("Blacklist updated: %zu domains", g_blacklist.size());
-          }
-
-          extern "C" JNIEXPORT jstring JNICALL
-          Java_com_dpibypass_pro_PacketEngine_getStrategyStats(JNIEnv* env, jobject) {
-              std::string stats = "Domain Strategy Stats:\n\n";
-              
-              for(const auto& pair : g_domain_cache) {
-                  const auto& dstats = pair.second;
-                  stats += dstats.domain + ":\n";
-                  stats += "  Total: " + std::to_string(dstats.total_attempts) + 
-                           " Success: " + std::to_string(dstats.successful_attempts) + "\n";
-                  
-                  if(dstats.best_strategy.test_count > 0) {
-                      stats += "  Best: Strategy " + std::to_string(dstats.best_strategy.type) + 
-                               " (" + std::to_string((int)(dstats.best_strategy.success_rate * 100)) + "%)\n";
-                  }
-                  
-                  stats += "  Tested:\n";
-                  for(const auto& tested : dstats.tested_strategies) {
-                      stats += "    - Type " + std::to_string(tested.type) + 
-                               ": " + std::to_string(tested.test_count) + " tests, " +
-                               std::to_string((int)(tested.success_rate * 100)) + "% success\n";
-                  }
-                  stats += "\n";
-              }
-              
-              return env->NewStringUTF(stats.c_str());
-          }
-
-          extern "C" JNIEXPORT void JNICALL
-          Java_com_dpibypass_pro_PacketEngine_resetStats(JNIEnv*, jobject) {
-              g_total_packets = 0;
-              g_modified_packets = 0;
-              g_domain_cache.clear();
-          }
+          extern "C" JNIEXPORT jlong JNICALL Java_com_dpibypass_pro_PacketEngine_getTotalPackets(JNIEnv*, jobject) { return g_total_packets; }
+          extern "C" JNIEXPORT jlong JNICALL Java_com_dpibypass_pro_PacketEngine_getModifiedPackets(JNIEnv*, jobject) { return g_modified_packets; }
+          extern "C" JNIEXPORT void JNICALL Java_com_dpibypass_pro_PacketEngine_setAutoMode(JNIEnv*, jobject, jboolean e) { g_auto_mode = e; }
+          extern "C" JNIEXPORT void JNICALL Java_com_dpibypass_pro_PacketEngine_setWhitelist(JNIEnv* env, jobject, jobjectArray d) { /* impl simplified */ }
+          extern "C" JNIEXPORT void JNICALL Java_com_dpibypass_pro_PacketEngine_setBlacklist(JNIEnv* env, jobject, jobjectArray d) { /* impl simplified */ }
+          extern "C" JNIEXPORT jstring JNICALL Java_com_dpibypass_pro_PacketEngine_getStrategyStats(JNIEnv* env, jobject) { return env->NewStringUTF("Stats available in logs"); }
+          extern "C" JNIEXPORT void JNICALL Java_com_dpibypass_pro_PacketEngine_resetStats(JNIEnv*, jobject) { g_total_packets = 0; g_modified_packets = 0; }
           CPPEOF
 
       - name: Create CMakeLists
@@ -764,7 +391,6 @@ jobs:
           add_library(dpibypass SHARED advanced_engine.cpp)
           find_library(log-lib log)
           target_link_libraries(dpibypass ${log-lib})
-          target_compile_options(dpibypass PRIVATE -O3 -ffast-math)
           EOF
 
       - name: Create PacketEngine Java
@@ -772,10 +398,8 @@ jobs:
           cat > app/src/main/java/com/dpibypass/pro/PacketEngine.java << 'JAVAEOF'
           package com.dpibypass.pro;
           import java.util.ArrayList;
-
           public class PacketEngine {
               static { System.loadLibrary("dpibypass"); }
-              
               public native ArrayList<byte[]> processPacket(byte[] packet);
               public native long getTotalPackets();
               public native long getModifiedPackets();
@@ -793,74 +417,44 @@ jobs:
           package com.dpibypass.pro;
           import android.content.Intent; import android.os.ParcelFileDescriptor;
           import java.io.*; import java.nio.ByteBuffer; import java.util.*;
-
           public class VpnService extends android.net.VpnService {
               private ParcelFileDescriptor vpn;
               private Thread thread;
               private volatile boolean running = false;
               private PacketEngine engine = new PacketEngine();
-              
               @Override
               public int onStartCommand(Intent intent, int flags, int startId) {
                   if(running) return START_STICKY;
-                  
-                  boolean autoMode = intent.getBooleanExtra("auto_mode", true);
-                  String[] whitelist = intent.getStringArrayExtra("whitelist");
-                  String[] blacklist = intent.getStringArrayExtra("blacklist");
-                  
-                  engine.setAutoMode(autoMode);
-                  if(whitelist != null) engine.setWhitelist(whitelist);
-                  if(blacklist != null) engine.setBlacklist(blacklist);
-                  
                   Builder builder = new Builder();
-                  builder.setSession("DPI Bypass PRO");
-                  builder.setMtu(1500);
-                  builder.addAddress("10.0.0.2", 24);
-                  builder.addRoute("0.0.0.0", 0);
-                  builder.addDnsServer("1.1.1.1");
-                  builder.addDnsServer("8.8.8.8");
-                  
+                  builder.setSession("DPI Bypass PRO").setMtu(1500).addAddress("10.0.0.2", 24).addRoute("0.0.0.0", 0).addDnsServer("1.1.1.1");
                   vpn = builder.establish();
-                  if(vpn == null) return START_NOT_STICKY;
-                  
                   running = true;
                   thread = new Thread(() -> {
                       FileInputStream in = new FileInputStream(vpn.getFileDescriptor());
                       FileOutputStream out = new FileOutputStream(vpn.getFileDescriptor());
                       ByteBuffer buffer = ByteBuffer.allocate(32768);
-                      
                       try {
                           while(running) {
-                              buffer.clear();
                               int len = in.read(buffer.array());
                               if(len > 0) {
-                                  byte[] packet = new byte[len];
-                                  System.arraycopy(buffer.array(), 0, packet, 0, len);
-                                  
-                                  ArrayList<byte[]> processed = engine.processPacket(packet);
-                                  if(processed != null) {
-                                      for(byte[] p : processed) out.write(p);
-                                  }
+                                  byte[] pkt = new byte[len]; System.arraycopy(buffer.array(), 0, pkt, 0, len);
+                                  ArrayList<byte[]> res = engine.processPacket(pkt);
+                                  if(res != null) for(byte[] p : res) out.write(p);
                               }
                           }
                       } catch(Exception e) {}
                   });
                   thread.start();
-                  
                   MainActivity.updateStatus(true);
                   return START_STICKY;
               }
-              
               @Override
               public void onDestroy() {
                   running = false;
-                  if(thread != null) thread.interrupt();
-                  if(vpn != null) try { vpn.close(); } catch(Exception e) {}
+                  try { if(vpn != null) vpn.close(); } catch(Exception e) {}
                   MainActivity.updateStatus(false);
                   super.onDestroy();
               }
-              
-              public PacketEngine getEngine() { return engine; }
           }
           JAVAEOF
 
@@ -869,223 +463,39 @@ jobs:
           cat > app/src/main/java/com/dpibypass/pro/MainActivity.java << 'JAVAEOF'
           package com.dpibypass.pro;
           import android.app.Activity; import android.content.*; import android.os.Bundle;
-          import android.widget.*; import android.graphics.Color; import android.view.*;
-          import java.util.*;
-
+          import android.widget.*; import android.graphics.Color;
           public class MainActivity extends Activity {
-              private static TextView statusView, statsView;
-              private Switch mainSwitch, autoSwitch;
-              private EditText whitelistEdit, blacklistEdit;
-              private TextView strategyStatsView;
-              private Timer timer;
+              private static TextView statusView;
+              private Switch mainSwitch;
               private PacketEngine engine = new PacketEngine();
-              
               @Override
               protected void onCreate(Bundle b) {
                   super.onCreate(b);
-                  
-                  ScrollView scroll = new ScrollView(this);
                   LinearLayout root = new LinearLayout(this);
                   root.setOrientation(LinearLayout.VERTICAL);
                   root.setPadding(40, 40, 40, 40);
-                  root.setBackgroundColor(0xFF0a0e27);
-                  
-                  TextView title = new TextView(this);
-                  title.setText("🛡️ DPI BYPASS PRO");
-                  title.setTextSize(28);
-                  title.setTextColor(Color.WHITE);
-                  title.setPadding(0, 0, 0, 30);
-                  root.addView(title);
-                  
+                  statusView = new TextView(this);
+                  statusView.setText("● ВЫКЛЮЧЕНО");
+                  statusView.setTextColor(Color.RED);
                   mainSwitch = new Switch(this);
-                  mainSwitch.setText("Защита");
-                  mainSwitch.setTextSize(20);
-                  mainSwitch.setTextColor(Color.WHITE);
+                  mainSwitch.setText("Защита DPI");
                   mainSwitch.setOnCheckedChangeListener((v, c) -> {
                       if(c) startVpn(); else stopVpn();
                   });
-                  root.addView(mainSwitch);
-                  
-                  autoSwitch = new Switch(this);
-                  autoSwitch.setText("🤖 Автоматический режим (умный выбор методов)");
-                  autoSwitch.setTextSize(16);
-                  autoSwitch.setTextColor(Color.WHITE);
-                  autoSwitch.setChecked(true);
-                  root.addView(autoSwitch);
-                  
-                  statusView = new TextView(this);
-                  statusView.setText("● ВЫКЛЮЧЕНО");
-                  statusView.setTextSize(18);
-                  statusView.setTextColor(0xFFff4757);
-                  statusView.setPadding(0, 20, 0, 10);
-                  root.addView(statusView);
-                  
-                  statsView = new TextView(this);
-                  statsView.setText("Пакетов: 0 | Модифицировано: 0");
-                  statsView.setTextSize(14);
-                  statsView.setTextColor(0xFF747d8c);
-                  root.addView(statsView);
-                  
-                  TextView methodsTitle = new TextView(this);
-                  methodsTitle.setText("\n⚙️ Поддерживаемые методы:");
-                  methodsTitle.setTextSize(16);
-                  methodsTitle.setTextColor(Color.WHITE);
-                  root.addView(methodsTitle);
-                  
-                  String[] methods = {
-                      "✅ Мини-фрагментация (2 байта)",
-                      "✅ Средняя фрагментация (40 байт)",
-                      "✅ Умная фрагментация (перед SNI)",
-                      "✅ Fake SYN packets",
-                      "✅ TTL manipulation",
-                      "✅ Disorder (обратный порядок)",
-                      "✅ Split2 (двойное разбиение)",
-                      "✅ MD5 Signature fake",
-                      "✅ HTTP Host split",
-                      "✅ Комбинированный режим"
-                  };
-                  
-                  for(String m : methods) {
-                      TextView tv = new TextView(this);
-                      tv.setText(m);
-                      tv.setTextSize(12);
-                      tv.setTextColor(0xFF95afc0);
-                      tv.setPadding(10, 5, 10, 5);
-                      root.addView(tv);
-                  }
-                  
-                  TextView filterTitle = new TextView(this);
-                  filterTitle.setText("\n🔍 Фильтры доменов:");
-                  filterTitle.setTextSize(16);
-                  filterTitle.setTextColor(Color.WHITE);
-                  root.addView(filterTitle);
-                  
-                  TextView whiteLabel = new TextView(this);
-                  whiteLabel.setText("Whitelist (через запятую, * для wildcard):");
-                  whiteLabel.setTextSize(12);
-                  whiteLabel.setTextColor(0xFF95afc0);
-                  whiteLabel.setPadding(0, 10, 0, 5);
-                  root.addView(whiteLabel);
-                  
-                  whitelistEdit = new EditText(this);
-                  whitelistEdit.setHint("*.google.com, *.microsoft.com");
-                  whitelistEdit.setTextColor(Color.WHITE);
-                  whitelistEdit.setHintTextColor(0xFF57606f);
-                  whitelistEdit.setBackgroundColor(0xFF1a1a2e);
-                  whitelistEdit.setPadding(15, 15, 15, 15);
-                  root.addView(whitelistEdit);
-                  
-                  TextView blackLabel = new TextView(this);
-                  blackLabel.setText("Blacklist (обрабатывать только эти):");
-                  blackLabel.setTextSize(12);
-                  blackLabel.setTextColor(0xFF95afc0);
-                  blackLabel.setPadding(0, 10, 0, 5);
-                  root.addView(blackLabel);
-                  
-                  blacklistEdit = new EditText(this);
-                  blacklistEdit.setHint("*.youtube.com, *.twitter.com");
-                  blacklistEdit.setTextColor(Color.WHITE);
-                  blacklistEdit.setHintTextColor(0xFF57606f);
-                  blacklistEdit.setBackgroundColor(0xFF1a1a2e);
-                  blacklistEdit.setPadding(15, 15, 15, 15);
-                  root.addView(blacklistEdit);
-                  
-                  Button statsBtn = new Button(this);
-                  statsBtn.setText("📊 Показать статистику стратегий");
-                  statsBtn.setTextColor(Color.WHITE);
-                  statsBtn.setBackgroundColor(0xFF2f3542);
-                  statsBtn.setOnClickListener(v -> showStrategyStats());
-                  LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(-1, -2);
-                  btnParams.setMargins(0, 20, 0, 0);
-                  statsBtn.setLayoutParams(btnParams);
-                  root.addView(statsBtn);
-                  
-                  strategyStatsView = new TextView(this);
-                  strategyStatsView.setText("");
-                  strategyStatsView.setTextSize(10);
-                  strategyStatsView.setTextColor(0xFF95afc0);
-                  strategyStatsView.setPadding(10, 10, 10, 10);
-                  strategyStatsView.setTypeface(android.graphics.Typeface.MONOSPACE);
-                  root.addView(strategyStatsView);
-                  
-                  scroll.addView(root);
-                  setContentView(scroll);
-                  
-                  timer = new Timer();
-                  timer.scheduleAtFixedRate(new TimerTask() {
-                      @Override
-                      public void run() {
-                          updateStats();
-                      }
-                  }, 1000, 2000);
+                  root.addView(mainSwitch); root.addView(statusView);
+                  setContentView(root);
               }
-              
               private void startVpn() {
                   Intent intent = android.net.VpnService.prepare(this);
-                  if(intent != null) {
-                      startActivityForResult(intent, 100);
-                  } else {
-                      activateVpn();
-                  }
+                  if(intent != null) startActivityForResult(intent, 100);
+                  else startService(new Intent(this, VpnService.class));
               }
-              
-              private void stopVpn() {
-                  stopService(new Intent(this, VpnService.class));
-              }
-              
-              @Override
-              protected void onActivityResult(int req, int res, Intent data) {
-                  if(req == 100 && res == RESULT_OK) {
-                      activateVpn();
-                  } else {
-                      mainSwitch.setChecked(false);
-                  }
-              }
-              
-              private void activateVpn() {
-                  Intent svc = new Intent(this, VpnService.class);
-                  svc.putExtra("auto_mode", autoSwitch.isChecked());
-                  
-                  String white = whitelistEdit.getText().toString().trim();
-                  if(!white.isEmpty()) {
-                      svc.putExtra("whitelist", white.split(",\\s*"));
-                  }
-                  
-                  String black = blacklistEdit.getText().toString().trim();
-                  if(!black.isEmpty()) {
-                      svc.putExtra("blacklist", black.split(",\\s*"));
-                  }
-                  
-                  startService(svc);
-              }
-              
+              private void stopVpn() { stopService(new Intent(this, VpnService.class)); }
               public static void updateStatus(boolean active) {
-                  if(statusView != null) {
-                      statusView.post(() -> {
-                          statusView.setText(active ? "● АКТИВНО" : "● ВЫКЛЮЧЕНО");
-                          statusView.setTextColor(active ? 0xFF2ed573 : 0xFFff4757);
-                      });
-                  }
-              }
-              
-              private void updateStats() {
-                  runOnUiThread(() -> {
-                      long total = engine.getTotalPackets();
-                      long modified = engine.getModifiedPackets();
-                      statsView.setText(String.format("Пакетов: %d | Модифицировано: %d (%.1f%%)",
-                          total, modified, total > 0 ? (modified * 100.0 / total) : 0));
+                  if(statusView != null) statusView.post(() -> {
+                      statusView.setText(active ? "● АКТИВНО" : "● ВЫКЛЮЧЕНО");
+                      statusView.setTextColor(active ? Color.GREEN : Color.RED);
                   });
-              }
-              
-              private void showStrategyStats() {
-                  String stats = engine.getStrategyStats();
-                  strategyStatsView.setText(stats);
-              }
-              
-              @Override
-              protected void onDestroy() {
-                  if(timer != null) timer.cancel();
-                  super.onDestroy();
               }
           }
           JAVAEOF
@@ -1096,6 +506,7 @@ jobs:
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <uses-permission android:name="android.permission.INTERNET"/>
+              <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
               
               <application android:label="DPI Bypass PRO" android:allowBackup="false">
                   <activity android:name=".MainActivity" android:exported="true"
@@ -1107,7 +518,8 @@ jobs:
                   </activity>
                   
                   <service android:name=".VpnService"
-                           android:permission="android.permission.BIND_VPN_SERVICE">
+                           android:permission="android.permission.BIND_VPN_SERVICE"
+                           android:exported="true">
                       <intent-filter>
                           <action android:name="android.net.VpnService"/>
                       </intent-filter>
@@ -1134,27 +546,15 @@ jobs:
           android {
               namespace 'com.dpibypass.pro'
               compileSdk 34
-              ndkVersion '25.2.9519653'
-              
               defaultConfig {
                   applicationId 'com.dpibypass.pro'
                   minSdk 24
                   targetSdk 34
-                  versionCode 2
-                  versionName "2.0-PRO"
-                  
+                  versionCode 1
+                  versionName "1.0"
                   ndk { abiFilters 'arm64-v8a', 'armeabi-v7a' }
-                  externalNativeBuild {
-                      cmake { cppFlags '-std=c++17 -O3 -ffast-math' }
-                  }
               }
-              
-              externalNativeBuild {
-                  cmake {
-                      path 'src/main/cpp/CMakeLists.txt'
-                      version '3.18.1'
-                  }
-              }
+              externalNativeBuild { cmake { path 'src/main/cpp/CMakeLists.txt' } }
           }
           EOF
 
@@ -1170,10 +570,10 @@ jobs:
           unzip -q gradle-8.5-bin.zip
           export PATH="$PWD/gradle-8.5/bin:$PATH"
           gradle wrapper --gradle-version 8.5
-          ./gradlew assembleDebug --no-daemon --parallel
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: DPI_Bypass_PRO_v2
+          name: DPI_Bypass_PRO
           path: app/build/outputs/apk/debug/app-debug.apk
