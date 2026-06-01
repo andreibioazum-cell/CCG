@@ -1,1455 +1,289 @@
-name: AetherAI - Large 1.3GB Model
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
+name: JsAI_2D_Studio_Background_Edition
+on: [push, workflow_dispatch]
 
 jobs:
-  build-aetherai:
-    name: Build AetherAI Large
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
-      - name: Setup Android SDK & Tools
-        uses: android-actions/setup-android@v3
+
+      # Кэширование JDK и Gradle
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
         with:
-          packages: 'platform-tools build-tools;34.0.0 platforms;android-34 ndk;25.2.9519653 cmake;3.22.1'
-      
-      - name: Setup Rust
-        uses: actions-rs/toolchain@v1
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      # Кэширование Python
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
         with:
-          toolchain: nightly
-          override: true
-          components: rust-src
-          
-      - name: Create 1.3GB Transformer Core
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Create Studio Structure
         run: |
-          mkdir -p aetherai_core/src
-          
-          cat > aetherai_core/src/transformer.h << 'EOF'
-          #ifndef TRANSFORMER_H
-          #define TRANSFORMER_H
-          
-          #include <cstdint>
-          #include <cmath>
-          #include <cstring>
-          #include <arm_neon.h>
-          
-          constexpr int VOCAB_SIZE = 32768;
-          constexpr int D_MODEL = 1024;
-          constexpr int N_HEADS = 16;
-          constexpr int D_FF = 4096;
-          constexpr int N_LAYERS = 12;
-          constexpr int MAX_SEQ_LEN = 512;
-          constexpr int HEAD_DIM = D_MODEL / N_HEADS;
-          constexpr float LEARNING_RATE = 0.0001f;
-          constexpr float WEIGHT_DECAY = 0.01f;
-          constexpr float GRAD_CLIP = 1.0f;
-          constexpr float EPSILON = 1e-8f;
-          
-          inline void matmul_neon(const float* A, const float* B, float* C, int m, int n, int k) {
-              for (int i = 0; i < m; i++) {
-                  for (int j = 0; j < n; j++) {
-                      float32x4_t sum = vdupq_n_f32(0);
-                      int kk;
-                      for (kk = 0; kk <= k - 4; kk += 4) {
-                          float32x4_t a = vld1q_f32(&A[i * k + kk]);
-                          float32x4_t b = vld1q_f32(&B[kk * n + j]);
-                          sum = vmlaq_f32(sum, a, b);
-                      }
-                      float result = vgetq_lane_f32(sum, 0) + vgetq_lane_f32(sum, 1) + 
-                                     vgetq_lane_f32(sum, 2) + vgetq_lane_f32(sum, 3);
-                      for (; kk < k; kk++) {
-                          result += A[i * k + kk] * B[kk * n + j];
-                      }
-                      C[i * n + j] = result;
-                  }
-              }
-          }
-          
-          inline void softmax_neon(float* x, int size) {
-              float max_val = x[0];
-              for (int i = 1; i < size; i++) {
-                  if (x[i] > max_val) max_val = x[i];
-              }
-              
-              float sum = 0.0f;
-              int i;
-              for (i = 0; i <= size - 4; i += 4) {
-                  float32x4_t vec = vld1q_f32(&x[i]);
-                  vec = vsubq_f32(vec, vdupq_n_f32(max_val));
-                  float exp_vals[4];
-                  exp_vals[0] = expf(vgetq_lane_f32(vec, 0));
-                  exp_vals[1] = expf(vgetq_lane_f32(vec, 1));
-                  exp_vals[2] = expf(vgetq_lane_f32(vec, 2));
-                  exp_vals[3] = expf(vgetq_lane_f32(vec, 3));
-                  vst1q_f32(&x[i], vld1q_f32(exp_vals));
-                  sum += exp_vals[0] + exp_vals[1] + exp_vals[2] + exp_vals[3];
-              }
-              for (; i < size; i++) {
-                  x[i] = expf(x[i] - max_val);
-                  sum += x[i];
-              }
-              
-              float inv_sum = 1.0f / (sum + EPSILON);
-              for (i = 0; i <= size - 4; i += 4) {
-                  float32x4_t vec = vld1q_f32(&x[i]);
-                  vec = vmulq_n_f32(vec, inv_sum);
-                  vst1q_f32(&x[i], vec);
-              }
-              for (; i < size; i++) {
-                  x[i] *= inv_sum;
-              }
-          }
-          
-          inline float gelu(float x) {
-              return 0.5f * x * (1.0f + tanhf(0.7978845608f * (x + 0.044715f * x * x * x)));
-          }
-          
-          struct TransformerWeights {
-              float* token_embedding;
-              float* pos_embedding;
-              
-              struct Layer {
-                  float *q_weight, *k_weight, *v_weight, *out_weight;
-                  float *ff1_weight, *ff1_bias, *ff2_weight, *ff2_bias;
-                  float *ln1_gamma, *ln1_beta, *ln2_gamma, *ln2_beta;
-                  
-                  float *q_weight_grad, *k_weight_grad, *v_weight_grad, *out_weight_grad;
-                  float *ff1_weight_grad, *ff1_bias_grad, *ff2_weight_grad, *ff2_bias_grad;
-                  float *ln1_gamma_grad, *ln1_beta_grad, *ln2_gamma_grad, *ln2_beta_grad;
-                  
-                  float *q_weight_m, *k_weight_m, *v_weight_m, *out_weight_m;
-                  float *ff1_weight_m, *ff1_bias_m, *ff2_weight_m, *ff2_bias_m;
-                  
-                  float *q_weight_v, *k_weight_v, *v_weight_v, *out_weight_v;
-                  float *ff1_weight_v, *ff1_bias_v, *ff2_weight_v, *ff2_bias_v;
-              } *layers;
-              
-              float *final_ln_gamma, *final_ln_beta;
-              float *output_weight, *output_bias;
-              
-              float *token_embedding_grad, *pos_embedding_grad;
-              float *final_ln_gamma_grad, *final_ln_beta_grad;
-              float *output_weight_grad, *output_bias_grad;
-              
-              float *token_embedding_m, *pos_embedding_m;
-              float *output_weight_m, *output_bias_m;
-              
-              float *token_embedding_v, *pos_embedding_v;
-              float *output_weight_v, *output_bias_v;
-          };
-          
-          class Transformer {
-          public:
-              TransformerWeights weights;
-              int training_steps = 0;
-              float beta1 = 0.9f;
-              float beta2 = 0.999f;
-              
-              bool allocate_memory() {
-                  try {
-                      weights.token_embedding = new float[VOCAB_SIZE * D_MODEL]();
-                      weights.pos_embedding = new float[MAX_SEQ_LEN * D_MODEL]();
-                      weights.token_embedding_grad = new float[VOCAB_SIZE * D_MODEL]();
-                      weights.pos_embedding_grad = new float[MAX_SEQ_LEN * D_MODEL]();
-                      weights.token_embedding_m = new float[VOCAB_SIZE * D_MODEL]();
-                      weights.pos_embedding_m = new float[MAX_SEQ_LEN * D_MODEL]();
-                      weights.token_embedding_v = new float[VOCAB_SIZE * D_MODEL]();
-                      weights.pos_embedding_v = new float[MAX_SEQ_LEN * D_MODEL]();
-                      
-                      weights.layers = new TransformerWeights::Layer[N_LAYERS];
-                      
-                      for (int l = 0; l < N_LAYERS; l++) {
-                          auto& layer = weights.layers[l];
-                          
-                          layer.q_weight = new float[D_MODEL * D_MODEL]();
-                          layer.k_weight = new float[D_MODEL * D_MODEL]();
-                          layer.v_weight = new float[D_MODEL * D_MODEL]();
-                          layer.out_weight = new float[D_MODEL * D_MODEL]();
-                          
-                          layer.ff1_weight = new float[D_MODEL * D_FF]();
-                          layer.ff1_bias = new float[D_FF]();
-                          layer.ff2_weight = new float[D_FF * D_MODEL]();
-                          layer.ff2_bias = new float[D_MODEL]();
-                          
-                          layer.ln1_gamma = new float[D_MODEL]();
-                          layer.ln1_beta = new float[D_MODEL]();
-                          layer.ln2_gamma = new float[D_MODEL]();
-                          layer.ln2_beta = new float[D_MODEL]();
-                          
-                          layer.q_weight_grad = new float[D_MODEL * D_MODEL]();
-                          layer.k_weight_grad = new float[D_MODEL * D_MODEL]();
-                          layer.v_weight_grad = new float[D_MODEL * D_MODEL]();
-                          layer.out_weight_grad = new float[D_MODEL * D_MODEL]();
-                          layer.ff1_weight_grad = new float[D_MODEL * D_FF]();
-                          layer.ff1_bias_grad = new float[D_FF]();
-                          layer.ff2_weight_grad = new float[D_FF * D_MODEL]();
-                          layer.ff2_bias_grad = new float[D_MODEL]();
-                          
-                          layer.q_weight_m = new float[D_MODEL * D_MODEL]();
-                          layer.k_weight_m = new float[D_MODEL * D_MODEL]();
-                          layer.v_weight_m = new float[D_MODEL * D_MODEL]();
-                          layer.out_weight_m = new float[D_MODEL * D_MODEL]();
-                          layer.ff1_weight_m = new float[D_MODEL * D_FF]();
-                          layer.ff1_bias_m = new float[D_FF]();
-                          layer.ff2_weight_m = new float[D_FF * D_MODEL]();
-                          layer.ff2_bias_m = new float[D_MODEL]();
-                          
-                          layer.q_weight_v = new float[D_MODEL * D_MODEL]();
-                          layer.k_weight_v = new float[D_MODEL * D_MODEL]();
-                          layer.v_weight_v = new float[D_MODEL * D_MODEL]();
-                          layer.out_weight_v = new float[D_MODEL * D_MODEL]();
-                          layer.ff1_weight_v = new float[D_MODEL * D_FF]();
-                          layer.ff1_bias_v = new float[D_FF]();
-                          layer.ff2_weight_v = new float[D_FF * D_MODEL]();
-                          layer.ff2_bias_v = new float[D_MODEL]();
-                      }
-                      
-                      weights.final_ln_gamma = new float[D_MODEL]();
-                      weights.final_ln_beta = new float[D_MODEL]();
-                      weights.output_weight = new float[D_MODEL * VOCAB_SIZE]();
-                      weights.output_bias = new float[VOCAB_SIZE]();
-                      
-                      weights.final_ln_gamma_grad = new float[D_MODEL]();
-                      weights.final_ln_beta_grad = new float[D_MODEL]();
-                      weights.output_weight_grad = new float[D_MODEL * VOCAB_SIZE]();
-                      weights.output_bias_grad = new float[VOCAB_SIZE]();
-                      
-                      weights.output_weight_m = new float[D_MODEL * VOCAB_SIZE]();
-                      weights.output_bias_m = new float[VOCAB_SIZE]();
-                      
-                      weights.output_weight_v = new float[D_MODEL * VOCAB_SIZE]();
-                      weights.output_bias_v = new float[VOCAB_SIZE]();
-                      
-                      return true;
-                  } catch (...) {
-                      return false;
-                  }
-              }
-              
-              void initialize_weights() {
-                  auto init = [](float* arr, int size, float scale) {
-                      for (int i = 0; i < size; i++) {
-                          arr[i] = ((rand() % 20000) / 10000.0f - 1.0f) * scale;
-                      }
-                  };
-                  
-                  init(weights.token_embedding, VOCAB_SIZE * D_MODEL, 0.02f);
-                  init(weights.pos_embedding, MAX_SEQ_LEN * D_MODEL, 0.02f);
-                  
-                  for (int l = 0; l < N_LAYERS; l++) {
-                      auto& layer = weights.layers[l];
-                      init(layer.q_weight, D_MODEL * D_MODEL, 0.02f);
-                      init(layer.k_weight, D_MODEL * D_MODEL, 0.02f);
-                      init(layer.v_weight, D_MODEL * D_MODEL, 0.02f);
-                      init(layer.out_weight, D_MODEL * D_MODEL, 0.02f);
-                      init(layer.ff1_weight, D_MODEL * D_FF, 0.02f);
-                      init(layer.ff2_weight, D_FF * D_MODEL, 0.02f);
-                      
-                      for (int i = 0; i < D_MODEL; i++) {
-                          layer.ln1_gamma[i] = 1.0f;
-                          layer.ln2_gamma[i] = 1.0f;
-                      }
-                  }
-                  
-                  for (int i = 0; i < D_MODEL; i++) {
-                      weights.final_ln_gamma[i] = 1.0f;
-                  }
-                  
-                  init(weights.output_weight, D_MODEL * VOCAB_SIZE, 0.02f);
-              }
-              
-              void zero_gradients() {
-                  memset(weights.token_embedding_grad, 0, VOCAB_SIZE * D_MODEL * sizeof(float));
-                  memset(weights.pos_embedding_grad, 0, MAX_SEQ_LEN * D_MODEL * sizeof(float));
-                  
-                  for (int l = 0; l < N_LAYERS; l++) {
-                      auto& layer = weights.layers[l];
-                      memset(layer.q_weight_grad, 0, D_MODEL * D_MODEL * sizeof(float));
-                      memset(layer.k_weight_grad, 0, D_MODEL * D_MODEL * sizeof(float));
-                      memset(layer.v_weight_grad, 0, D_MODEL * D_MODEL * sizeof(float));
-                      memset(layer.out_weight_grad, 0, D_MODEL * D_MODEL * sizeof(float));
-                      memset(layer.ff1_weight_grad, 0, D_MODEL * D_FF * sizeof(float));
-                      memset(layer.ff1_bias_grad, 0, D_FF * sizeof(float));
-                      memset(layer.ff2_weight_grad, 0, D_FF * D_MODEL * sizeof(float));
-                      memset(layer.ff2_bias_grad, 0, D_MODEL * sizeof(float));
-                  }
-                  
-                  memset(weights.final_ln_gamma_grad, 0, D_MODEL * sizeof(float));
-                  memset(weights.final_ln_beta_grad, 0, D_MODEL * sizeof(float));
-                  memset(weights.output_weight_grad, 0, D_MODEL * VOCAB_SIZE * sizeof(float));
-                  memset(weights.output_bias_grad, 0, VOCAB_SIZE * sizeof(float));
-              }
-              
-              void adam_update(float* param, float* grad, float* m, float* v, int size) {
-                  training_steps++;
-                  float lr_t = LEARNING_RATE * sqrtf(1.0f - powf(beta2, training_steps)) / (1.0f - powf(beta1, training_steps));
-                  
-                  for (int i = 0; i < size; i++) {
-                      float g = grad[i];
-                      if (g > GRAD_CLIP) g = GRAD_CLIP;
-                      if (g < -GRAD_CLIP) g = -GRAD_CLIP;
-                      
-                      m[i] = beta1 * m[i] + (1.0f - beta1) * g;
-                      v[i] = beta2 * v[i] + (1.0f - beta2) * g * g;
-                      
-                      param[i] -= lr_t * (m[i] / (sqrtf(v[i]) + EPSILON) + WEIGHT_DECAY * param[i]);
-                  }
-              }
-              
-              void update_weights() {
-                  adam_update(weights.token_embedding, weights.token_embedding_grad, 
-                             weights.token_embedding_m, weights.token_embedding_v, VOCAB_SIZE * D_MODEL);
-                  adam_update(weights.pos_embedding, weights.pos_embedding_grad, 
-                             weights.pos_embedding_m, weights.pos_embedding_v, MAX_SEQ_LEN * D_MODEL);
-                  adam_update(weights.output_weight, weights.output_weight_grad, 
-                             weights.output_weight_m, weights.output_weight_v, D_MODEL * VOCAB_SIZE);
-                  adam_update(weights.output_bias, weights.output_bias_grad, 
-                             weights.output_bias_m, weights.output_bias_v, VOCAB_SIZE);
-              }
-              
-              float train_step(const int* input_ids, const int* target_ids, int seq_len) {
-                  zero_gradients();
-                  
-                  static float* hidden = new float[MAX_SEQ_LEN * D_MODEL];
-                  static float* logits = new float[VOCAB_SIZE];
-                  
-                  for (int i = 0; i < seq_len; i++) {
-                      int token_id = input_ids[i] % VOCAB_SIZE;
-                      for (int j = 0; j < D_MODEL; j++) {
-                          hidden[i * D_MODEL + j] = weights.token_embedding[token_id * D_MODEL + j] + 
-                                                     weights.pos_embedding[i * D_MODEL + j];
-                      }
-                  }
-                  
-                  float loss = 0.0f;
-                  
-                  for (int pos = 0; pos < seq_len - 1; pos++) {
-                      int target = target_ids[pos] % VOCAB_SIZE;
-                      
-                      matmul_neon(&hidden[pos * D_MODEL], weights.output_weight, logits, 1, VOCAB_SIZE, D_MODEL);
-                      for (int i = 0; i < VOCAB_SIZE; i++) {
-                          logits[i] += weights.output_bias[i];
-                      }
-                      softmax_neon(logits, VOCAB_SIZE);
-                      
-                      loss -= logf(logits[target] + EPSILON);
-                      
-                      for (int i = 0; i < VOCAB_SIZE; i++) {
-                          float grad = logits[i];
-                          if (i == target) grad -= 1.0f;
-                          
-                          weights.output_bias_grad[i] += grad;
-                          for (int j = 0; j < D_MODEL; j++) {
-                              weights.output_weight_grad[j * VOCAB_SIZE + i] += grad * hidden[pos * D_MODEL + j];
-                          }
-                      }
-                  }
-                  
-                  update_weights();
-                  return loss / (seq_len - 1);
-              }
-              
-              int generate_token(const int* input_ids, int seq_len) {
-                  static float* hidden = new float[MAX_SEQ_LEN * D_MODEL];
-                  static float* logits = new float[VOCAB_SIZE];
-                  
-                  for (int i = 0; i < seq_len; i++) {
-                      int token_id = input_ids[i] % VOCAB_SIZE;
-                      for (int j = 0; j < D_MODEL; j++) {
-                          hidden[i * D_MODEL + j] = weights.token_embedding[token_id * D_MODEL + j] + 
-                                                     weights.pos_embedding[i * D_MODEL + j];
-                      }
-                  }
-                  
-                  matmul_neon(&hidden[(seq_len - 1) * D_MODEL], weights.output_weight, logits, 1, VOCAB_SIZE, D_MODEL);
-                  for (int i = 0; i < VOCAB_SIZE; i++) {
-                      logits[i] += weights.output_bias[i];
-                  }
-                  softmax_neon(logits, VOCAB_SIZE);
-                  
-                  static const int TOP_K = 50;
-                  int top_indices[TOP_K];
-                  float top_probs[TOP_K];
-                  
-                  for (int i = 0; i < TOP_K; i++) {
-                      top_indices[i] = i;
-                      top_probs[i] = logits[i];
-                  }
-                  
-                  for (int i = TOP_K; i < VOCAB_SIZE; i++) {
-                      for (int j = 0; j < TOP_K; j++) {
-                          if (logits[i] > top_probs[j]) {
-                              for (int k = TOP_K - 1; k > j; k--) {
-                                  top_probs[k] = top_probs[k-1];
-                                  top_indices[k] = top_indices[k-1];
-                              }
-                              top_probs[j] = logits[i];
-                              top_indices[j] = i;
-                              break;
-                          }
-                      }
-                  }
-                  
-                  float temperature = 0.7f;
-                  float sum = 0.0f;
-                  for (int i = 0; i < TOP_K; i++) {
-                      top_probs[i] = powf(top_probs[i], 1.0f / temperature);
-                      sum += top_probs[i];
-                  }
-                  
-                  float r = ((rand() % 10000) / 10000.0f) * sum;
-                  float cumsum = 0.0f;
-                  for (int i = 0; i < TOP_K; i++) {
-                      cumsum += top_probs[i];
-                      if (r < cumsum) return top_indices[i];
-                  }
-                  
-                  return top_indices[0];
-              }
-          };
-          
-          #endif
-          EOF
-          
-          cat > aetherai_core/src/tokenizer.h << 'EOF'
-          #ifndef TOKENIZER_H
-          #define TOKENIZER_H
-          
-          #include <cstring>
-          #include <cctype>
-          
-          constexpr int MAX_WORD_LEN = 128;
-          
-          class Tokenizer {
-          public:
-              char vocab[32768][MAX_WORD_LEN];
-              int vocab_size = 0;
-              
-              void build_vocab_from_text(const char* text, int text_len) {
-                  vocab_size = 0;
-                  
-                  strcpy(vocab[vocab_size++], "<PAD>");
-                  strcpy(vocab[vocab_size++], "<UNK>");
-                  strcpy(vocab[vocab_size++], "<BOS>");
-                  strcpy(vocab[vocab_size++], "<EOS>");
-                  strcpy(vocab[vocab_size++], "\n");
-                  
-                  for (int i = 32; i < 127 && vocab_size < 32768; i++) {
-                      vocab[vocab_size][0] = (char)i;
-                      vocab[vocab_size][1] = '\0';
-                      vocab_size++;
-                  }
-                  
-                  char word[MAX_WORD_LEN];
-                  int word_len = 0;
-                  
-                  for (int i = 0; i < text_len && vocab_size < 32768; i++) {
-                      char c = text[i];
-                      
-                      if (isalnum(c) || c == '\'' || c == '-') {
-                          if (word_len < MAX_WORD_LEN - 1) {
-                              word[word_len++] = tolower(c);
-                          }
-                      } else {
-                          if (word_len > 0) {
-                              word[word_len] = '\0';
-                              
-                              bool exists = false;
-                              for (int j = 0; j < vocab_size; j++) {
-                                  if (strcmp(vocab[j], word) == 0) {
-                                      exists = true;
-                                      break;
-                                  }
-                              }
-                              
-                              if (!exists && vocab_size < 32768) {
-                                  strcpy(vocab[vocab_size++], word);
-                              }
-                              
-                              word_len = 0;
-                          }
-                      }
-                  }
-              }
-              
-              int encode_word(const char* word) {
-                  for (int i = 0; i < vocab_size; i++) {
-                      if (strcmp(vocab[i], word) == 0) return i;
-                  }
-                  return 1;
-              }
-              
-              int tokenize(const char* text, int* tokens, int max_tokens) {
-                  int count = 0;
-                  char word[MAX_WORD_LEN];
-                  int word_len = 0;
-                  
-                  for (int i = 0; text[i] != '\0' && count < max_tokens - 1; i++) {
-                      char c = text[i];
-                      
-                      if (c == '\n') {
-                          if (word_len > 0) {
-                              word[word_len] = '\0';
-                              tokens[count++] = encode_word(word);
-                              word_len = 0;
-                          }
-                          if (count < max_tokens - 1) {
-                              tokens[count++] = encode_word("\n");
-                          }
-                          continue;
-                      }
-                      
-                      if (isalnum(c) || c == '\'' || c == '-') {
-                          if (word_len < MAX_WORD_LEN - 1) {
-                              word[word_len++] = tolower(c);
-                          }
-                      } else {
-                          if (word_len > 0) {
-                              word[word_len] = '\0';
-                              tokens[count++] = encode_word(word);
-                              word_len = 0;
-                          }
-                          
-                          char sym[2] = {c, '\0'};
-                          if (count < max_tokens - 1) {
-                              tokens[count++] = encode_word(sym);
-                          }
-                      }
-                  }
-                  
-                  if (word_len > 0 && count < max_tokens - 1) {
-                      word[word_len] = '\0';
-                      tokens[count++] = encode_word(word);
-                  }
-                  
-                  return count;
-              }
-              
-              const char* decode_token(int token_id) {
-                  if (token_id >= 0 && token_id < vocab_size) {
-                      return vocab[token_id];
-                  }
-                  return "<UNK>";
-              }
-          };
-          
-          #endif
-          EOF
+          mkdir -p app/src/main/java/com/jsai/studio
+          mkdir -p app/src/main/res/layout
+          mkdir -p app/src/main/res/values
+          mkdir -p app/src/main/res/drawable
 
-      - name: Create Android App for Large Model
-        run: |
-          mkdir -p app/src/main/{java/com/aetherai,cpp,res/layout,res/raw,assets}
-          
-          cat > app/src/main/cpp/aetherai_jni.cpp << 'EOF'
-          #include <jni.h>
-          #include <string>
-          #include <fstream>
-          #include <sstream>
-          #include <android/log.h>
-          #include "transformer.h"
-          #include "tokenizer.h"
-          
-          #define LOG_TAG "AetherAI"
-          #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
-          #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
-          
-          static Transformer model;
-          static Tokenizer tokenizer;
-          static bool is_trained = false;
-          static std::string combined_training_data;
-          
-          static JavaVM* g_jvm = nullptr;
-          static jobject g_callback = nullptr;
-          
-          void report_progress(int percent, const char* message) {
-              if (g_jvm == nullptr || g_callback == nullptr) return;
-              
-              JNIEnv* env;
-              if (g_jvm->AttachCurrentThread(&env, nullptr) == JNI_OK) {
-                  jclass cls = env->GetObjectClass(g_callback);
-                  jmethodID mid = env->GetMethodID(cls, "onProgress", "(ILjava/lang/String;)V");
-                  if (mid != nullptr) {
-                      jstring jmsg = env->NewStringUTF(message);
-                      env->CallVoidMethod(g_callback, mid, percent, jmsg);
-                      env->DeleteLocalRef(jmsg);
-                  }
-                  g_jvm->DetachCurrentThread();
-              }
-          }
-          
-          extern "C" JNIEXPORT jstring JNICALL
-          Java_com_aetherai_AIEngine_initModel(JNIEnv* env, jobject obj) {
-              try {
-                  env->GetJavaVM(&g_jvm);
-                  LOGI("Allocating 1.3GB memory...");
-                  
-                  if (!model.allocate_memory()) {
-                      return env->NewStringUTF("ERROR:MEMORY");
-                  }
-                  
-                  LOGI("Initializing weights...");
-                  model.initialize_weights();
-                  combined_training_data.clear();
-                  
-                  return env->NewStringUTF("OK");
-              } catch (...) {
-                  LOGE("Exception in initModel");
-                  return env->NewStringUTF("ERROR:EXCEPTION");
-              }
-          }
-          
-          extern "C" JNIEXPORT jstring JNICALL
-          Java_com_aetherai_AIEngine_addTrainingFile(JNIEnv* env, jobject, jstring filepath) {
-              try {
-                  const char* path = env->GetStringUTFChars(filepath, nullptr);
-                  
-                  std::ifstream file(path);
-                  if (!file.is_open()) {
-                      env->ReleaseStringUTFChars(filepath, path);
-                      return env->NewStringUTF("0KB");
-                  }
-                  
-                  std::stringstream buffer;
-                  buffer << file.rdbuf();
-                  std::string content = buffer.str();
-                  file.close();
-                  
-                  if (combined_training_data.length() + content.length() > 50000000) {
-                      env->ReleaseStringUTFChars(filepath, path);
-                      return env->NewStringUTF("TOO_BIG");
-                  }
-                  
-                  combined_training_data += content + "\n\n";
-                  
-                  env->ReleaseStringUTFChars(filepath, path);
-                  
-                  char result[64];
-                  snprintf(result, sizeof(result), "%.1fMB", content.length() / 1024.0f / 1024.0f);
-                  return env->NewStringUTF(result);
-              } catch (...) {
-                  return env->NewStringUTF("ERROR");
-              }
-          }
-          
-          extern "C" JNIEXPORT void JNICALL
-          Java_com_aetherai_AIEngine_clearTrainingData(JNIEnv* env, jobject) {
-              combined_training_data.clear();
-          }
-          
-          extern "C" JNIEXPORT jstring JNICALL
-          Java_com_aetherai_AIEngine_startTraining(JNIEnv* env, jobject obj, jint epochs, jobject callback) {
-              try {
-                  if (combined_training_data.empty()) {
-                      return env->NewStringUTF("ERROR:NO_DATA");
-                  }
-                  
-                  g_callback = env->NewGlobalRef(callback);
-                  
-                  report_progress(5, "Building vocabulary...");
-                  tokenizer.build_vocab_from_text(combined_training_data.c_str(), combined_training_data.length());
-                  
-                  report_progress(10, "Tokenizing...");
-                  int max_tokens = (combined_training_data.length() / 4) + 10000;
-                  if (max_tokens > 500000) max_tokens = 500000;
-                  
-                  int* tokens = new int[max_tokens];
-                  int total_tokens = tokenizer.tokenize(combined_training_data.c_str(), tokens, max_tokens);
-                  
-                  float total_loss = 0.0f;
-                  int steps = 0;
-                  int total_steps = 0;
-                  
-                  for (int i = 0; i < total_tokens - MAX_SEQ_LEN; i += MAX_SEQ_LEN / 2) {
-                      total_steps++;
-                  }
-                  total_steps *= epochs;
-                  
-                  if (total_steps == 0) total_steps = 1;
-                  
-                  report_progress(15, "Training large model...");
-                  
-                  for (int epoch = 0; epoch < epochs; epoch++) {
-                      char epoch_msg[128];
-                      snprintf(epoch_msg, sizeof(epoch_msg), "Epoch %d/%d", epoch + 1, epochs);
-                      
-                      for (int i = 0; i < total_tokens - MAX_SEQ_LEN; i += MAX_SEQ_LEN / 2) {
-                          int seq_len = (i + MAX_SEQ_LEN < total_tokens) ? MAX_SEQ_LEN : total_tokens - i;
-                          if (seq_len < 2) continue;
-                          
-                          float loss = model.train_step(&tokens[i], &tokens[i + 1], seq_len);
-                          total_loss += loss;
-                          steps++;
-                          
-                          if (steps % 20 == 0) {
-                              int percent = 15 + (int)((steps / (float)total_steps) * 80);
-                              if (percent > 95) percent = 95;
-                              char msg[256];
-                              snprintf(msg, sizeof(msg), "%s - %d/%d (Loss: %.3f)", epoch_msg, steps, total_steps, loss);
-                              report_progress(percent, msg);
-                          }
-                      }
-                  }
-                  
-                  delete[] tokens;
-                  is_trained = true;
-                  
-                  report_progress(100, "Complete!");
-                  
-                  env->DeleteGlobalRef(g_callback);
-                  g_callback = nullptr;
-                  
-                  char result[512];
-                  snprintf(result, sizeof(result), 
-                           "✅ Training Complete!\n\nVocab: %d\nTokens: %d\nSteps: %d\nAvg Loss: %.4f", 
-                           tokenizer.vocab_size, total_tokens, steps, total_loss / steps);
-                  return env->NewStringUTF(result);
-              } catch (...) {
-                  if (g_callback) {
-                      env->DeleteGlobalRef(g_callback);
-                      g_callback = nullptr;
-                  }
-                  return env->NewStringUTF("ERROR:CRASH");
-              }
-          }
-          
-          extern "C" JNIEXPORT jstring JNICALL
-          Java_com_aetherai_AIEngine_generate(JNIEnv* env, jobject, jstring input, jint max_length) {
-              try {
-                  if (!is_trained) {
-                      return env->NewStringUTF("Not trained!");
-                  }
-                  
-                  const char* input_text = env->GetStringUTFChars(input, nullptr);
-                  
-                  int input_tokens[MAX_SEQ_LEN];
-                  int input_len = tokenizer.tokenize(input_text, input_tokens, MAX_SEQ_LEN);
-                  env->ReleaseStringUTFChars(input, input_text);
-                  
-                  std::string output;
-                  
-                  for (int i = 0; i < max_length && input_len < MAX_SEQ_LEN - 1; i++) {
-                      int next_token = model.generate_token(input_tokens, input_len);
-                      
-                      const char* word = tokenizer.decode_token(next_token);
-                      
-                      if (strcmp(word, "<EOS>") == 0) break;
-                      
-                      if (strcmp(word, "\n") == 0) {
-                          output += "\n";
-                      } else if (output.length() > 0 && isalnum(word[0]) && isalnum(output.back())) {
-                          output += " ";
-                          output += word;
-                      } else {
-                          output += word;
-                      }
-                      
-                      input_tokens[input_len++] = next_token;
-                  }
-                  
-                  return env->NewStringUTF(output.c_str());
-              } catch (...) {
-                  return env->NewStringUTF("ERROR");
-              }
-          }
-          
-          extern "C" JNIEXPORT jstring JNICALL
-          Java_com_aetherai_AIEngine_getModelInfo(JNIEnv* env, jobject) {
-              char info[1024];
-              long long params = (long long)VOCAB_SIZE * D_MODEL + 
-                                 N_LAYERS * ((long long)D_MODEL * D_MODEL * 4 + (long long)D_MODEL * D_FF * 2) +
-                                 (long long)D_MODEL * VOCAB_SIZE;
-              
-              snprintf(info, sizeof(info), 
-                       "🧠 AetherAI Large Model\n\n"
-                       "📐 Architecture:\n"
-                       "  • Vocab: %d\n"
-                       "  • Layers: %d\n"
-                       "  • Hidden: %d\n"
-                       "  • Heads: %d\n"
-                       "  • FFN: %d\n"
-                       "  • Context: %d tokens\n\n"
-                       "📊 Size:\n"
-                       "  • Params: %.1fM\n"
-                       "  • Memory: ~1.3GB\n\n"
-                       "📈 Status: %s\n"
-                       "💾 Data: %.1fMB",
-                       VOCAB_SIZE, N_LAYERS, D_MODEL, N_HEADS, D_FF, MAX_SEQ_LEN,
-                       (float)params / 1000000.0f,
-                       is_trained ? "✅ Trained" : "⏳ Waiting",
-                       combined_training_data.length() / 1024.0f / 1024.0f);
-              return env->NewStringUTF(info);
-          }
-          EOF
-          
-          cat > app/src/main/cpp/CMakeLists.txt << 'EOF'
-          cmake_minimum_required(VERSION 3.22)
-          project(aetherai)
-          
-          add_library(aetherai SHARED aetherai_jni.cpp)
-          
-          target_link_libraries(aetherai android log)
-          
-          target_compile_options(aetherai PRIVATE 
-              -O3 
-              -ffast-math 
-              -march=armv8-a+simd
-              -mtune=cortex-a76
-          )
-          EOF
-          
-          cp aetherai_core/src/transformer.h app/src/main/cpp/
-          cp aetherai_core/src/tokenizer.h app/src/main/cpp/
-          
-          cat > app/src/main/java/com/aetherai/ProgressCallback.java << 'EOF'
-          package com.aetherai;
-          
-          public interface ProgressCallback {
-              void onProgress(int percent, String message);
-          }
-          EOF
-          
-          cat > app/src/main/java/com/aetherai/AIEngine.java << 'EOF'
-          package com.aetherai;
-          
-          public class AIEngine {
-              static {
-                  System.loadLibrary("aetherai");
-              }
-              
-              public native String initModel();
-              public native String addTrainingFile(String filepath);
-              public native void clearTrainingData();
-              public native String startTraining(int epochs, ProgressCallback callback);
-              public native String generate(String input, int maxLength);
-              public native String getModelInfo();
-          }
-          EOF
-          
-          cat > app/src/main/java/com/aetherai/MainActivity.java << 'EOF'
-          package com.aetherai;
-          
-          import android.app.Activity;
-          import android.app.AlertDialog;
-          import android.content.Intent;
-          import android.net.Uri;
-          import android.os.Bundle;
-          import android.widget.*;
-          import android.view.View;
-          import java.io.*;
-          import java.util.ArrayList;
-          
-          public class MainActivity extends Activity {
-              private static final int PICK_FILES_REQUEST = 1;
-              
-              private AIEngine ai;
-              private EditText inputText, outputText, epochsInput;
-              private TextView statusText, modelInfoText, filesListText, progressPercentText, warningText;
-              private Button selectFilesButton, trainButton, generateButton, infoButton, clearFilesButton;
-              private ProgressBar progressBar;
-              private ArrayList<String> loadedFiles = new ArrayList<>();
-              
-              @Override
-              protected void onCreate(Bundle savedInstanceState) {
-                  super.onCreate(savedInstanceState);
-                  setContentView(R.layout.activity_main);
-                  
-                  ai = new AIEngine();
-                  
-                  inputText = findViewById(R.id.inputText);
-                  outputText = findViewById(R.id.outputText);
-                  epochsInput = findViewById(R.id.epochsInput);
-                  statusText = findViewById(R.id.statusText);
-                  modelInfoText = findViewById(R.id.modelInfoText);
-                  filesListText = findViewById(R.id.filesListText);
-                  progressPercentText = findViewById(R.id.progressPercentText);
-                  warningText = findViewById(R.id.warningText);
-                  selectFilesButton = findViewById(R.id.selectFilesButton);
-                  trainButton = findViewById(R.id.trainButton);
-                  generateButton = findViewById(R.id.generateButton);
-                  infoButton = findViewById(R.id.infoButton);
-                  clearFilesButton = findViewById(R.id.clearFilesButton);
-                  progressBar = findViewById(R.id.progressBar);
-                  
-                  epochsInput.setText("3");
-                  progressBar.setMax(100);
-                  
-                  statusText.setText("⏳ Allocating 1.3GB...");
-                  new Thread(() -> {
-                      String result = ai.initModel();
-                      runOnUiThread(() -> {
-                          if (result.equals("OK")) {
-                              statusText.setText("✅ Ready! (1.3GB allocated)");
-                              selectFilesButton.setEnabled(true);
-                          } else {
-                              statusText.setText("❌ Not enough RAM!");
-                              warningText.setText("Your device needs at least 2GB free RAM");
-                              Toast.makeText(this, "Out of memory!", Toast.LENGTH_LONG).show();
-                          }
-                      });
-                  }).start();
-                  
-                  selectFilesButton.setOnClickListener(v -> selectFiles());
-                  clearFilesButton.setOnClickListener(v -> clearFiles());
-                  trainButton.setOnClickListener(v -> trainModel());
-                  generateButton.setOnClickListener(v -> generateText());
-                  infoButton.setOnClickListener(v -> showModelInfo());
-              }
-              
-              private void selectFiles() {
-                  Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-                  intent.addCategory(Intent.CATEGORY_OPENABLE);
-                  intent.setType("text/plain");
-                  intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-                  startActivityForResult(intent, PICK_FILES_REQUEST);
-              }
-              
-              @Override
-              protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-                  super.onActivityResult(requestCode, resultCode, data);
-                  
-                  if (requestCode == PICK_FILES_REQUEST && resultCode == RESULT_OK) {
-                      if (data != null) {
-                          if (data.getClipData() != null) {
-                              int count = data.getClipData().getItemCount();
-                              for (int i = 0; i < count && loadedFiles.size() < 20; i++) {
-                                  Uri uri = data.getClipData().getItemAt(i).getUri();
-                                  loadFile(uri);
-                              }
-                          } else if (data.getData() != null) {
-                              loadFile(data.getData());
-                          }
-                          
-                          updateFilesList();
-                          if (loadedFiles.size() > 0) {
-                              trainButton.setEnabled(true);
-                              statusText.setText("✅ " + loadedFiles.size() + " files loaded");
-                          }
-                      }
-                  }
-              }
-              
-              private void loadFile(Uri uri) {
-                  try {
-                      InputStream inputStream = getContentResolver().openInputStream(uri);
-                      BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-                      
-                      File tempFile = new File(getCacheDir(), "temp.txt");
-                      FileWriter writer = new FileWriter(tempFile);
-                      
-                      String line;
-                      while ((line = reader.readLine()) != null) {
-                          writer.write(line + "\n");
-                      }
-                      
-                      writer.close();
-                      reader.close();
-                      
-                      String size = ai.addTrainingFile(tempFile.getAbsolutePath());
-                      
-                      if (size.equals("TOO_BIG")) {
-                          Toast.makeText(this, "Max 50MB total!", Toast.LENGTH_SHORT).show();
-                      } else if (!size.equals("ERROR")) {
-                          loadedFiles.add(uri.getLastPathSegment() + " (" + size + ")");
-                      }
-                      
-                      tempFile.delete();
-                      
-                  } catch (Exception e) {
-                      Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                  }
-              }
-              
-              private void updateFilesList() {
-                  StringBuilder sb = new StringBuilder();
-                  sb.append("📁 Files (" + loadedFiles.size() + "/20):\n\n");
-                  for (int i = 0; i < loadedFiles.size(); i++) {
-                      sb.append((i + 1) + ". " + loadedFiles.get(i) + "\n");
-                  }
-                  filesListText.setText(sb.toString());
-              }
-              
-              private void clearFiles() {
-                  loadedFiles.clear();
-                  ai.clearTrainingData();
-                  filesListText.setText("No files");
-                  trainButton.setEnabled(false);
-                  statusText.setText("Cleared");
-              }
-              
-              private void trainModel() {
-                  if (loadedFiles.isEmpty()) {
-                      Toast.makeText(this, "Select files first!", Toast.LENGTH_SHORT).show();
-                      return;
-                  }
-                  
-                  int epochs = Integer.parseInt(epochsInput.getText().toString());
-                  
-                  progressBar.setVisibility(View.VISIBLE);
-                  progressBar.setProgress(0);
-                  progressPercentText.setVisibility(View.VISIBLE);
-                  progressPercentText.setText("0%");
-                  trainButton.setEnabled(false);
-                  selectFilesButton.setEnabled(false);
-                  clearFilesButton.setEnabled(false);
-                  
-                  new Thread(() -> {
-                      try {
-                          String result = ai.startTraining(epochs, new ProgressCallback() {
-                              @Override
-                              public void onProgress(int percent, String message) {
-                                  runOnUiThread(() -> {
-                                      progressBar.setProgress(percent);
-                                      progressPercentText.setText(percent + "%");
-                                      statusText.setText(message);
-                                  });
-                              }
-                          });
-                          
-                          runOnUiThread(() -> {
-                              progressBar.setVisibility(View.GONE);
-                              progressPercentText.setVisibility(View.GONE);
-                              
-                              if (result.startsWith("ERROR:")) {
-                                  statusText.setText("❌ " + result);
-                              } else {
-                                  statusText.setText("✅ Done!");
-                                  generateButton.setEnabled(true);
-                                  
-                                  AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-                                  builder.setTitle("🎉 Training Complete!");
-                                  builder.setMessage(result);
-                                  builder.setPositiveButton("OK", null);
-                                  builder.show();
-                              }
-                              
-                              trainButton.setEnabled(true);
-                              selectFilesButton.setEnabled(true);
-                              clearFilesButton.setEnabled(true);
-                          });
-                      } catch (Exception e) {
-                          runOnUiThread(() -> {
-                              progressBar.setVisibility(View.GONE);
-                              progressPercentText.setVisibility(View.GONE);
-                              statusText.setText("❌ Crash!");
-                              trainButton.setEnabled(true);
-                              selectFilesButton.setEnabled(true);
-                              clearFilesButton.setEnabled(true);
-                          });
-                      }
-                  }).start();
-              }
-              
-              private void generateText() {
-                  String prompt = inputText.getText().toString();
-                  if (prompt.isEmpty()) {
-                      Toast.makeText(this, "Enter prompt!", Toast.LENGTH_SHORT).show();
-                      return;
-                  }
-                  
-                  statusText.setText("🤖 Generating...");
-                  
-                  new Thread(() -> {
-                      String response = ai.generate(prompt, 150);
-                      runOnUiThread(() -> {
-                          outputText.setText(response);
-                          statusText.setText("✅ Done!");
-                      });
-                  }).start();
-              }
-              
-              private void showModelInfo() {
-                  String info = ai.getModelInfo();
-                  modelInfoText.setText(info);
-                  modelInfoText.setVisibility(View.VISIBLE);
-              }
-          }
-          EOF
-          
-          cat > app/src/main/res/layout/activity_main.xml << 'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-              android:layout_width="match_parent"
-              android:layout_height="match_parent"
-              android:background="#0a0e27"
-              android:padding="16dp">
-              
-              <LinearLayout
-                  android:layout_width="match_parent"
-                  android:layout_height="wrap_content"
-                  android:orientation="vertical">
-                  
-                  <TextView
-                      android:layout_width="match_parent"
-                      android:layout_height="wrap_content"
-                      android:text="🧠 AetherAI LARGE"
-                      android:textSize="36sp"
-                      android:textColor="#4AF626"
-                      android:textStyle="bold"
-                      android:gravity="center"
-                      android:layout_marginBottom="5dp"/>
-                  
-                  <TextView
-                      android:layout_width="match_parent"
-                      android:layout_height="wrap_content"
-                      android:text="1.3GB Transformer Model"
-                      android:textSize="14sp"
-                      android:textColor="#89B4FA"
-                      android:gravity="center"
-                      android:layout_marginBottom="10dp"/>
-                  
-                  <TextView
-                      android:id="@+id/warningText"
-                      android:layout_width="match_parent"
-                      android:layout_height="wrap_content"
-                      android:text="⚠️ Requires 2GB+ RAM"
-                      android:textColor="#F38BA8"
-                      android:textSize="12sp"
-                      android:gravity="center"
-                      android:layout_marginBottom="15dp"/>
-                  
-                  <TextView
-                      android:id="@+id/statusText"
-                      android:layout_width="match_parent"
-                      android:layout_height="wrap_content"
-                      android:text="Status"
-                      android:textColor="#F9E2AF"
-                      android:textSize="14sp"
-                      android:textStyle="bold"
-                      android:layout_marginBottom="10dp"/>
-                  
-                  <RelativeLayout
-                      android:layout_width="match_parent"
-                      android:layout_height="wrap_content"
-                      android:layout_marginBottom="15dp">
-                      
-                      <ProgressBar
-                          android:id="@+id/progressBar"
-                          style="?android:attr/progressBarStyleHorizontal"
-                          android:layout_width="match_parent"
-                          android:layout_height="30dp"
-                          android:visibility="gone"
-                          android:progressTint="#4AF626"
-                          android:backgroundTint="#333"/>
-                      
-                      <TextView
-                          android:id="@+id/progressPercentText"
-                          android:layout_width="wrap_content"
-                          android:layout_height="wrap_content"
-                          android:layout_centerInParent="true"
-                          android:text="0%"
-                          android:textColor="#FFF"
-                          android:textStyle="bold"
-                          android:textSize="16sp"
-                          android:visibility="gone"/>
-                  </RelativeLayout>
-                  
-                  <Button
-                      android:id="@+id/selectFilesButton"
-                      android:layout_width="match_parent"
-                      android:layout_height="60dp"
-                      android:text="📂 SELECT FILES"
-                      android:backgroundTint="#4AF626"
-                      android:textColor="#000"
-                      android:textStyle="bold"
-                      android:textSize="18sp"
-                      android:enabled="false"
-                      android:layout_marginBottom="10dp"/>
-                  
-                  <TextView
-                      android:id="@+id/filesListText"
-                      android:layout_width="match_parent"
-                      android:layout_height="wrap_content"
-                      android:text="No files"
-                      android:textColor="#888"
-                      android:textSize="12sp"
-                      android:background="#1a1a1a"
-                      android:padding="10dp"
-                      android:layout_marginBottom="10dp"/>
-                  
-                  <Button
-                      android:id="@+id/clearFilesButton"
-                      android:layout_width="match_parent"
-                      android:layout_height="wrap_content"
-                      android:text="🗑️ Clear"
-                      android:backgroundTint="#F38BA8"
-                      android:textColor="#000"
-                      android:layout_marginBottom="10dp"/>
-                  
-                  <TextView
-                      android:layout_width="match_parent"
-                      android:layout_height="wrap_content"
-                      android:text="Epochs (1-5):"
-                      android:textColor="#FFF"
-                      android:textSize="14sp"
-                      android:layout_marginBottom="5dp"/>
-                  
-                  <EditText
-                      android:id="@+id/epochsInput"
-                      android:layout_width="match_parent"
-                      android:layout_height="wrap_content"
-                      android:hint="Epochs"
-                      android:inputType="number"
-                      android:textColorHint="#888"
-                      android:textColor="#FFF"
-                      android:backgroundTint="#333"
-                      android:layout_marginBottom="10dp"/>
-                  
-                  <Button
-                      android:id="@+id/trainButton"
-                      android:layout_width="match_parent"
-                      android:layout_height="60dp"
-                      android:text="🔥 TRAIN"
-                      android:backgroundTint="#F9E2AF"
-                      android:textColor="#000"
-                      android:textStyle="bold"
-                      android:textSize="18sp"
-                      android:enabled="false"
-                      android:layout_marginBottom="20dp"/>
-                  
-                  <View
-                      android:layout_width="match_parent"
-                      android:layout_height="2dp"
-                      android:background="#333"
-                      android:layout_marginBottom="20dp"/>
-                  
-                  <TextView
-                      android:layout_width="match_parent"
-                      android:layout_height="wrap_content"
-                      android:text="💬 Generate:"
-                      android:textColor="#FFF"
-                      android:textSize="18sp"
-                      android:textStyle="bold"
-                      android:layout_marginBottom="10dp"/>
-                  
-                  <EditText
-                      android:id="@+id/inputText"
-                      android:layout_width="match_parent"
-                      android:layout_height="wrap_content"
-                      android:hint="Enter prompt..."
-                      android:textColorHint="#888"
-                      android:textColor="#FFF"
-                      android:backgroundTint="#333"
-                      android:minLines="3"
-                      android:layout_marginBottom="10dp"/>
-                  
-                  <Button
-                      android:id="@+id/generateButton"
-                      android:layout_width="match_parent"
-                      android:layout_height="wrap_content"
-                      android:text="🚀 Generate"
-                      android:backgroundTint="#89B4FA"
-                      android:textColor="#000"
-                      android:enabled="false"
-                      android:layout_marginBottom="10dp"/>
-                  
-                  <TextView
-                      android:layout_width="match_parent"
-                      android:layout_height="wrap_content"
-                      android:text="📝 Output:"
-                      android:textColor="#FFF"
-                      android:textSize="16sp"
-                      android:textStyle="bold"
-                      android:layout_marginBottom="10dp"/>
-                  
-                  <EditText
-                      android:id="@+id/outputText"
-                      android:layout_width="match_parent"
-                      android:layout_height="wrap_content"
-                      android:hint="AI output..."
-                      android:textColorHint="#888"
-                      android:textColor="#4AF626"
-                      android:backgroundTint="#1a1a1a"
-                      android:minLines="10"
-                      android:gravity="top"
-                      android:layout_marginBottom="15dp"/>
-                  
-                  <Button
-                      android:id="@+id/infoButton"
-                      android:layout_width="match_parent"
-                      android:layout_height="wrap_content"
-                      android:text="ℹ️ Model Info"
-                      android:backgroundTint="#F38BA8"
-                      android:textColor="#000"
-                      android:layout_marginBottom="10dp"/>
-                  
-                  <TextView
-                      android:id="@+id/modelInfoText"
-                      android:layout_width="match_parent"
-                      android:layout_height="wrap_content"
-                      android:textColor="#F9E2AF"
-                      android:textSize="11sp"
-                      android:visibility="gone"
-                      android:fontFamily="monospace"
-                      android:background="#1a1a1a"
-                      android:padding="10dp"/>
-                  
-              </LinearLayout>
-          </ScrollView>
-          EOF
-          
-          cat > app/src/main/AndroidManifest.xml << 'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application 
-                  android:label="AetherAI LARGE" 
-                  android:largeHeap="true"
-                  android:hardwareAccelerated="true"
-                  android:theme="@android:style/Theme.Material.Light.NoActionBar">
-                  <activity 
-                      android:name="com.aetherai.MainActivity" 
-                      android:exported="true"
-                      android:configChanges="orientation|screenSize"
-                      android:screenOrientation="portrait">
-                      <intent-filter>
-                          <action android:name="android.intent.action.MAIN"/>
-                          <category android:name="android.intent.category.LAUNCHER"/>
-                      </intent-filter>
-                  </activity>
-              </application>
-          </manifest>
-          EOF
-          
-          cat > app/build.gradle << 'EOF'
-          plugins {
-              id 'com.android.application'
-          }
-
-          android {
-              namespace 'com.aetherai'
-              compileSdk 34
-              
-              defaultConfig {
-                  applicationId 'com.aetherai.large'
-                  minSdk 28
-                  targetSdk 34
-                  versionCode 1
-                  versionName "2.0-LARGE"
-                  
-                  externalNativeBuild {
-                      cmake {
-                          cppFlags "-O3 -ffast-math -march=armv8-a+simd"
-                          abiFilters 'arm64-v8a'
-                      }
-                  }
-              }
-              
-              externalNativeBuild {
-                  cmake {
-                      path "src/main/cpp/CMakeLists.txt"
-                  }
-              }
-          }
-          EOF
-          
-          cat > build.gradle << 'EOF'
-          buildscript {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-              dependencies {
-                  classpath 'com.android.tools.build:gradle:8.2.2'
-              }
-          }
-
-          allprojects {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-          }
+          # --- CONFIGURATION ---
+          cat > settings.gradle << 'EOF'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal(); maven { url "https://chaquo.com/maven" } } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral(); maven { url "https://chaquo.com/maven" } } }
+          include ':app'
           EOF
           
           cat > gradle.properties << 'EOF'
           android.useAndroidX=true
-          org.gradle.enableJetifier=true
-          org.gradle.jvmargs=-Xmx8192m
           org.gradle.parallel=true
+          org.gradle.caching=true
+          org.gradle.jvmargs=-Xmx2048m
+          EOF
+
+          cat > build.gradle << 'EOF'
+          buildscript {
+              repositories { google(); mavenCentral(); maven { url "https://chaquo.com/maven" } }
+              dependencies { classpath 'com.android.tools.build:gradle:8.2.2'; classpath 'com.chaquo.python:gradle:15.0.1' }
+          }
           EOF
           
-          echo 'include ":app"' > settings.gradle
+          cat > app/build.gradle << 'EOF'
+          apply plugin: 'com.android.application'
+          apply plugin: 'com.chaquo.python'
+          android {
+              namespace 'com.jsai.studio'
+              compileSdk 34
+              defaultConfig { 
+                  applicationId 'com.jsai.studio'
+                  minSdk 26 
+                  targetSdk 34 
+                  versionCode 1
+                  versionName "1.0"
+                  ndk { abiFilters "arm64-v8a", "x86_64" } 
+              }
+              buildTypes { release { minifyEnabled false } }
+          }
+          chaquopy { defaultConfig { version = "3.10" } }
+          dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }
+          EOF
+
+          # --- UI LAYOUT ---
+          cat > app/src/main/res/layout/editor_main.xml << 'EOF'
+          <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#1B1B1B">
+              <LinearLayout android:id="@+id/toolbar" android:layout_width="match_parent" android:layout_height="45dp" android:background="#2D2D2D" android:orientation="horizontal" android:padding="5dp">
+                  <Button android:id="@+id/btnAdd" android:layout_width="45dp" android:layout_height="match_parent" android:text="+" android:backgroundTint="#00A2FF"/>
+                  <Space android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"/>
+                  <Button android:id="@+id/tabScene" android:layout_width="70dp" android:layout_height="match_parent" android:text="SCENE" android:textSize="8sp"/>
+                  <Button android:id="@+id/tabScript" android:layout_width="70dp" android:layout_height="match_parent" android:text="PYTHON" android:textSize="8sp" android:layout_marginLeft="5dp"/>
+                  <Button android:id="@+id/btnPlay" android:layout_width="80dp" android:layout_height="match_parent" android:text="PLAY" android:backgroundTint="#00CC44" android:layout_marginLeft="15dp"/>
+              </LinearLayout>
+              <LinearLayout android:id="@+id/rightSidebar" android:layout_width="160dp" android:layout_height="match_parent" android:layout_below="@id/toolbar" android:layout_alignParentRight="true" android:background="#252525" android:orientation="vertical">
+                  <TextView android:layout_width="match_parent" android:layout_height="25dp" android:text=" Explorer" android:textColor="#FFF" android:background="#333" android:gravity="center_vertical" android:textSize="10sp"/>
+                  <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"><LinearLayout android:id="@+id/explorer" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"/></ScrollView>
+                  <TextView android:layout_width="match_parent" android:layout_height="25dp" android:text=" Properties" android:textColor="#FFF" android:background="#333" android:gravity="center_vertical" android:textSize="10sp"/>
+                  <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1.5" android:background="#202020"><LinearLayout android:id="@+id/properties" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="5dp"/></ScrollView>
+              </LinearLayout>
+              <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent" android:layout_below="@id/toolbar" android:layout_toLeftOf="@id/rightSidebar">
+                  <com.jsai.studio.GameView android:id="@+id/gameView" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#121212"/>
+                  <EditText android:id="@+id/codeEditor" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#1E1E1E" android:textColor="#D4D4D4" android:fontFamily="monospace" android:gravity="top" android:padding="10dp" android:visibility="gone" android:text="part = Workspace.Find('Sprite 0')&#10;def update(dt):&#10;    if part:&#10;        part.x += 100 * dt&#10;        if part.x > 800: part.x = 0" />
+              </FrameLayout>
+          </RelativeLayout>
+          EOF
+
+          # --- ENGINE CLASSES ---
+          cat > app/src/main/java/com/jsai/studio/Instance.java << 'EOF'
+          package com.jsai.studio;
+          import android.graphics.Bitmap;
+          public class Instance {
+              public String name, type;
+              public float x=100, y=100, rotation=0, scale=1;
+              public int color = 0xFF00A2FF;
+              public Bitmap texture = null;
+              public Instance(String n, String t) { name=n; type=t; }
+          }
+          EOF
+
+          cat > app/src/main/java/com/jsai/studio/GameView.java << 'EOF'
+          package com.jsai.studio;
+          import android.content.Context;
+          import android.graphics.*;
+          import android.util.AttributeSet;
+          import android.view.View;
+
+          public class GameView extends View {
+              private Paint paint = new Paint();
+              public GameView(Context context, AttributeSet attrs) { super(context, attrs); }
+              @Override protected void onDraw(Canvas canvas) {
+                  super.onDraw(canvas);
+                  for (Instance i : EngineCore.instances) {
+                      if (i.type.equals("Sprite")) {
+                          paint.setColor(i.color);
+                          canvas.save();
+                          canvas.translate(i.x, i.y);
+                          canvas.rotate(i.rotation);
+                          canvas.drawRect(-50 * i.scale, -50 * i.scale, 50 * i.scale, 50 * i.scale, paint);
+                          canvas.restore();
+                      }
+                  }
+                  invalidate();
+              }
+          }
+          EOF
+
+          cat > app/src/main/java/com/jsai/studio/GameService.java << 'EOF'
+          package com.jsai.studio;
+          import android.app.*;
+          import android.content.Intent;
+          import android.os.IBinder;
+          import androidx.core.app.NotificationCompat;
+
+          public class GameService extends Service {
+              private boolean running = true;
+              @Override public int onStartCommand(Intent intent, int flags, int startId) {
+                  createNotificationChannel();
+                  Notification notification = new NotificationCompat.Builder(this, "game")
+                          .setContentTitle("JsAI Studio")
+                          .setContentText("Движок работает")
+                          .setSmallIcon(android.R.drawable.ic_media_play)
+                          .build();
+                  startForeground(1, notification);
+                  
+                  new Thread(() -> {
+                      long lastTime = System.currentTimeMillis();
+                      while(running) {
+                          long now = System.currentTimeMillis();
+                          float dt = (now - lastTime) / 1000f;
+                          lastTime = now;
+                          EngineCore.update(dt);
+                          try { Thread.sleep(16); } catch (Exception e) {}
+                      }
+                  }).start();
+                  return START_STICKY;
+              }
+              private void createNotificationChannel() {
+                  NotificationChannel channel = new NotificationChannel("game", "Engine", NotificationManager.IMPORTANCE_LOW);
+                  getSystemService(NotificationManager.class).createNotificationChannel(channel);
+              }
+              @Override public void onDestroy() { running = false; super.onDestroy(); }
+              @Override public IBinder onBind(Intent intent) { return null; }
+          }
+          EOF
+
+          cat > app/src/main/java/com/jsai/studio/EngineCore.java << 'EOF'
+          package com.jsai.studio;
+          import java.util.*; import com.chaquo.python.*;
+          public class EngineCore {
+              public static List<Instance> instances = new ArrayList<>();
+              public static boolean isPlaying = false;
+              private static PyObject pyUpdate = null;
+
+              public static void startPython(String code) {
+                  try {
+                      Python py = Python.getInstance(); 
+                      PyObject globals = py.getModule("builtins").callAttr("dict");
+                      globals.put("Workspace", new Object() { 
+                          public Instance Find(String n) { for(Instance i:instances) if(i.name.equals(n)) return i; return null; } 
+                      });
+                      py.getModule("builtins").callAttr("exec", code, globals);
+                      pyUpdate = globals.get("update");
+                  } catch(Exception e) { e.printStackTrace(); }
+              }
+              public static void update(float dt) {
+                  if(!isPlaying) return;
+                  if(pyUpdate != null) try { pyUpdate.call(dt); } catch(Exception e){}
+              }
+          }
+          EOF
+
+          cat > app/src/main/java/com/jsai/studio/EditorActivity.java << 'EOF'
+          package com.jsai.studio;
+          import android.app.Activity;
+          import android.content.Intent;
+          import android.os.Bundle;
+          import android.view.*;
+          import android.widget.*;
+          import com.chaquo.python.*;
+          import com.chaquo.python.android.AndroidPlatform;
+
+          public class EditorActivity extends Activity {
+              LinearLayout explorer; EditText codeEd;
+              protected void onCreate(Bundle b) {
+                  super.onCreate(b); requestWindowFeature(1);
+                  if(!Python.isStarted()) Python.start(new AndroidPlatform(this));
+                  setContentView(R.layout.editor_main);
+                  explorer = findViewById(R.id.explorer); codeEd = findViewById(R.id.codeEditor);
+
+                  findViewById(R.id.btnAdd).setOnClickListener(v -> {
+                      Instance i = new Instance("Sprite " + EngineCore.instances.size(), "Sprite");
+                      EngineCore.instances.add(i); updateExplorer();
+                  });
+
+                  findViewById(R.id.btnPlay).setOnClickListener(v -> {
+                      if(!EngineCore.isPlaying) {
+                          EngineCore.startPython(codeEd.getText().toString());
+                          EngineCore.isPlaying = true;
+                          startForegroundService(new Intent(this, GameService.class));
+                          ((Button)v).setText("STOP");
+                      } else {
+                          EngineCore.isPlaying = false;
+                          stopService(new Intent(this, GameService.class));
+                          ((Button)v).setText("PLAY");
+                      }
+                  });
+
+                  findViewById(R.id.tabScript).setOnClickListener(v -> { findViewById(R.id.gameView).setVisibility(View.GONE); codeEd.setVisibility(View.VISIBLE); });
+                  findViewById(R.id.tabScene).setOnClickListener(v -> { findViewById(R.id.gameView).setVisibility(View.VISIBLE); codeEd.setVisibility(View.GONE); });
+              }
+              private void updateExplorer() {
+                  explorer.removeAllViews();
+                  for(Instance i : EngineCore.instances) {
+                      Button b = new Button(this); b.setText(i.name); b.setOnClickListener(v -> select(i));
+                      explorer.addView(b);
+                  }
+              }
+              private void select(Instance i) {
+                  LinearLayout props = findViewById(R.id.properties); props.removeAllViews();
+                  TextView t = new TextView(this); t.setText("Pos X: " + i.name); t.setTextColor(-1); props.addView(t);
+                  SeekBar s = new SeekBar(this); s.setMax(1000); s.setProgress((int)i.x);
+                  s.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                      public void onProgressChanged(SeekBar sb, int p, boolean u) { i.x = p; }
+                      public void onStartTrackingTouch(SeekBar sb) {} public void onStopTrackingTouch(SeekBar sb) {}
+                  });
+                  props.addView(s);
+              }
+          }
+          EOF
+
+          cat > app/src/main/AndroidManifest.xml << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+              <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+              <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+              <application android:label="JsAI 2D Studio" android:theme="@android:style/Theme.NoTitleBar">
+                  <service android:name=".GameService" android:foregroundServiceType="specialUse" android:exported="false" />
+                  <activity android:name=".EditorActivity" android:exported="true" android:screenOrientation="landscape" android:configChanges="orientation|screenSize">
+                      <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
 
       - name: Build APK
         run: |
-          wget -q https://services.gradle.org/distributions/gradle-8.5-bin.zip
-          unzip -q gradle-8.5-bin.zip
-          export PATH="$PWD/gradle-8.5/bin:$PATH"
           gradle wrapper --gradle-version 8.5
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug --build-cache --parallel --no-daemon
 
-      - name: Package Release
-        run: |
-          mkdir -p AetherAI_Release
-          cp app/build/outputs/apk/debug/app-debug.apk AetherAI_Release/AetherAI-LARGE-1.3GB.apk
-          
-          cat > AetherAI_Release/README.md << 'EOF'
-          # 🧠 AetherAI LARGE - 1.3GB Model
-          
-          ## ⚡ Specifications:
-          
-          **Architecture:**
-          - Vocab: 32,768 tokens
-          - Layers: 12
-          - Hidden: 1024
-          - Attention heads: 16
-          - FFN: 4096
-          - Context: 512 tokens
-          - Parameters: ~350M
-          - Memory: **1.3 GB**
-          
-          ## 📱 Requirements:
-          
-          - **RAM**: Minimum 3GB (4GB+ recommended)
-          - **Android**: 9.0+ (API 28+)
-          - **Arch**: ARM64 only
-          - **Storage**: 1.5GB free space
-          
-          ## 🎯 Usage:
-          
-          1. Install APK
-          2. Wait for initialization (~30 seconds)
-          3. Select TXT files (max 50MB total)
-          4. Train (3-5 epochs recommended)
-          5. Generate high-quality text
-          
-          ## ⚠️ Warnings:
-          
-          - **First launch**: Takes 30-60 seconds to allocate memory
-          - **Training**: SLOW on weak devices
-          - **Battery**: Heavy power consumption
-          - **Heat**: Device may get warm
-          
-          ## 💡 Tips:
-          
-          - Close all other apps before training
-          - Use airplane mode during training
-          - Plug in charger
-          - Let device cool between sessions
-          
-          ---
-          
-          **Version:** 2.0-LARGE  
-          **License:** MIT  
-          **This is a LARGE model - use smaller version for low-end devices**
-          EOF
-          
-          cd AetherAI_Release
-          zip -r ../AetherAI-LARGE.zip .
-          cd ..
-          
-      - name: Upload Release
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: AetherAI-LARGE-Release
-          path: |
-            AetherAI-LARGE.zip
-            AetherAI_Release/
-          retention-days: 90
+          name: JsAI_2D_Studio_Background
+          path: app/build/outputs/apk/debug/app-debug.apk
