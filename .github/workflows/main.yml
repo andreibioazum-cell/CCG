@@ -1,4 +1,4 @@
-name: JsAI_2D_Lua_Studio
+name: JsAI_Studio_Pro_Edition
 on: [push, workflow_dispatch]
 
 jobs:
@@ -17,46 +17,25 @@ jobs:
 
           # --- SETTINGS ---
           cat > settings.gradle << 'EOF'
-          pluginManagement {
-              repositories { google(); mavenCentral(); gradlePluginPortal(); }
-          }
-          dependencyResolutionManagement {
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal(); } }
+          dependencyResolutionManagement { 
               repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-              repositories { google(); mavenCentral(); }
+              repositories { google(); mavenCentral(); } 
           }
           include ':app'
           EOF
           
-          # --- ROOT BUILD.GRADLE ---
           cat > build.gradle << 'EOF'
-          plugins {
-              id 'com.android.application' version '8.1.1' apply false
-          }
+          plugins { id 'com.android.application' version '8.1.1' apply false }
           EOF
 
-          # --- APP BUILD.GRADLE ---
           cat > app/build.gradle << 'EOF'
-          plugins {
-              id 'com.android.application'
-          }
-
+          plugins { id 'com.android.application' }
           android {
               namespace 'com.jsai.studio'
               compileSdk 34
-              defaultConfig {
-                  applicationId "com.jsai.studio"
-                  minSdk 26
-                  targetSdk 34
-                  versionCode 1
-                  versionName "1.0"
-              }
-              buildTypes {
-                  release {
-                      minifyEnabled false
-                  }
-              }
+              defaultConfig { applicationId "com.jsai.studio"; minSdk 26; targetSdk 34; versionCode 1; versionName "1.0" }
           }
-
           dependencies {
               implementation 'androidx.appcompat:appcompat:1.6.1'
               implementation 'com.google.android.material:material:1.9.0'
@@ -71,37 +50,127 @@ jobs:
 
           # --- UI LAYOUT ---
           cat > app/src/main/res/layout/editor_main.xml << 'EOF'
-          <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#1B1B1B">
-              <LinearLayout android:id="@+id/toolbar" android:layout_width="match_parent" android:layout_height="45dp" android:background="#2D2D2D" android:orientation="horizontal" android:padding="5dp">
-                  <Button android:id="@+id/btnAdd" android:layout_width="45dp" android:layout_height="match_parent" android:text="+" android:backgroundTint="#00A2FF"/>
+          <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#0F0F0F">
+              <LinearLayout android:id="@+id/toolbar" android:layout_width="match_parent" android:layout_height="45dp" android:background="#1A1A1A" android:orientation="horizontal" android:padding="5dp">
+                  <Button android:id="@+id/btnNewScene" android:layout_width="wrap_content" android:layout_height="match_parent" android:text="SCENE+" android:textSize="8sp" android:backgroundTint="#333"/>
+                  <Spinner android:id="@+id/sceneSpinner" android:layout_width="120dp" android:layout_height="match_parent" android:backgroundTint="#FFF"/>
+                  <Button android:id="@+id/btnAdd" android:layout_width="40dp" android:layout_height="match_parent" android:text="+" android:backgroundTint="#007ACC"/>
                   <Space android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"/>
-                  <Button android:id="@+id/tabScene" android:layout_width="70dp" android:layout_height="match_parent" android:text="SCENE" android:textSize="8sp"/>
-                  <Button android:id="@+id/tabScript" android:layout_width="70dp" android:layout_height="match_parent" android:text="LUA" android:textSize="8sp" android:layout_marginLeft="5dp"/>
-                  <Button android:id="@+id/btnPlay" android:layout_width="80dp" android:layout_height="match_parent" android:text="PLAY" android:backgroundTint="#00CC44" android:layout_marginLeft="15dp"/>
+                  <Button android:id="@+id/btnPlay" android:layout_width="75dp" android:layout_height="match_parent" android:text="PLAY" android:backgroundTint="#28A745"/>
               </LinearLayout>
-              <LinearLayout android:id="@+id/rightSidebar" android:layout_width="160dp" android:layout_height="match_parent" android:layout_below="@id/toolbar" android:layout_alignParentRight="true" android:background="#252525" android:orientation="vertical">
-                  <TextView android:layout_width="match_parent" android:layout_height="25dp" android:text=" Explorer" android:textColor="#FFF" android:background="#333" android:gravity="center_vertical" android:textSize="10sp"/>
+              
+              <LinearLayout android:id="@+id/rightSidebar" android:layout_width="170dp" android:layout_height="match_parent" android:layout_below="@id/toolbar" android:layout_alignParentRight="true" android:background="#151515" android:orientation="vertical">
+                  <TextView android:layout_width="match_parent" android:layout_height="25dp" android:text=" EXPLORER" android:textColor="#555" android:gravity="center" android:textSize="9sp" android:background="#111"/>
                   <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"><LinearLayout android:id="@+id/explorer" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"/></ScrollView>
-                  <TextView android:layout_width="match_parent" android:layout_height="25dp" android:text=" Properties" android:textColor="#FFF" android:background="#333" android:gravity="center_vertical" android:textSize="10sp"/>
-                  <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1.5" android:background="#202020"><LinearLayout android:id="@+id/properties" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="5dp"/></ScrollView>
+                  <TextView android:layout_width="match_parent" android:layout_height="25dp" android:text=" PROPERTIES" android:textColor="#555" android:gravity="center" android:textSize="9sp" android:background="#111"/>
+                  <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1.2" android:background="#0D0D0D"><LinearLayout android:id="@+id/properties" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="5dp"/></ScrollView>
               </LinearLayout>
+
               <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent" android:layout_below="@id/toolbar" android:layout_toLeftOf="@id/rightSidebar">
-                  <com.jsai.studio.GameView android:id="@+id/gameView" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#121212"/>
-                  <EditText android:id="@+id/codeEditor" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#1E1E1E" android:textColor="#D4D4D4" android:fontFamily="monospace" android:gravity="top" android:padding="10dp" android:visibility="gone" android:text="-- Lua Script --&#10;part = Workspace.Find('Sprite 0')&#10;function update(dt)&#10;  if part then&#10;    part:setX(part:getX() + (100 * dt))&#10;    if part:getX() > 800 then part:setX(0) end&#10;  end&#10;end" />
+                  <com.jsai.studio.GameView android:id="@+id/gameView" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#050505"/>
+                  <EditText android:id="@+id/codeEditor" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#1E1E1E" android:textColor="#D4D4D4" android:fontFamily="monospace" android:gravity="top" android:padding="10dp" android:visibility="gone" />
               </FrameLayout>
           </RelativeLayout>
           EOF
 
-          # --- JAVA CLASSES ---
+          # --- ENGINE LOGIC ---
           cat > app/src/main/java/com/jsai/studio/Instance.java << 'EOF'
           package com.jsai.studio;
+          import java.util.*;
           public class Instance {
-              public String name, type;
-              public float x=100, y=100, rotation=0, scale=1;
+              public String name, type, luaCode = "";
+              public float x=200, y=200, scale=1;
+              public float startX, startY, startScale;
               public int color = 0xFF00A2FF;
+              public Instance parent;
+              public List<Instance> children = new ArrayList<>();
+              
               public Instance(String n, String t) { name=n; type=t; }
-              public void setX(float nx) { x = nx; }
+              public void saveState() { startX=x; startY=y; startScale=scale; }
+              public void restoreState() { x=startX; y=startY; scale=startScale; }
+              
+              public void setX(float v) { x=v; }
               public float getX() { return x; }
+              public void setY(float v) { y=v; }
+              public float getY() { return y; }
+              public void setScale(float v) { scale=v; }
+
+              // Глубокое копирование
+              public Instance copy() {
+                  Instance c = new Instance(name + " (Copy)", type);
+                  c.luaCode = luaCode; c.x = x; c.y = y; c.scale = scale; c.color = color;
+                  for(Instance child : children) {
+                      Instance childCopy = child.copy();
+                      childCopy.parent = c;
+                      c.children.add(childCopy);
+                  }
+                  return c;
+              }
+          }
+          EOF
+
+          cat > app/src/main/java/com/jsai/studio/Scene.java << 'EOF'
+          package com.jsai.studio;
+          import java.util.*;
+          public class Scene {
+              public String name;
+              public List<Instance> rootInstances = new ArrayList<>();
+              public Scene(String n) { name = n; }
+              @Override public String toString() { return name; }
+          }
+          EOF
+
+          cat > app/src/main/java/com/jsai/studio/EngineCore.java << 'EOF'
+          package com.jsai.studio;
+          import java.util.*;
+          import org.luaj.vm2.*;
+          import org.luaj.vm2.lib.jse.*;
+          public class EngineCore {
+              public static List<Scene> scenes = new ArrayList<>();
+              public static Scene currentScene;
+              public static boolean isPlaying = false;
+              private static List<LuaValue> activeScripts = new ArrayList<>();
+
+              static { 
+                  scenes.add(new Scene("MainScene")); 
+                  currentScene = scenes.get(0);
+              }
+
+              public static void prepareGame() {
+                  activeScripts.clear();
+                  processHierarchy(currentScene.rootInstances);
+              }
+
+              private static void processHierarchy(List<Instance> list) {
+                  for(Instance i : list) {
+                      i.saveState();
+                      if(i.type.equals("Script")) {
+                          Globals globals = JsePlatform.standardGlobals();
+                          globals.set("script", CoerceJavaToLua.coerce(i));
+                          globals.set("parent", CoerceJavaToLua.coerce(i.parent));
+                          try {
+                              globals.load(i.luaCode).call();
+                              activeScripts.add(globals.get("update"));
+                          } catch(Exception e) {}
+                      }
+                      processHierarchy(i.children);
+                  }
+              }
+
+              public static void stopGame() {
+                  resetHierarchy(currentScene.rootInstances);
+                  activeScripts.clear();
+              }
+
+              private static void resetHierarchy(List<Instance> list) {
+                  for(Instance i : list) { i.restoreState(); resetHierarchy(i.children); }
+              }
+
+              public static void update(float dt) {
+                  if(!isPlaying) return;
+                  LuaValue dtVal = LuaValue.valueOf(dt);
+                  for(LuaValue f : activeScripts) if(!f.isnil()) try { f.call(dtVal); } catch(Exception e) {}
+              }
           }
           EOF
 
@@ -116,54 +185,173 @@ jobs:
               public GameView(Context context, AttributeSet attrs) { super(context, attrs); }
               @Override protected void onDraw(Canvas canvas) {
                   super.onDraw(canvas);
-                  for (Instance i : EngineCore.instances) {
-                      paint.setColor(i.color);
-                      canvas.save();
-                      canvas.translate(i.x, i.y);
-                      canvas.rotate(i.rotation);
-                      canvas.drawRect(-50 * i.scale, -50 * i.scale, 50 * i.scale, 50 * i.scale, paint);
-                      canvas.restore();
-                  }
+                  if(EngineCore.currentScene == null) return;
+                  drawRecursive(canvas, EngineCore.currentScene.rootInstances);
                   invalidate();
+              }
+              private void drawRecursive(Canvas canvas, java.util.List<Instance> list) {
+                  for (Instance i : list) {
+                      if(i.type.equals("Sprite")) {
+                          paint.setColor(i.color);
+                          canvas.save();
+                          canvas.translate(i.x, i.y);
+                          canvas.drawRect(-50*i.scale, -50*i.scale, 50*i.scale, 50*i.scale, paint);
+                          canvas.restore();
+                      }
+                      drawRecursive(canvas, i.children);
+                  }
               }
           }
           EOF
 
-          cat > app/src/main/java/com/jsai/studio/EngineCore.java << 'EOF'
+          cat > app/src/main/java/com/jsai/studio/EditorActivity.java << 'EOF'
           package com.jsai.studio;
+          import android.app.*;
+          import android.content.Intent;
+          import android.os.Bundle;
+          import android.view.*;
+          import android.widget.*;
           import java.util.*;
-          import org.luaj.vm2.*;
-          import org.luaj.vm2.lib.*;
-          import org.luaj.vm2.lib.jse.*;
 
-          public class EngineCore {
-              public static List<Instance> instances = new ArrayList<>();
-              public static boolean isPlaying = false;
-              private static Globals globals;
-              private static LuaValue updateFunc;
+          public class EditorActivity extends Activity {
+              LinearLayout explorer, properties; 
+              EditText codeEd; 
+              Instance selected, clipboard;
+              boolean isCutMode = false;
 
-              public static void startLua(String code) {
-                  try {
-                      globals = JsePlatform.standardGlobals();
-                      LuaValue workspace = LuaValue.tableOf();
-                      workspace.set("Find", new OneArgFunction() {
-                          @Override public LuaValue call(LuaValue name) {
-                              for(Instance i : instances) {
-                                  if(i.name.equals(name.tojstring())) return CoerceJavaToLua.coerce(i);
-                              }
-                              return LuaValue.NIL;
+              protected void onCreate(Bundle b) {
+                  super.onCreate(b); requestWindowFeature(1);
+                  setContentView(R.layout.editor_main);
+                  explorer = findViewById(R.id.explorer); properties = findViewById(R.id.properties);
+                  codeEd = findViewById(R.id.codeEditor);
+
+                  Spinner sceneSpinner = findViewById(R.id.sceneSpinner);
+                  final ArrayAdapter<Scene> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, EngineCore.scenes);
+                  sceneSpinner.setAdapter(adapter);
+                  sceneSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                      public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
+                          EngineCore.currentScene = EngineCore.scenes.get(pos); updateExplorer();
+                      }
+                      public void onNothingSelected(AdapterView<?> p) {}
+                  });
+
+                  findViewById(R.id.btnNewScene).setOnClickListener(v -> {
+                      EngineCore.scenes.add(new Scene("Scene " + EngineCore.scenes.size()));
+                      adapter.notifyDataSetChanged();
+                  });
+
+                  findViewById(R.id.btnAdd).setOnClickListener(v -> {
+                      PopupMenu pm = new PopupMenu(this, v);
+                      pm.getMenu().add("Sprite"); pm.getMenu().add("Folder"); pm.getMenu().add("Script");
+                      pm.setOnMenuItemClickListener(item -> {
+                          Instance i = new Instance(item.getTitle().toString(), item.getTitle().toString());
+                          if(selected != null && selected.type.equals("Folder")) {
+                              i.parent = selected; selected.children.add(i);
+                          } else {
+                              EngineCore.currentScene.rootInstances.add(i);
                           }
+                          updateExplorer(); return true;
                       });
-                      globals.set("Workspace", workspace);
-                      globals.load(code).call();
-                      updateFunc = globals.get("update");
-                  } catch(Exception e) { e.printStackTrace(); }
+                      pm.show();
+                  });
+
+                  findViewById(R.id.btnPlay).setOnClickListener(v -> {
+                      if(!EngineCore.isPlaying) {
+                          EngineCore.prepareGame(); EngineCore.isPlaying = true;
+                          ((Button)v).setText("STOP"); startForegroundService(new Intent(this, GameService.class));
+                      } else {
+                          EngineCore.isPlaying = false; EngineCore.stopGame();
+                          ((Button)v).setText("PLAY"); stopService(new Intent(this, GameService.class));
+                      }
+                  });
               }
 
-              public static void update(float dt) {
-                  if(!isPlaying || updateFunc == null || updateFunc.isnil()) return;
-                  try { updateFunc.call(LuaValue.valueOf(dt)); } catch(Exception e) {}
+              void updateExplorer() {
+                  explorer.removeAllViews();
+                  renderExplorerRecursive(EngineCore.currentScene.rootInstances, 0);
               }
+
+              void renderExplorerRecursive(List<Instance> list, int indent) {
+                  for(Instance i : list) {
+                      Button b = new Button(this);
+                      String prefix = ""; for(int j=0; j<indent; j++) prefix += "   ";
+                      b.setText(prefix + (i.type.equals("Script") ? "📜 " : (i.type.equals("Folder") ? "📁 " : "📦 ")) + i.name);
+                      b.setAllCaps(false); b.setTextSize(11); b.setGravity(Gravity.LEFT | Gravity.CENTER_VERTICAL);
+                      b.setBackgroundColor(selected == i ? 0xFF333333 : 0x00000000);
+                      b.setTextColor(0xFFCCCCCC);
+                      
+                      b.setOnClickListener(v -> select(i));
+                      b.setOnLongClickListener(v -> { showContextMenu(v, i); return true; });
+                      explorer.addView(b);
+                      renderExplorerRecursive(i.children, indent + 1);
+                  }
+              }
+
+              void showContextMenu(View v, Instance i) {
+                  PopupMenu pm = new PopupMenu(this, v);
+                  pm.getMenu().add("Cut"); pm.getMenu().add("Copy");
+                  if(clipboard != null) pm.getMenu().add("Paste");
+                  pm.getMenu().add("Delete");
+                  
+                  pm.setOnMenuItemClickListener(item -> {
+                      String title = item.getTitle().toString();
+                      if(title.equals("Delete")) {
+                          removeInstance(i);
+                      } else if(title.equals("Cut")) {
+                          clipboard = i; isCutMode = true;
+                      } else if(title.equals("Copy")) {
+                          clipboard = i.copy(); isCutMode = false;
+                      } else if(title.equals("Paste")) {
+                          if(i.type.equals("Folder")) {
+                              if(isCutMode) removeInstance(clipboard);
+                              clipboard.parent = i; i.children.add(clipboard);
+                              if(isCutMode) { clipboard = null; } else { clipboard = clipboard.copy(); }
+                          } else {
+                              Toast.makeText(this, "Can only paste into Folder", Toast.LENGTH_SHORT).show();
+                          }
+                      }
+                      updateExplorer(); return true;
+                  });
+                  pm.show();
+              }
+
+              void removeInstance(Instance i) {
+                  if(i.parent != null) i.parent.children.remove(i);
+                  else EngineCore.currentScene.rootInstances.remove(i);
+              }
+
+              void select(Instance i) {
+                  selected = i; properties.removeAllViews(); updateExplorer();
+                  codeEd.setVisibility(i.type.equals("Script") ? View.VISIBLE : View.GONE);
+                  if(i.type.equals("Script")) {
+                      codeEd.setText(i.luaCode);
+                      codeEd.addTextChangedListener(new android.text.TextWatcher() {
+                          public void afterTextChanged(android.text.Editable s) { i.luaCode = s.toString(); }
+                          public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
+                          public void onTextChanged(CharSequence s, int st, int b, int c) {}
+                      });
+                  }
+                  addSlider("X", 0, 1500, i.x, v -> i.x = v);
+                  addSlider("Y", 0, 1500, i.y, v -> i.y = v);
+                  addSlider("Size", 0.1f, 10, i.scale, v -> i.scale = v);
+                  Button colorBtn = new Button(this); colorBtn.setText("Set Random Color");
+                  colorBtn.setOnClickListener(v -> i.color = 0xFF000000 | new Random().nextInt(0xFFFFFF));
+                  properties.addView(colorBtn);
+              }
+
+              void addSlider(String label, float min, float max, float current, SliderUpdate su) {
+                  TextView t = new TextView(this); t.setText(label + ": " + String.format("%.1f", current)); 
+                  t.setTextColor(0xFFAAAAAA); t.setTextSize(10); properties.addView(t);
+                  SeekBar s = new SeekBar(this); s.setMax(200); s.setProgress((int)((current-min)/(max-min)*200));
+                  s.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                      public void onProgressChanged(SeekBar sb, int p, boolean u) { 
+                          float val = min + (max-min)*(p/200f); su.update(val); t.setText(label + ": " + String.format("%.1f", val));
+                      }
+                      public void onStartTrackingTouch(SeekBar sb) {} public void onStopTrackingTouch(SeekBar sb) {}
+                  });
+                  properties.addView(s);
+              }
+              interface SliderUpdate { void update(float v); }
           }
           EOF
 
@@ -172,83 +360,24 @@ jobs:
           import android.app.*;
           import android.content.Intent;
           import android.os.IBinder;
-          import androidx.core.app.NotificationCompat;
           public class GameService extends Service {
               private boolean running = true;
               @Override public int onStartCommand(Intent intent, int flags, int startId) {
-                  createNotificationChannel();
-                  Notification notification = new NotificationCompat.Builder(this, "game")
-                          .setContentTitle("JsAI Lua Engine").setContentText("Running...").setSmallIcon(android.R.drawable.ic_media_play).build();
-                  startForeground(1, notification);
+                  NotificationChannel c = new NotificationChannel("game", "Engine", 2);
+                  getSystemService(NotificationManager.class).createNotificationChannel(c);
+                  startForeground(1, new Notification.Builder(this, "game").setContentTitle("JsAI Pro Running").setSmallIcon(android.R.drawable.ic_media_play).build());
                   new Thread(() -> {
-                      long lastTime = System.currentTimeMillis();
+                      long last = System.currentTimeMillis();
                       while(running) {
                           long now = System.currentTimeMillis();
-                          float dt = (now - lastTime) / 1000f; lastTime = now;
-                          EngineCore.update(dt);
+                          EngineCore.update((now - last) / 1000f); last = now;
                           try { Thread.sleep(16); } catch (Exception e) {}
                       }
                   }).start();
                   return START_STICKY;
               }
-              private void createNotificationChannel() {
-                  NotificationChannel channel = new NotificationChannel("game", "Engine", NotificationManager.IMPORTANCE_LOW);
-                  getSystemService(NotificationManager.class).createNotificationChannel(channel);
-              }
               @Override public void onDestroy() { running = false; super.onDestroy(); }
               @Override public IBinder onBind(Intent intent) { return null; }
-          }
-          EOF
-
-          cat > app/src/main/java/com/jsai/studio/EditorActivity.java << 'EOF'
-          package com.jsai.studio;
-          import android.app.Activity;
-          import android.content.Intent;
-          import android.os.Bundle;
-          import android.view.*;
-          import android.widget.*;
-          public class EditorActivity extends Activity {
-              LinearLayout explorer; EditText codeEd;
-              protected void onCreate(Bundle b) {
-                  super.onCreate(b); requestWindowFeature(1);
-                  setContentView(R.layout.editor_main);
-                  explorer = findViewById(R.id.explorer); codeEd = findViewById(R.id.codeEditor);
-                  findViewById(R.id.btnAdd).setOnClickListener(v -> {
-                      Instance i = new Instance("Sprite " + EngineCore.instances.size(), "Sprite");
-                      EngineCore.instances.add(i); updateExplorer();
-                  });
-                  findViewById(R.id.btnPlay).setOnClickListener(v -> {
-                      if(!EngineCore.isPlaying) {
-                          EngineCore.startLua(codeEd.getText().toString());
-                          EngineCore.isPlaying = true;
-                          startForegroundService(new Intent(this, GameService.class));
-                          ((Button)v).setText("STOP");
-                      } else {
-                          EngineCore.isPlaying = false;
-                          stopService(new Intent(this, GameService.class));
-                          ((Button)v).setText("PLAY");
-                      }
-                  });
-                  findViewById(R.id.tabScript).setOnClickListener(v -> { findViewById(R.id.gameView).setVisibility(View.GONE); codeEd.setVisibility(View.VISIBLE); });
-                  findViewById(R.id.tabScene).setOnClickListener(v -> { findViewById(R.id.gameView).setVisibility(View.VISIBLE); codeEd.setVisibility(View.GONE); });
-              }
-              private void updateExplorer() {
-                  explorer.removeAllViews();
-                  for(Instance i : EngineCore.instances) {
-                      Button b = new Button(this); b.setText(i.name); b.setOnClickListener(v -> select(i));
-                      explorer.addView(b);
-                  }
-              }
-              private void select(Instance i) {
-                  LinearLayout props = findViewById(R.id.properties); props.removeAllViews();
-                  TextView t = new TextView(this); t.setText("X position"); t.setTextColor(-1); props.addView(t);
-                  SeekBar s = new SeekBar(this); s.setMax(1000); s.setProgress((int)i.x);
-                  s.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-                      public void onProgressChanged(SeekBar sb, int p, boolean u) { i.x = p; }
-                      public void onStartTrackingTouch(SeekBar sb) {} public void onStopTrackingTouch(SeekBar sb) {}
-                  });
-                  props.addView(s);
-              }
           }
           EOF
 
@@ -257,9 +386,9 @@ jobs:
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
               <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-              <application android:label="JsAI Lua Studio" android:theme="@android:style/Theme.NoTitleBar">
+              <application android:label="JsAI Pro" android:theme="@android:style/Theme.NoTitleBar" android:backgroundTint="#000">
                   <service android:name=".GameService" android:foregroundServiceType="specialUse" android:exported="false" />
-                  <activity android:name=".EditorActivity" android:exported="true" android:screenOrientation="landscape">
+                  <activity android:name=".EditorActivity" android:exported="true" android:screenOrientation="landscape" android:windowSoftInputMode="adjustPan">
                       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
                   </activity>
               </application>
@@ -272,7 +401,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Download and Run Gradle 8.2
+      - name: Build APK
         run: |
           wget -q https://services.gradle.org/distributions/gradle-8.2-bin.zip
           unzip -q gradle-8.2-bin.zip
@@ -282,5 +411,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: JsAI_Lua_Studio
+          name: JsAI_Pro_IDE
           path: app/build/outputs/apk/debug/app-debug.apk
