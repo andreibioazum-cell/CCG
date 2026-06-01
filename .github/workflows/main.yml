@@ -8,21 +8,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Кэширование JDK и Gradle
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: 'gradle'
-
-      # Кэширование Python
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-          cache: 'pip'
-
+      # ШАГ 1: Сначала создаем структуру, чтобы система кэширования увидела файлы
       - name: Create Studio Structure
         run: |
           mkdir -p app/src/main/java/com/jsai/studio
@@ -94,7 +80,7 @@ jobs:
           </RelativeLayout>
           EOF
 
-          # --- ENGINE CLASSES ---
+          # --- JAVA CLASSES ---
           cat > app/src/main/java/com/jsai/studio/Instance.java << 'EOF'
           package com.jsai.studio;
           import android.graphics.Bitmap;
@@ -113,7 +99,6 @@ jobs:
           import android.graphics.*;
           import android.util.AttributeSet;
           import android.view.View;
-
           public class GameView extends View {
               private Paint paint = new Paint();
               public GameView(Context context, AttributeSet attrs) { super(context, attrs); }
@@ -140,24 +125,18 @@ jobs:
           import android.content.Intent;
           import android.os.IBinder;
           import androidx.core.app.NotificationCompat;
-
           public class GameService extends Service {
               private boolean running = true;
               @Override public int onStartCommand(Intent intent, int flags, int startId) {
                   createNotificationChannel();
                   Notification notification = new NotificationCompat.Builder(this, "game")
-                          .setContentTitle("JsAI Studio")
-                          .setContentText("Движок работает")
-                          .setSmallIcon(android.R.drawable.ic_media_play)
-                          .build();
+                          .setContentTitle("JsAI Studio").setContentText("Engine running").setSmallIcon(android.R.drawable.ic_media_play).build();
                   startForeground(1, notification);
-                  
                   new Thread(() -> {
                       long lastTime = System.currentTimeMillis();
                       while(running) {
                           long now = System.currentTimeMillis();
-                          float dt = (now - lastTime) / 1000f;
-                          lastTime = now;
+                          float dt = (now - lastTime) / 1000f; lastTime = now;
                           EngineCore.update(dt);
                           try { Thread.sleep(16); } catch (Exception e) {}
                       }
@@ -180,11 +159,9 @@ jobs:
               public static List<Instance> instances = new ArrayList<>();
               public static boolean isPlaying = false;
               private static PyObject pyUpdate = null;
-
               public static void startPython(String code) {
                   try {
-                      Python py = Python.getInstance(); 
-                      PyObject globals = py.getModule("builtins").callAttr("dict");
+                      Python py = Python.getInstance(); PyObject globals = py.getModule("builtins").callAttr("dict");
                       globals.put("Workspace", new Object() { 
                           public Instance Find(String n) { for(Instance i:instances) if(i.name.equals(n)) return i; return null; } 
                       });
@@ -208,7 +185,6 @@ jobs:
           import android.widget.*;
           import com.chaquo.python.*;
           import com.chaquo.python.android.AndroidPlatform;
-
           public class EditorActivity extends Activity {
               LinearLayout explorer; EditText codeEd;
               protected void onCreate(Bundle b) {
@@ -216,12 +192,10 @@ jobs:
                   if(!Python.isStarted()) Python.start(new AndroidPlatform(this));
                   setContentView(R.layout.editor_main);
                   explorer = findViewById(R.id.explorer); codeEd = findViewById(R.id.codeEditor);
-
                   findViewById(R.id.btnAdd).setOnClickListener(v -> {
                       Instance i = new Instance("Sprite " + EngineCore.instances.size(), "Sprite");
                       EngineCore.instances.add(i); updateExplorer();
                   });
-
                   findViewById(R.id.btnPlay).setOnClickListener(v -> {
                       if(!EngineCore.isPlaying) {
                           EngineCore.startPython(codeEd.getText().toString());
@@ -234,7 +208,6 @@ jobs:
                           ((Button)v).setText("PLAY");
                       }
                   });
-
                   findViewById(R.id.tabScript).setOnClickListener(v -> { findViewById(R.id.gameView).setVisibility(View.GONE); codeEd.setVisibility(View.VISIBLE); });
                   findViewById(R.id.tabScene).setOnClickListener(v -> { findViewById(R.id.gameView).setVisibility(View.VISIBLE); codeEd.setVisibility(View.GONE); });
               }
@@ -266,14 +239,28 @@ jobs:
               <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
               <application android:label="JsAI 2D Studio" android:theme="@android:style/Theme.NoTitleBar">
                   <service android:name=".GameService" android:foregroundServiceType="specialUse" android:exported="false" />
-                  <activity android:name=".EditorActivity" android:exported="true" android:screenOrientation="landscape" android:configChanges="orientation|screenSize">
+                  <activity android:name=".EditorActivity" android:exported="true" android:screenOrientation="landscape">
                       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
                   </activity>
               </application>
           </manifest>
           EOF
 
-      - name: Setup Gradle
+      # ШАГ 2: Теперь настраиваем кэши (теперь файлы существуют, и ошибки не будет)
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Setup Gradle Build
         uses: gradle/actions/setup-gradle@v3
 
       - name: Build APK
