@@ -1,4 +1,4 @@
-name: JsAI_2D_Studio_Background_Edition
+name: JsAI_2D_Lua_Studio
 on: [push, workflow_dispatch]
 
 jobs:
@@ -15,71 +15,44 @@ jobs:
           mkdir -p app/src/main/res/values
           mkdir -p app/src/main/res/drawable
 
-          # --- SETTINGS.GRADLE ---
+          # --- SETTINGS ---
           cat > settings.gradle << 'EOF'
-          pluginManagement {
-              repositories { google(); mavenCentral(); gradlePluginPortal(); maven { url "https://chaquo.com/maven" } }
-          }
-          dependencyResolutionManagement {
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal(); } }
+          dependencyResolutionManagement { 
               repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-              repositories { google(); mavenCentral(); maven { url "https://chaquo.com/maven" } }
+              repositories { google(); mavenCentral(); } 
           }
           include ':app'
           EOF
           
-          # --- ROOT BUILD.GRADLE ---
+          # --- BUILD.GRADLE (ROOT) ---
           cat > build.gradle << 'EOF'
-          plugins {
-              id 'com.android.application' version '8.1.1' apply false
-              id 'com.chaquo.python' version '15.0.1' apply false
+          buildscript {
+              repositories { google(); mavenCentral(); }
+              dependencies { classpath 'com.android.tools.build:gradle:8.1.1' }
           }
           EOF
 
-          # --- APP BUILD.GRADLE ---
+          # --- BUILD.GRADLE (APP) ---
           cat > app/build.gradle << 'EOF'
-          plugins {
-              id 'com.android.application'
-              id 'com.chaquo.python'
-          }
-
+          apply plugin: 'com.android.application'
           android {
               namespace 'com.jsai.studio'
               compileSdk 34
-              
               defaultConfig {
                   applicationId "com.jsai.studio"
                   minSdk 26
                   targetSdk 34
                   versionCode 1
                   versionName "1.0"
-                  ndk { abiFilters "arm64-v8a", "x86_64" }
-              }
-
-              buildTypes {
-                  release {
-                      minifyEnabled false
-                  }
               }
           }
-
-          chaquopy {
-              defaultConfig {
-                  version = "3.10"
-              }
-          }
-
           dependencies {
               implementation 'androidx.appcompat:appcompat:1.6.1'
               implementation 'com.google.android.material:material:1.9.0'
+              # LUAJ - Легкий и быстрый Lua для Java
+              implementation 'org.luaj:luaj-jse:3.0.1'
           }
-          EOF
-
-          # --- GRADLE PROPERTIES ---
-          cat > gradle.properties << 'EOF'
-          android.useAndroidX=true
-          org.gradle.parallel=true
-          org.gradle.caching=true
-          org.gradle.jvmargs=-Xmx2048m
           EOF
 
           # --- UI LAYOUT ---
@@ -89,7 +62,7 @@ jobs:
                   <Button android:id="@+id/btnAdd" android:layout_width="45dp" android:layout_height="match_parent" android:text="+" android:backgroundTint="#00A2FF"/>
                   <Space android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"/>
                   <Button android:id="@+id/tabScene" android:layout_width="70dp" android:layout_height="match_parent" android:text="SCENE" android:textSize="8sp"/>
-                  <Button android:id="@+id/tabScript" android:layout_width="70dp" android:layout_height="match_parent" android:text="PYTHON" android:textSize="8sp" android:layout_marginLeft="5dp"/>
+                  <Button android:id="@+id/tabScript" android:layout_width="70dp" android:layout_height="match_parent" android:text="LUA" android:textSize="8sp" android:layout_marginLeft="5dp"/>
                   <Button android:id="@+id/btnPlay" android:layout_width="80dp" android:layout_height="match_parent" android:text="PLAY" android:backgroundTint="#00CC44" android:layout_marginLeft="15dp"/>
               </LinearLayout>
               <LinearLayout android:id="@+id/rightSidebar" android:layout_width="160dp" android:layout_height="match_parent" android:layout_below="@id/toolbar" android:layout_alignParentRight="true" android:background="#252525" android:orientation="vertical">
@@ -100,7 +73,7 @@ jobs:
               </LinearLayout>
               <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent" android:layout_below="@id/toolbar" android:layout_toLeftOf="@id/rightSidebar">
                   <com.jsai.studio.GameView android:id="@+id/gameView" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#121212"/>
-                  <EditText android:id="@+id/codeEditor" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#1E1E1E" android:textColor="#D4D4D4" android:fontFamily="monospace" android:gravity="top" android:padding="10dp" android:visibility="gone" android:text="part = Workspace.Find('Sprite 0')&#10;def update(dt):&#10;    if part:&#10;        part.x += 100 * dt&#10;        if part.x > 800: part.x = 0" />
+                  <EditText android:id="@+id/codeEditor" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#1E1E1E" android:textColor="#D4D4D4" android:fontFamily="monospace" android:gravity="top" android:padding="10dp" android:visibility="gone" android:text="-- Lua Script --\npart = Workspace.Find('Sprite 0')\nfunction update(dt)\n  if part then\n    part.x = part.x + (100 * dt)\n    if part.x > 800 then part.x = 0 end\n  end\nend" />
               </FrameLayout>
           </RelativeLayout>
           EOF
@@ -113,6 +86,9 @@ jobs:
               public float x=100, y=100, rotation=0, scale=1;
               public int color = 0xFF00A2FF;
               public Instance(String n, String t) { name=n; type=t; }
+              // Методы для Lua, чтобы он мог менять поля напрямую
+              public void setX(float nx) { x = nx; }
+              public float getX() { return x; }
           }
           EOF
 
@@ -128,16 +104,53 @@ jobs:
               @Override protected void onDraw(Canvas canvas) {
                   super.onDraw(canvas);
                   for (Instance i : EngineCore.instances) {
-                      if (i.type.equals("Sprite")) {
-                          paint.setColor(i.color);
-                          canvas.save();
-                          canvas.translate(i.x, i.y);
-                          canvas.rotate(i.rotation);
-                          canvas.drawRect(-50 * i.scale, -50 * i.scale, 50 * i.scale, 50 * i.scale, paint);
-                          canvas.restore();
-                      }
+                      paint.setColor(i.color);
+                      canvas.save();
+                      canvas.translate(i.x, i.y);
+                      canvas.rotate(i.rotation);
+                      canvas.drawRect(-50 * i.scale, -50 * i.scale, 50 * i.scale, 50 * i.scale, paint);
+                      canvas.restore();
                   }
                   invalidate();
+              }
+          }
+          EOF
+
+          cat > app/src/main/java/com/jsai/studio/EngineCore.java << 'EOF'
+          package com.jsai.studio;
+          import java.util.*;
+          import org.luaj.vm2.*;
+          import org.luaj.vm2.lib.jse.*;
+
+          public class EngineCore {
+              public static List<Instance> instances = new ArrayList<>();
+              public static boolean isPlaying = false;
+              private static Globals globals;
+              private static LuaValue updateFunc;
+
+              public static void startLua(String code) {
+                  try {
+                      globals = JsePlatform.standardGlobals();
+                      // Прокидываем API в Lua
+                      LuaValue workspace = LuaValue.tableOf();
+                      workspace.set("Find", new OneArgFunction() {
+                          @Override public LuaValue call(LuaValue name) {
+                              for(Instance i : instances) if(i.name.equals(name.tojstring())) return CoerceJavaToLua.coerce(i);
+                              return NIL;
+                          }
+                      });
+                      globals.set("Workspace", workspace);
+                      
+                      globals.load(code).call();
+                      updateFunc = globals.get("update");
+                  } catch(Exception e) { e.printStackTrace(); }
+              }
+
+              public static void update(float dt) {
+                  if(!isPlaying || updateFunc == null || updateFunc.isnil()) return;
+                  try {
+                      updateFunc.call(LuaValue.valueOf(dt));
+                  } catch(Exception e) { e.printStackTrace(); }
               }
           }
           EOF
@@ -153,7 +166,7 @@ jobs:
               @Override public int onStartCommand(Intent intent, int flags, int startId) {
                   createNotificationChannel();
                   Notification notification = new NotificationCompat.Builder(this, "game")
-                          .setContentTitle("JsAI Studio").setContentText("Engine running").setSmallIcon(android.R.drawable.ic_media_play).build();
+                          .setContentTitle("JsAI Lua Engine").setContentText("Running...").setSmallIcon(android.R.drawable.ic_media_play).build();
                   startForeground(1, notification);
                   new Thread(() -> {
                       long lastTime = System.currentTimeMillis();
@@ -175,30 +188,6 @@ jobs:
           }
           EOF
 
-          cat > app/src/main/java/com/jsai/studio/EngineCore.java << 'EOF'
-          package com.jsai.studio;
-          import java.util.*; import com.chaquo.python.*;
-          public class EngineCore {
-              public static List<Instance> instances = new ArrayList<>();
-              public static boolean isPlaying = false;
-              private static PyObject pyUpdate = null;
-              public static void startPython(String code) {
-                  try {
-                      Python py = Python.getInstance(); PyObject globals = py.getModule("builtins").callAttr("dict");
-                      globals.put("Workspace", new Object() { 
-                          public Instance Find(String n) { for(Instance i:instances) if(i.name.equals(n)) return i; return null; } 
-                      });
-                      py.getModule("builtins").callAttr("exec", code, globals);
-                      pyUpdate = globals.get("update");
-                  } catch(Exception e) { e.printStackTrace(); }
-              }
-              public static void update(float dt) {
-                  if(!isPlaying) return;
-                  if(pyUpdate != null) try { pyUpdate.call(dt); } catch(Exception e){}
-              }
-          }
-          EOF
-
           cat > app/src/main/java/com/jsai/studio/EditorActivity.java << 'EOF'
           package com.jsai.studio;
           import android.app.Activity;
@@ -206,13 +195,10 @@ jobs:
           import android.os.Bundle;
           import android.view.*;
           import android.widget.*;
-          import com.chaquo.python.*;
-          import com.chaquo.python.android.AndroidPlatform;
           public class EditorActivity extends Activity {
               LinearLayout explorer; EditText codeEd;
               protected void onCreate(Bundle b) {
                   super.onCreate(b); requestWindowFeature(1);
-                  if(!Python.isStarted()) Python.start(new AndroidPlatform(this));
                   setContentView(R.layout.editor_main);
                   explorer = findViewById(R.id.explorer); codeEd = findViewById(R.id.codeEditor);
                   findViewById(R.id.btnAdd).setOnClickListener(v -> {
@@ -221,7 +207,7 @@ jobs:
                   });
                   findViewById(R.id.btnPlay).setOnClickListener(v -> {
                       if(!EngineCore.isPlaying) {
-                          EngineCore.startPython(codeEd.getText().toString());
+                          EngineCore.startLua(codeEd.getText().toString());
                           EngineCore.isPlaying = true;
                           startForegroundService(new Intent(this, GameService.class));
                           ((Button)v).setText("STOP");
@@ -243,7 +229,7 @@ jobs:
               }
               private void select(Instance i) {
                   LinearLayout props = findViewById(R.id.properties); props.removeAllViews();
-                  TextView t = new TextView(this); t.setText("Pos X: " + i.name); t.setTextColor(-1); props.addView(t);
+                  TextView t = new TextView(this); t.setText("X position"); t.setTextColor(-1); props.addView(t);
                   SeekBar s = new SeekBar(this); s.setMax(1000); s.setProgress((int)i.x);
                   s.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
                       public void onProgressChanged(SeekBar sb, int p, boolean u) { i.x = p; }
@@ -259,8 +245,7 @@ jobs:
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
               <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-              <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-              <application android:label="JsAI 2D Studio" android:theme="@android:style/Theme.NoTitleBar">
+              <application android:label="JsAI Lua Studio" android:theme="@android:style/Theme.NoTitleBar">
                   <service android:name=".GameService" android:foregroundServiceType="specialUse" android:exported="false" />
                   <activity android:name=".EditorActivity" android:exported="true" android:screenOrientation="landscape">
                       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
@@ -278,13 +263,11 @@ jobs:
 
       - name: Build APK
         run: |
-          # Используем Gradle 8.2 для совместимости с Chaquopy
-          gradle wrapper --gradle-version 8.2
-          chmod +x gradlew
-          ./gradlew assembleDebug --build-cache --parallel --no-daemon
+          chmod +x gradlew || gradle wrapper --gradle-version 8.2
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: JsAI_2D_Studio_Background
+          name: JsAI_Lua_Studio
           path: app/build/outputs/apk/debug/app-debug.apk
