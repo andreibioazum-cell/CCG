@@ -50,7 +50,7 @@ jobs:
           dependencies {
               implementation 'androidx.appcompat:appcompat:1.6.1'
               implementation 'com.google.android.material:material:1.9.0'
-              # LUAJ - Легкий и быстрый Lua для Java
+              // Luaj библиотека для Lua
               implementation 'org.luaj:luaj-jse:3.0.1'
           }
           EOF
@@ -73,7 +73,7 @@ jobs:
               </LinearLayout>
               <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent" android:layout_below="@id/toolbar" android:layout_toLeftOf="@id/rightSidebar">
                   <com.jsai.studio.GameView android:id="@+id/gameView" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#121212"/>
-                  <EditText android:id="@+id/codeEditor" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#1E1E1E" android:textColor="#D4D4D4" android:fontFamily="monospace" android:gravity="top" android:padding="10dp" android:visibility="gone" android:text="-- Lua Script --\npart = Workspace.Find('Sprite 0')\nfunction update(dt)\n  if part then\n    part.x = part.x + (100 * dt)\n    if part.x > 800 then part.x = 0 end\n  end\nend" />
+                  <EditText android:id="@+id/codeEditor" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#1E1E1E" android:textColor="#D4D4D4" android:fontFamily="monospace" android:gravity="top" android:padding="10dp" android:visibility="gone" android:text="-- Lua Script --&#10;part = Workspace.Find('Sprite 0')&#10;function update(dt)&#10;  if part then&#10;    part:setX(part:getX() + (100 * dt))&#10;    if part:getX() > 800 then part:setX(0) end&#10;  end&#10;end" />
               </FrameLayout>
           </RelativeLayout>
           EOF
@@ -86,7 +86,6 @@ jobs:
               public float x=100, y=100, rotation=0, scale=1;
               public int color = 0xFF00A2FF;
               public Instance(String n, String t) { name=n; type=t; }
-              // Методы для Lua, чтобы он мог менять поля напрямую
               public void setX(float nx) { x = nx; }
               public float getX() { return x; }
           }
@@ -121,17 +120,14 @@ jobs:
           import java.util.*;
           import org.luaj.vm2.*;
           import org.luaj.vm2.lib.jse.*;
-
           public class EngineCore {
               public static List<Instance> instances = new ArrayList<>();
               public static boolean isPlaying = false;
               private static Globals globals;
               private static LuaValue updateFunc;
-
               public static void startLua(String code) {
                   try {
                       globals = JsePlatform.standardGlobals();
-                      // Прокидываем API в Lua
                       LuaValue workspace = LuaValue.tableOf();
                       workspace.set("Find", new OneArgFunction() {
                           @Override public LuaValue call(LuaValue name) {
@@ -140,17 +136,13 @@ jobs:
                           }
                       });
                       globals.set("Workspace", workspace);
-                      
                       globals.load(code).call();
                       updateFunc = globals.get("update");
                   } catch(Exception e) { e.printStackTrace(); }
               }
-
               public static void update(float dt) {
-                  if(!isPlaying || updateFunc == null || updateFunc.isnil()) return;
-                  try {
-                      updateFunc.call(LuaValue.valueOf(dt));
-                  } catch(Exception e) { e.printStackTrace(); }
+                  if(!isPlaying || updateFunc == null) return;
+                  try { updateFunc.call(LuaValue.valueOf(dt)); } catch(Exception e) {}
               }
           }
           EOF
@@ -263,7 +255,8 @@ jobs:
 
       - name: Build APK
         run: |
-          chmod +x gradlew || gradle wrapper --gradle-version 8.2
+          gradle wrapper --gradle-version 8.2
+          chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
