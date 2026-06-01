@@ -1,4 +1,4 @@
-name: JsAI_Studio_Pro_Edition
+name: JsAI_Retro_Studio
 on: [push, workflow_dispatch]
 
 jobs:
@@ -13,15 +13,11 @@ jobs:
           mkdir -p app/src/main/java/com/jsai/studio
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
-          mkdir -p app/src/main/res/drawable
 
-          # --- SETTINGS ---
+          # --- КОНФИГУРАЦИЯ ---
           cat > settings.gradle << 'EOF'
           pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal(); } }
-          dependencyResolutionManagement { 
-              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-              repositories { google(); mavenCentral(); } 
-          }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral(); } }
           include ':app'
           EOF
           
@@ -38,85 +34,49 @@ jobs:
           }
           dependencies {
               implementation 'androidx.appcompat:appcompat:1.6.1'
-              implementation 'com.google.android.material:material:1.9.0'
               implementation 'org.luaj:luaj-jse:3.0.1'
           }
           EOF
 
-          cat > gradle.properties << 'EOF'
-          android.useAndroidX=true
-          org.gradle.jvmargs=-Xmx2048m
-          EOF
-
-          # --- UI LAYOUT ---
+          # --- ИНТЕРФЕЙС (РЕТРО-СТИЛЬ) ---
           cat > app/src/main/res/layout/editor_main.xml << 'EOF'
-          <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#0F0F0F">
-              <LinearLayout android:id="@+id/toolbar" android:layout_width="match_parent" android:layout_height="45dp" android:background="#1A1A1A" android:orientation="horizontal" android:padding="5dp">
-                  <Button android:id="@+id/btnNewScene" android:layout_width="wrap_content" android:layout_height="match_parent" android:text="SCENE+" android:textSize="8sp" android:backgroundTint="#333"/>
-                  <Spinner android:id="@+id/sceneSpinner" android:layout_width="120dp" android:layout_height="match_parent" android:backgroundTint="#FFF"/>
-                  <Button android:id="@+id/btnAdd" android:layout_width="40dp" android:layout_height="match_parent" android:text="+" android:backgroundTint="#007ACC"/>
+          <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#1C1C1C">
+              <LinearLayout android:id="@+id/toolbar" android:layout_width="match_parent" android:layout_height="36dp" android:background="#333333" android:orientation="horizontal" android:padding="2dp">
+                  <Button android:id="@+id/btnAdd" android:layout_width="36dp" android:layout_height="match_parent" android:text="+" android:backgroundTint="#FFFFFF" android:textColor="#000000" android:textSize="14sp" android:padding="0dp"/>
+                  <Button android:id="@+id/btnNewScene" android:layout_width="wrap_content" android:layout_height="match_parent" android:text="Новая сцена" android:textSize="9sp" android:backgroundTint="#FFFFFF" android:textColor="#000000" android:layout_marginLeft="4dp"/>
+                  <Spinner android:id="@+id/sceneSpinner" android:layout_width="120dp" android:layout_height="match_parent" android:backgroundTint="#FFFFFF"/>
                   <Space android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"/>
-                  <Button android:id="@+id/btnPlay" android:layout_width="75dp" android:layout_height="match_parent" android:text="PLAY" android:backgroundTint="#28A745"/>
+                  <Button android:id="@+id/btnPlay" android:layout_width="80dp" android:layout_height="match_parent" android:text="Запуск" android:backgroundTint="#FFFFFF" android:textColor="#000000" android:textSize="10sp"/>
               </LinearLayout>
               
-              <LinearLayout android:id="@+id/rightSidebar" android:layout_width="170dp" android:layout_height="match_parent" android:layout_below="@id/toolbar" android:layout_alignParentRight="true" android:background="#151515" android:orientation="vertical">
-                  <TextView android:layout_width="match_parent" android:layout_height="25dp" android:text=" EXPLORER" android:textColor="#555" android:gravity="center" android:textSize="9sp" android:background="#111"/>
-                  <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"><LinearLayout android:id="@+id/explorer" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"/></ScrollView>
-                  <TextView android:layout_width="match_parent" android:layout_height="25dp" android:text=" PROPERTIES" android:textColor="#555" android:gravity="center" android:textSize="9sp" android:background="#111"/>
-                  <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1.2" android:background="#0D0D0D"><LinearLayout android:id="@+id/properties" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="5dp"/></ScrollView>
+              <LinearLayout android:id="@+id/sidebar" android:layout_width="145dp" android:layout_height="match_parent" android:layout_below="@id/toolbar" android:layout_alignParentRight="true" android:background="#262626" android:orientation="vertical">
+                  <TextView android:layout_width="match_parent" android:layout_height="22dp" android:text=" Проводник" android:textColor="#FFFFFF" android:gravity="center_vertical" android:textSize="10sp" android:background="#444444"/>
+                  <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:padding="2dp"><LinearLayout android:id="@+id/explorer" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"/></ScrollView>
+                  <TextView android:layout_width="match_parent" android:layout_height="22dp" android:text=" Свойства" android:textColor="#FFFFFF" android:gravity="center_vertical" android:textSize="10sp" android:background="#444444"/>
+                  <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1.3" android:background="#1A1A1A"><LinearLayout android:id="@+id/properties" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="6dp"/></ScrollView>
               </LinearLayout>
 
-              <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent" android:layout_below="@id/toolbar" android:layout_toLeftOf="@id/rightSidebar">
-                  <com.jsai.studio.GameView android:id="@+id/gameView" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#050505"/>
-                  <EditText android:id="@+id/codeEditor" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#1E1E1E" android:textColor="#D4D4D4" android:fontFamily="monospace" android:gravity="top" android:padding="10dp" android:visibility="gone" />
+              <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent" android:layout_below="@id/toolbar" android:layout_toLeftOf="@id/sidebar">
+                  <com.jsai.studio.GameView android:id="@+id/gameView" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000000"/>
+                  <EditText android:id="@+id/codeEditor" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#0F0F0F" android:textColor="#00FF00" android:fontFamily="monospace" android:gravity="top" android:padding="8dp" android:visibility="gone" android:textSize="12sp" />
               </FrameLayout>
           </RelativeLayout>
           EOF
 
-          # --- ENGINE LOGIC ---
+          # --- КЛАССЫ ДВИЖКА ---
           cat > app/src/main/java/com/jsai/studio/Instance.java << 'EOF'
           package com.jsai.studio;
           import java.util.*;
           public class Instance {
               public String name, type, luaCode = "";
-              public float x=200, y=200, scale=1;
-              public float startX, startY, startScale;
-              public int color = 0xFF00A2FF;
+              public float x=250, y=250, scale=1, startX, startY;
+              public int color = 0xFFFFFFFF;
               public Instance parent;
               public List<Instance> children = new ArrayList<>();
-              
               public Instance(String n, String t) { name=n; type=t; }
-              public void saveState() { startX=x; startY=y; startScale=scale; }
-              public void restoreState() { x=startX; y=startY; scale=startScale; }
-              
-              public void setX(float v) { x=v; }
-              public float getX() { return x; }
-              public void setY(float v) { y=v; }
-              public float getY() { return y; }
+              public void setX(float v) { x=v; } public float getX() { return x; }
+              public void setY(float v) { y=v; } public float getY() { return y; }
               public void setScale(float v) { scale=v; }
-
-              // Глубокое копирование
-              public Instance copy() {
-                  Instance c = new Instance(name + " (Copy)", type);
-                  c.luaCode = luaCode; c.x = x; c.y = y; c.scale = scale; c.color = color;
-                  for(Instance child : children) {
-                      Instance childCopy = child.copy();
-                      childCopy.parent = c;
-                      c.children.add(childCopy);
-                  }
-                  return c;
-              }
-          }
-          EOF
-
-          cat > app/src/main/java/com/jsai/studio/Scene.java << 'EOF'
-          package com.jsai.studio;
-          import java.util.*;
-          public class Scene {
-              public String name;
-              public List<Instance> rootInstances = new ArrayList<>();
-              public Scene(String n) { name = n; }
-              @Override public String toString() { return name; }
           }
           EOF
 
@@ -126,50 +86,29 @@ jobs:
           import org.luaj.vm2.*;
           import org.luaj.vm2.lib.jse.*;
           public class EngineCore {
-              public static List<Scene> scenes = new ArrayList<>();
-              public static Scene currentScene;
+              public static List<Instance> instances = new ArrayList<>();
               public static boolean isPlaying = false;
-              private static List<LuaValue> activeScripts = new ArrayList<>();
-
-              static { 
-                  scenes.add(new Scene("MainScene")); 
-                  currentScene = scenes.get(0);
-              }
-
-              public static void prepareGame() {
-                  activeScripts.clear();
-                  processHierarchy(currentScene.rootInstances);
-              }
-
-              private static void processHierarchy(List<Instance> list) {
-                  for(Instance i : list) {
-                      i.saveState();
-                      if(i.type.equals("Script")) {
-                          Globals globals = JsePlatform.standardGlobals();
-                          globals.set("script", CoerceJavaToLua.coerce(i));
-                          globals.set("parent", CoerceJavaToLua.coerce(i.parent));
-                          try {
-                              globals.load(i.luaCode).call();
-                              activeScripts.add(globals.get("update"));
-                          } catch(Exception e) {}
+              private static List<LuaValue> scripts = new ArrayList<>();
+              public static void prepare() {
+                  scripts.clear();
+                  for(Instance i : instances) {
+                      i.startX = i.x; i.startY = i.y;
+                      if(i.type.equals("Скрипт") && i.parent != null) {
+                          Globals g = JsePlatform.standardGlobals();
+                          g.set("script", CoerceJavaToLua.coerce(i));
+                          g.set("parent", CoerceJavaToLua.coerce(i.parent));
+                          try { g.load(i.luaCode).call(); scripts.add(g.get("update")); } catch(Exception e) {}
                       }
-                      processHierarchy(i.children);
                   }
               }
-
-              public static void stopGame() {
-                  resetHierarchy(currentScene.rootInstances);
-                  activeScripts.clear();
+              public static void stop() {
+                  for(Instance i : instances) { i.x = i.startX; i.y = i.startY; }
+                  isPlaying = false;
               }
-
-              private static void resetHierarchy(List<Instance> list) {
-                  for(Instance i : list) { i.restoreState(); resetHierarchy(i.children); }
-              }
-
               public static void update(float dt) {
                   if(!isPlaying) return;
-                  LuaValue dtVal = LuaValue.valueOf(dt);
-                  for(LuaValue f : activeScripts) if(!f.isnil()) try { f.call(dtVal); } catch(Exception e) {}
+                  LuaValue d = LuaValue.valueOf(dt);
+                  for(LuaValue f : scripts) if(!f.isnil()) try { f.call(d); } catch(Exception e) {}
               }
           }
           EOF
@@ -181,25 +120,21 @@ jobs:
           import android.util.AttributeSet;
           import android.view.View;
           public class GameView extends View {
-              private Paint paint = new Paint();
-              public GameView(Context context, AttributeSet attrs) { super(context, attrs); }
+              private Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+              public GameView(Context c, AttributeSet a) { super(c, a); }
               @Override protected void onDraw(Canvas canvas) {
                   super.onDraw(canvas);
-                  if(EngineCore.currentScene == null) return;
-                  drawRecursive(canvas, EngineCore.currentScene.rootInstances);
-                  invalidate();
-              }
-              private void drawRecursive(Canvas canvas, java.util.List<Instance> list) {
-                  for (Instance i : list) {
-                      if(i.type.equals("Sprite")) {
-                          paint.setColor(i.color);
+                  for (Instance i : EngineCore.instances) {
+                      if(i.type.equals("Спрайт") || i.type.equals("Папка")) {
+                          p.setColor(i.color);
                           canvas.save();
                           canvas.translate(i.x, i.y);
-                          canvas.drawRect(-50*i.scale, -50*i.scale, 50*i.scale, 50*i.scale, paint);
+                          if(i.type.equals("Спрайт")) canvas.drawRect(-40*i.scale, -40*i.scale, 40*i.scale, 40*i.scale, p);
+                          else { p.setStyle(Paint.Style.STROKE); canvas.drawCircle(0, 0, 15, p); p.setStyle(Paint.Style.FILL); }
                           canvas.restore();
                       }
-                      drawRecursive(canvas, i.children);
                   }
+                  invalidate();
               }
           }
           EOF
@@ -207,123 +142,45 @@ jobs:
           cat > app/src/main/java/com/jsai/studio/EditorActivity.java << 'EOF'
           package com.jsai.studio;
           import android.app.*;
-          import android.content.Intent;
           import android.os.Bundle;
           import android.view.*;
           import android.widget.*;
-          import java.util.*;
+          import android.graphics.Color;
 
           public class EditorActivity extends Activity {
-              LinearLayout explorer, properties; 
-              EditText codeEd; 
-              Instance selected, clipboard;
-              boolean isCutMode = false;
-
+              LinearLayout explorer, props; EditText codeEd; Instance sel;
               protected void onCreate(Bundle b) {
-                  super.onCreate(b); requestWindowFeature(1);
-                  setContentView(R.layout.editor_main);
-                  explorer = findViewById(R.id.explorer); properties = findViewById(R.id.properties);
-                  codeEd = findViewById(R.id.codeEditor);
-
-                  Spinner sceneSpinner = findViewById(R.id.sceneSpinner);
-                  final ArrayAdapter<Scene> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, EngineCore.scenes);
-                  sceneSpinner.setAdapter(adapter);
-                  sceneSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-                      public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
-                          EngineCore.currentScene = EngineCore.scenes.get(pos); updateExplorer();
-                      }
-                      public void onNothingSelected(AdapterView<?> p) {}
-                  });
-
-                  findViewById(R.id.btnNewScene).setOnClickListener(v -> {
-                      EngineCore.scenes.add(new Scene("Scene " + EngineCore.scenes.size()));
-                      adapter.notifyDataSetChanged();
-                  });
-
+                  super.onCreate(b); requestWindowFeature(1); setContentView(R.layout.editor_main);
+                  explorer = findViewById(R.id.explorer); props = findViewById(R.id.properties); codeEd = findViewById(R.id.codeEditor);
                   findViewById(R.id.btnAdd).setOnClickListener(v -> {
-                      PopupMenu pm = new PopupMenu(this, v);
-                      pm.getMenu().add("Sprite"); pm.getMenu().add("Folder"); pm.getMenu().add("Script");
+                      PopupMenu pm = new PopupMenu(this, v); 
+                      pm.getMenu().add("Спрайт"); pm.getMenu().add("Папка"); pm.getMenu().add("Скрипт");
                       pm.setOnMenuItemClickListener(item -> {
                           Instance i = new Instance(item.getTitle().toString(), item.getTitle().toString());
-                          if(selected != null && selected.type.equals("Folder")) {
-                              i.parent = selected; selected.children.add(i);
-                          } else {
-                              EngineCore.currentScene.rootInstances.add(i);
-                          }
-                          updateExplorer(); return true;
+                          if(sel != null && (item.getTitle().equals("Скрипт") || sel.type.equals("Папка"))) i.parent = sel;
+                          EngineCore.instances.add(i); updateExp(); return true;
                       });
                       pm.show();
                   });
-
                   findViewById(R.id.btnPlay).setOnClickListener(v -> {
-                      if(!EngineCore.isPlaying) {
-                          EngineCore.prepareGame(); EngineCore.isPlaying = true;
-                          ((Button)v).setText("STOP"); startForegroundService(new Intent(this, GameService.class));
-                      } else {
-                          EngineCore.isPlaying = false; EngineCore.stopGame();
-                          ((Button)v).setText("PLAY"); stopService(new Intent(this, GameService.class));
-                      }
+                      if(!EngineCore.isPlaying) { EngineCore.prepare(); EngineCore.isPlaying=true; ((Button)v).setText("Стоп"); }
+                      else { EngineCore.stop(); ((Button)v).setText("Запуск"); }
                   });
               }
-
-              void updateExplorer() {
+              void updateExp() {
                   explorer.removeAllViews();
-                  renderExplorerRecursive(EngineCore.currentScene.rootInstances, 0);
-              }
-
-              void renderExplorerRecursive(List<Instance> list, int indent) {
-                  for(Instance i : list) {
-                      Button b = new Button(this);
-                      String prefix = ""; for(int j=0; j<indent; j++) prefix += "   ";
-                      b.setText(prefix + (i.type.equals("Script") ? "📜 " : (i.type.equals("Folder") ? "📁 " : "📦 ")) + i.name);
-                      b.setAllCaps(false); b.setTextSize(11); b.setGravity(Gravity.LEFT | Gravity.CENTER_VERTICAL);
-                      b.setBackgroundColor(selected == i ? 0xFF333333 : 0x00000000);
-                      b.setTextColor(0xFFCCCCCC);
-                      
-                      b.setOnClickListener(v -> select(i));
-                      b.setOnLongClickListener(v -> { showContextMenu(v, i); return true; });
+                  for(Instance i : EngineCore.instances) {
+                      Button b = new Button(this); b.setText((i.parent!=null?" > ":"")+i.name); b.setAllCaps(false);
+                      b.setTextSize(10); b.setTextColor(sel == i ? Color.BLACK : Color.WHITE);
+                      b.setBackgroundColor(sel == i ? Color.WHITE : 0x00000000);
+                      b.setOnClickListener(v -> { sel = i; showProps(i); });
                       explorer.addView(b);
-                      renderExplorerRecursive(i.children, indent + 1);
                   }
               }
-
-              void showContextMenu(View v, Instance i) {
-                  PopupMenu pm = new PopupMenu(this, v);
-                  pm.getMenu().add("Cut"); pm.getMenu().add("Copy");
-                  if(clipboard != null) pm.getMenu().add("Paste");
-                  pm.getMenu().add("Delete");
-                  
-                  pm.setOnMenuItemClickListener(item -> {
-                      String title = item.getTitle().toString();
-                      if(title.equals("Delete")) {
-                          removeInstance(i);
-                      } else if(title.equals("Cut")) {
-                          clipboard = i; isCutMode = true;
-                      } else if(title.equals("Copy")) {
-                          clipboard = i.copy(); isCutMode = false;
-                      } else if(title.equals("Paste")) {
-                          if(i.type.equals("Folder")) {
-                              if(isCutMode) removeInstance(clipboard);
-                              clipboard.parent = i; i.children.add(clipboard);
-                              if(isCutMode) { clipboard = null; } else { clipboard = clipboard.copy(); }
-                          } else {
-                              Toast.makeText(this, "Can only paste into Folder", Toast.LENGTH_SHORT).show();
-                          }
-                      }
-                      updateExplorer(); return true;
-                  });
-                  pm.show();
-              }
-
-              void removeInstance(Instance i) {
-                  if(i.parent != null) i.parent.children.remove(i);
-                  else EngineCore.currentScene.rootInstances.remove(i);
-              }
-
-              void select(Instance i) {
-                  selected = i; properties.removeAllViews(); updateExplorer();
-                  codeEd.setVisibility(i.type.equals("Script") ? View.VISIBLE : View.GONE);
-                  if(i.type.equals("Script")) {
+              void showProps(Instance i) {
+                  props.removeAllViews(); updateExp();
+                  codeEd.setVisibility(i.type.equals("Скрипт") ? View.VISIBLE : View.GONE);
+                  if(i.type.equals("Скрипт")) {
                       codeEd.setText(i.luaCode);
                       codeEd.addTextChangedListener(new android.text.TextWatcher() {
                           public void afterTextChanged(android.text.Editable s) { i.luaCode = s.toString(); }
@@ -331,63 +188,43 @@ jobs:
                           public void onTextChanged(CharSequence s, int st, int b, int c) {}
                       });
                   }
-                  addSlider("X", 0, 1500, i.x, v -> i.x = v);
-                  addSlider("Y", 0, 1500, i.y, v -> i.y = v);
-                  addSlider("Size", 0.1f, 10, i.scale, v -> i.scale = v);
-                  Button colorBtn = new Button(this); colorBtn.setText("Set Random Color");
-                  colorBtn.setOnClickListener(v -> i.color = 0xFF000000 | new Random().nextInt(0xFFFFFF));
-                  properties.addView(colorBtn);
-              }
+                  
+                  Button ren = new Button(this); ren.setText("Переименовать"); ren.setTextSize(9);
+                  ren.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.WHITE)); ren.setTextColor(Color.BLACK);
+                  ren.setOnClickListener(v -> {
+                      EditText et = new EditText(this); et.setText(i.name);
+                      new AlertDialog.Builder(this).setTitle("Новое имя").setView(et)
+                          .setPositiveButton("Готово", (d, w) -> { i.name = et.getText().toString(); updateExp(); }).show();
+                  });
+                  props.addView(ren);
 
-              void addSlider(String label, float min, float max, float current, SliderUpdate su) {
-                  TextView t = new TextView(this); t.setText(label + ": " + String.format("%.1f", current)); 
-                  t.setTextColor(0xFFAAAAAA); t.setTextSize(10); properties.addView(t);
-                  SeekBar s = new SeekBar(this); s.setMax(200); s.setProgress((int)((current-min)/(max-min)*200));
+                  addS("Позиция X", 0, 1200, i.x, v -> i.x = v);
+                  addS("Позиция Y", 0, 1200, i.y, v -> i.y = v);
+                  
+                  EditText col = new EditText(this); col.setHint("Цвет (HEX) #FFFFFF"); col.setTextSize(10); col.setTextColor(Color.WHITE);
+                  col.setOnEditorActionListener((v, a, e) -> {
+                      try { i.color = Color.parseColor(col.getText().toString()); } catch(Exception ex) {}
+                      return true;
+                  });
+                  props.addView(col);
+              }
+              void addS(String l, float min, float max, float cur, Upd u) {
+                  TextView t = new TextView(this); t.setText(l); t.setTextColor(Color.WHITE); t.setTextSize(9); props.addView(t);
+                  SeekBar s = new SeekBar(this); s.setMax(100); s.setProgress((int)((cur-min)/(max-min)*100));
                   s.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-                      public void onProgressChanged(SeekBar sb, int p, boolean u) { 
-                          float val = min + (max-min)*(p/200f); su.update(val); t.setText(label + ": " + String.format("%.1f", val));
-                      }
+                      public void onProgressChanged(SeekBar sb, int p, boolean b) { u.u(min+(max-min)*(p/100f)); }
                       public void onStartTrackingTouch(SeekBar sb) {} public void onStopTrackingTouch(SeekBar sb) {}
                   });
-                  properties.addView(s);
+                  props.addView(s);
               }
-              interface SliderUpdate { void update(float v); }
-          }
-          EOF
-
-          cat > app/src/main/java/com/jsai/studio/GameService.java << 'EOF'
-          package com.jsai.studio;
-          import android.app.*;
-          import android.content.Intent;
-          import android.os.IBinder;
-          public class GameService extends Service {
-              private boolean running = true;
-              @Override public int onStartCommand(Intent intent, int flags, int startId) {
-                  NotificationChannel c = new NotificationChannel("game", "Engine", 2);
-                  getSystemService(NotificationManager.class).createNotificationChannel(c);
-                  startForeground(1, new Notification.Builder(this, "game").setContentTitle("JsAI Pro Running").setSmallIcon(android.R.drawable.ic_media_play).build());
-                  new Thread(() -> {
-                      long last = System.currentTimeMillis();
-                      while(running) {
-                          long now = System.currentTimeMillis();
-                          EngineCore.update((now - last) / 1000f); last = now;
-                          try { Thread.sleep(16); } catch (Exception e) {}
-                      }
-                  }).start();
-                  return START_STICKY;
-              }
-              @Override public void onDestroy() { running = false; super.onDestroy(); }
-              @Override public IBinder onBind(Intent intent) { return null; }
+              interface Upd { void u(float v); }
           }
           EOF
 
           cat > app/src/main/AndroidManifest.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-              <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-              <application android:label="JsAI Pro" android:theme="@android:style/Theme.NoTitleBar" android:backgroundTint="#000">
-                  <service android:name=".GameService" android:foregroundServiceType="specialUse" android:exported="false" />
+              <application android:label="JsAI Retro" android:theme="@android:style/Theme.NoTitleBar">
                   <activity android:name=".EditorActivity" android:exported="true" android:screenOrientation="landscape" android:windowSoftInputMode="adjustPan">
                       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
                   </activity>
@@ -411,5 +248,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: JsAI_Pro_IDE
+          name: JsAI_Retro_Studio
           path: app/build/outputs/apk/debug/app-debug.apk
