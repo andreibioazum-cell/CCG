@@ -1,4 +1,4 @@
-name: JsAI_Retro_Studio_Fixed
+name: JsAI_Retro_Studio_Final
 on: [push, workflow_dispatch]
 
 jobs:
@@ -64,11 +64,11 @@ jobs:
           org.gradle.jvmargs=-Xmx2048m
           EOF
 
-          # --- РЕТРО ИНТЕРФЕЙС ---
+          # --- РЕТРО ИНТЕРФЕЙС (Белые кнопки, Русские названия) ---
           cat > app/src/main/res/layout/editor_main.xml << 'EOF'
           <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#121212">
               <LinearLayout android:id="@+id/toolbar" android:layout_width="match_parent" android:layout_height="36dp" android:background="#222222" android:orientation="horizontal" android:padding="2dp">
-                  <Button android:id="@+id/btnAdd" android:layout_width="40dp" android:layout_height="match_parent" android:text="+" android:backgroundTint="#FFFFFF" android:textColor="#000000" android:textSize="16sp" android:insetTop="0dp" android:insetBottom="0dp"/>
+                  <Button android:id="@+id/btnAdd" android:layout_width="40dp" android:layout_height="match_parent" android:text="+" android:backgroundTint="#FFFFFF" android:textColor="#000000" android:textSize="16sp" android:insetTop="0dp" android:insetBottom="0dp" android:padding="0dp"/>
                   <Button android:id="@+id/btnNewScene" android:layout_width="wrap_content" android:layout_height="match_parent" android:text="Новая Сцена" android:textSize="9sp" android:backgroundTint="#FFFFFF" android:textColor="#000000" android:layout_marginLeft="5dp" android:insetTop="0dp" android:insetBottom="0dp"/>
                   <Spinner android:id="@+id/sceneSpinner" android:layout_width="120dp" android:layout_height="match_parent" android:backgroundTint="#FFFFFF" android:layout_marginLeft="5dp"/>
                   <Space android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"/>
@@ -89,7 +89,7 @@ jobs:
           </RelativeLayout>
           EOF
 
-          # --- JAVA CLASSES ---
+          # --- ENGINE LOGIC ---
           cat > app/src/main/java/com/jsai/studio/Instance.java << 'EOF'
           package com.jsai.studio;
           import java.util.*;
@@ -247,7 +247,7 @@ jobs:
           cat > app/src/main/AndroidManifest.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="JsAI Retro" android:theme="@android:style/Theme.NoTitleBar" android:icon="@android:drawable/ic_menu_edit">
+              <application android:label="JsAI Retro" android:theme="@android:style/Theme.NoTitleBar">
                   <activity android:name=".EditorActivity" android:exported="true" android:screenOrientation="landscape" android:configChanges="orientation|screenSize">
                       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
                   </activity>
@@ -255,7 +255,6 @@ jobs:
           </manifest>
           EOF
 
-      # Устанавливаем Gradle 8.2 принудительно через официальный Action
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
@@ -268,7 +267,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Build APK
-        run: ./gradlew assembleDebug --no-daemon
+        run: gradle assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
