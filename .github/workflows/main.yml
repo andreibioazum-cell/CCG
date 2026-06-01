@@ -1,4 +1,4 @@
-name: AetherAI - Stable Version
+name: AetherAI - Large 1.3GB Model
 on:
   push:
     branches: [ main ]
@@ -6,7 +6,7 @@ on:
 
 jobs:
   build-aetherai:
-    name: Build AetherAI Stable
+    name: Build AetherAI Large
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -27,7 +27,7 @@ jobs:
           override: true
           components: rust-src
           
-      - name: Create Lightweight Transformer Core
+      - name: Create 1.3GB Transformer Core
         run: |
           mkdir -p aetherai_core/src
           
@@ -40,44 +40,70 @@ jobs:
           #include <cstring>
           #include <arm_neon.h>
           
-          constexpr int VOCAB_SIZE = 4096;
-          constexpr int D_MODEL = 128;
-          constexpr int N_HEADS = 4;
-          constexpr int D_FF = 512;
-          constexpr int N_LAYERS = 3;
-          constexpr int MAX_SEQ_LEN = 64;
+          constexpr int VOCAB_SIZE = 32768;
+          constexpr int D_MODEL = 1024;
+          constexpr int N_HEADS = 16;
+          constexpr int D_FF = 4096;
+          constexpr int N_LAYERS = 12;
+          constexpr int MAX_SEQ_LEN = 512;
           constexpr int HEAD_DIM = D_MODEL / N_HEADS;
-          constexpr float LEARNING_RATE = 0.001f;
+          constexpr float LEARNING_RATE = 0.0001f;
           constexpr float WEIGHT_DECAY = 0.01f;
           constexpr float GRAD_CLIP = 1.0f;
           constexpr float EPSILON = 1e-8f;
           
-          inline void matmul_simple(const float* A, const float* B, float* C, int m, int n, int k) {
+          inline void matmul_neon(const float* A, const float* B, float* C, int m, int n, int k) {
               for (int i = 0; i < m; i++) {
                   for (int j = 0; j < n; j++) {
-                      float sum = 0.0f;
-                      for (int kk = 0; kk < k; kk++) {
-                          sum += A[i * k + kk] * B[kk * n + j];
+                      float32x4_t sum = vdupq_n_f32(0);
+                      int kk;
+                      for (kk = 0; kk <= k - 4; kk += 4) {
+                          float32x4_t a = vld1q_f32(&A[i * k + kk]);
+                          float32x4_t b = vld1q_f32(&B[kk * n + j]);
+                          sum = vmlaq_f32(sum, a, b);
                       }
-                      C[i * n + j] = sum;
+                      float result = vgetq_lane_f32(sum, 0) + vgetq_lane_f32(sum, 1) + 
+                                     vgetq_lane_f32(sum, 2) + vgetq_lane_f32(sum, 3);
+                      for (; kk < k; kk++) {
+                          result += A[i * k + kk] * B[kk * n + j];
+                      }
+                      C[i * n + j] = result;
                   }
               }
           }
           
-          inline void softmax(float* x, int size) {
+          inline void softmax_neon(float* x, int size) {
               float max_val = x[0];
               for (int i = 1; i < size; i++) {
                   if (x[i] > max_val) max_val = x[i];
               }
               
               float sum = 0.0f;
-              for (int i = 0; i < size; i++) {
+              int i;
+              for (i = 0; i <= size - 4; i += 4) {
+                  float32x4_t vec = vld1q_f32(&x[i]);
+                  vec = vsubq_f32(vec, vdupq_n_f32(max_val));
+                  float exp_vals[4];
+                  exp_vals[0] = expf(vgetq_lane_f32(vec, 0));
+                  exp_vals[1] = expf(vgetq_lane_f32(vec, 1));
+                  exp_vals[2] = expf(vgetq_lane_f32(vec, 2));
+                  exp_vals[3] = expf(vgetq_lane_f32(vec, 3));
+                  vst1q_f32(&x[i], vld1q_f32(exp_vals));
+                  sum += exp_vals[0] + exp_vals[1] + exp_vals[2] + exp_vals[3];
+              }
+              for (; i < size; i++) {
                   x[i] = expf(x[i] - max_val);
                   sum += x[i];
               }
               
-              for (int i = 0; i < size; i++) {
-                  x[i] /= (sum + EPSILON);
+              float inv_sum = 1.0f / (sum + EPSILON);
+              for (i = 0; i <= size - 4; i += 4) {
+                  float32x4_t vec = vld1q_f32(&x[i]);
+                  vec = vmulq_n_f32(vec, inv_sum);
+                  vst1q_f32(&x[i], vec);
+              }
+              for (; i < size; i++) {
+                  x[i] *= inv_sum;
               }
           }
           
@@ -87,20 +113,36 @@ jobs:
           
           struct TransformerWeights {
               float* token_embedding;
-              float* output_weight;
-              float* output_bias;
+              float* pos_embedding;
               
-              float* token_embedding_grad;
-              float* output_weight_grad;
-              float* output_bias_grad;
+              struct Layer {
+                  float *q_weight, *k_weight, *v_weight, *out_weight;
+                  float *ff1_weight, *ff1_bias, *ff2_weight, *ff2_bias;
+                  float *ln1_gamma, *ln1_beta, *ln2_gamma, *ln2_beta;
+                  
+                  float *q_weight_grad, *k_weight_grad, *v_weight_grad, *out_weight_grad;
+                  float *ff1_weight_grad, *ff1_bias_grad, *ff2_weight_grad, *ff2_bias_grad;
+                  float *ln1_gamma_grad, *ln1_beta_grad, *ln2_gamma_grad, *ln2_beta_grad;
+                  
+                  float *q_weight_m, *k_weight_m, *v_weight_m, *out_weight_m;
+                  float *ff1_weight_m, *ff1_bias_m, *ff2_weight_m, *ff2_bias_m;
+                  
+                  float *q_weight_v, *k_weight_v, *v_weight_v, *out_weight_v;
+                  float *ff1_weight_v, *ff1_bias_v, *ff2_weight_v, *ff2_bias_v;
+              } *layers;
               
-              float* token_embedding_m;
-              float* output_weight_m;
-              float* output_bias_m;
+              float *final_ln_gamma, *final_ln_beta;
+              float *output_weight, *output_bias;
               
-              float* token_embedding_v;
-              float* output_weight_v;
-              float* output_bias_v;
+              float *token_embedding_grad, *pos_embedding_grad;
+              float *final_ln_gamma_grad, *final_ln_beta_grad;
+              float *output_weight_grad, *output_bias_grad;
+              
+              float *token_embedding_m, *pos_embedding_m;
+              float *output_weight_m, *output_bias_m;
+              
+              float *token_embedding_v, *pos_embedding_v;
+              float *output_weight_v, *output_bias_v;
           };
           
           class Transformer {
@@ -113,18 +155,75 @@ jobs:
               bool allocate_memory() {
                   try {
                       weights.token_embedding = new float[VOCAB_SIZE * D_MODEL]();
+                      weights.pos_embedding = new float[MAX_SEQ_LEN * D_MODEL]();
+                      weights.token_embedding_grad = new float[VOCAB_SIZE * D_MODEL]();
+                      weights.pos_embedding_grad = new float[MAX_SEQ_LEN * D_MODEL]();
+                      weights.token_embedding_m = new float[VOCAB_SIZE * D_MODEL]();
+                      weights.pos_embedding_m = new float[MAX_SEQ_LEN * D_MODEL]();
+                      weights.token_embedding_v = new float[VOCAB_SIZE * D_MODEL]();
+                      weights.pos_embedding_v = new float[MAX_SEQ_LEN * D_MODEL]();
+                      
+                      weights.layers = new TransformerWeights::Layer[N_LAYERS];
+                      
+                      for (int l = 0; l < N_LAYERS; l++) {
+                          auto& layer = weights.layers[l];
+                          
+                          layer.q_weight = new float[D_MODEL * D_MODEL]();
+                          layer.k_weight = new float[D_MODEL * D_MODEL]();
+                          layer.v_weight = new float[D_MODEL * D_MODEL]();
+                          layer.out_weight = new float[D_MODEL * D_MODEL]();
+                          
+                          layer.ff1_weight = new float[D_MODEL * D_FF]();
+                          layer.ff1_bias = new float[D_FF]();
+                          layer.ff2_weight = new float[D_FF * D_MODEL]();
+                          layer.ff2_bias = new float[D_MODEL]();
+                          
+                          layer.ln1_gamma = new float[D_MODEL]();
+                          layer.ln1_beta = new float[D_MODEL]();
+                          layer.ln2_gamma = new float[D_MODEL]();
+                          layer.ln2_beta = new float[D_MODEL]();
+                          
+                          layer.q_weight_grad = new float[D_MODEL * D_MODEL]();
+                          layer.k_weight_grad = new float[D_MODEL * D_MODEL]();
+                          layer.v_weight_grad = new float[D_MODEL * D_MODEL]();
+                          layer.out_weight_grad = new float[D_MODEL * D_MODEL]();
+                          layer.ff1_weight_grad = new float[D_MODEL * D_FF]();
+                          layer.ff1_bias_grad = new float[D_FF]();
+                          layer.ff2_weight_grad = new float[D_FF * D_MODEL]();
+                          layer.ff2_bias_grad = new float[D_MODEL]();
+                          
+                          layer.q_weight_m = new float[D_MODEL * D_MODEL]();
+                          layer.k_weight_m = new float[D_MODEL * D_MODEL]();
+                          layer.v_weight_m = new float[D_MODEL * D_MODEL]();
+                          layer.out_weight_m = new float[D_MODEL * D_MODEL]();
+                          layer.ff1_weight_m = new float[D_MODEL * D_FF]();
+                          layer.ff1_bias_m = new float[D_FF]();
+                          layer.ff2_weight_m = new float[D_FF * D_MODEL]();
+                          layer.ff2_bias_m = new float[D_MODEL]();
+                          
+                          layer.q_weight_v = new float[D_MODEL * D_MODEL]();
+                          layer.k_weight_v = new float[D_MODEL * D_MODEL]();
+                          layer.v_weight_v = new float[D_MODEL * D_MODEL]();
+                          layer.out_weight_v = new float[D_MODEL * D_MODEL]();
+                          layer.ff1_weight_v = new float[D_MODEL * D_FF]();
+                          layer.ff1_bias_v = new float[D_FF]();
+                          layer.ff2_weight_v = new float[D_FF * D_MODEL]();
+                          layer.ff2_bias_v = new float[D_MODEL]();
+                      }
+                      
+                      weights.final_ln_gamma = new float[D_MODEL]();
+                      weights.final_ln_beta = new float[D_MODEL]();
                       weights.output_weight = new float[D_MODEL * VOCAB_SIZE]();
                       weights.output_bias = new float[VOCAB_SIZE]();
                       
-                      weights.token_embedding_grad = new float[VOCAB_SIZE * D_MODEL]();
+                      weights.final_ln_gamma_grad = new float[D_MODEL]();
+                      weights.final_ln_beta_grad = new float[D_MODEL]();
                       weights.output_weight_grad = new float[D_MODEL * VOCAB_SIZE]();
                       weights.output_bias_grad = new float[VOCAB_SIZE]();
                       
-                      weights.token_embedding_m = new float[VOCAB_SIZE * D_MODEL]();
                       weights.output_weight_m = new float[D_MODEL * VOCAB_SIZE]();
                       weights.output_bias_m = new float[VOCAB_SIZE]();
                       
-                      weights.token_embedding_v = new float[VOCAB_SIZE * D_MODEL]();
                       weights.output_weight_v = new float[D_MODEL * VOCAB_SIZE]();
                       weights.output_bias_v = new float[VOCAB_SIZE]();
                       
@@ -142,11 +241,48 @@ jobs:
                   };
                   
                   init(weights.token_embedding, VOCAB_SIZE * D_MODEL, 0.02f);
+                  init(weights.pos_embedding, MAX_SEQ_LEN * D_MODEL, 0.02f);
+                  
+                  for (int l = 0; l < N_LAYERS; l++) {
+                      auto& layer = weights.layers[l];
+                      init(layer.q_weight, D_MODEL * D_MODEL, 0.02f);
+                      init(layer.k_weight, D_MODEL * D_MODEL, 0.02f);
+                      init(layer.v_weight, D_MODEL * D_MODEL, 0.02f);
+                      init(layer.out_weight, D_MODEL * D_MODEL, 0.02f);
+                      init(layer.ff1_weight, D_MODEL * D_FF, 0.02f);
+                      init(layer.ff2_weight, D_FF * D_MODEL, 0.02f);
+                      
+                      for (int i = 0; i < D_MODEL; i++) {
+                          layer.ln1_gamma[i] = 1.0f;
+                          layer.ln2_gamma[i] = 1.0f;
+                      }
+                  }
+                  
+                  for (int i = 0; i < D_MODEL; i++) {
+                      weights.final_ln_gamma[i] = 1.0f;
+                  }
+                  
                   init(weights.output_weight, D_MODEL * VOCAB_SIZE, 0.02f);
               }
               
               void zero_gradients() {
                   memset(weights.token_embedding_grad, 0, VOCAB_SIZE * D_MODEL * sizeof(float));
+                  memset(weights.pos_embedding_grad, 0, MAX_SEQ_LEN * D_MODEL * sizeof(float));
+                  
+                  for (int l = 0; l < N_LAYERS; l++) {
+                      auto& layer = weights.layers[l];
+                      memset(layer.q_weight_grad, 0, D_MODEL * D_MODEL * sizeof(float));
+                      memset(layer.k_weight_grad, 0, D_MODEL * D_MODEL * sizeof(float));
+                      memset(layer.v_weight_grad, 0, D_MODEL * D_MODEL * sizeof(float));
+                      memset(layer.out_weight_grad, 0, D_MODEL * D_MODEL * sizeof(float));
+                      memset(layer.ff1_weight_grad, 0, D_MODEL * D_FF * sizeof(float));
+                      memset(layer.ff1_bias_grad, 0, D_FF * sizeof(float));
+                      memset(layer.ff2_weight_grad, 0, D_FF * D_MODEL * sizeof(float));
+                      memset(layer.ff2_bias_grad, 0, D_MODEL * sizeof(float));
+                  }
+                  
+                  memset(weights.final_ln_gamma_grad, 0, D_MODEL * sizeof(float));
+                  memset(weights.final_ln_beta_grad, 0, D_MODEL * sizeof(float));
                   memset(weights.output_weight_grad, 0, D_MODEL * VOCAB_SIZE * sizeof(float));
                   memset(weights.output_bias_grad, 0, VOCAB_SIZE * sizeof(float));
               }
@@ -170,6 +306,8 @@ jobs:
               void update_weights() {
                   adam_update(weights.token_embedding, weights.token_embedding_grad, 
                              weights.token_embedding_m, weights.token_embedding_v, VOCAB_SIZE * D_MODEL);
+                  adam_update(weights.pos_embedding, weights.pos_embedding_grad, 
+                             weights.pos_embedding_m, weights.pos_embedding_v, MAX_SEQ_LEN * D_MODEL);
                   adam_update(weights.output_weight, weights.output_weight_grad, 
                              weights.output_weight_m, weights.output_weight_v, D_MODEL * VOCAB_SIZE);
                   adam_update(weights.output_bias, weights.output_bias_grad, 
@@ -179,13 +317,14 @@ jobs:
               float train_step(const int* input_ids, const int* target_ids, int seq_len) {
                   zero_gradients();
                   
-                  float hidden[MAX_SEQ_LEN * D_MODEL];
-                  float logits[VOCAB_SIZE];
+                  static float* hidden = new float[MAX_SEQ_LEN * D_MODEL];
+                  static float* logits = new float[VOCAB_SIZE];
                   
                   for (int i = 0; i < seq_len; i++) {
                       int token_id = input_ids[i] % VOCAB_SIZE;
                       for (int j = 0; j < D_MODEL; j++) {
-                          hidden[i * D_MODEL + j] = weights.token_embedding[token_id * D_MODEL + j];
+                          hidden[i * D_MODEL + j] = weights.token_embedding[token_id * D_MODEL + j] + 
+                                                     weights.pos_embedding[i * D_MODEL + j];
                       }
                   }
                   
@@ -194,11 +333,11 @@ jobs:
                   for (int pos = 0; pos < seq_len - 1; pos++) {
                       int target = target_ids[pos] % VOCAB_SIZE;
                       
-                      matmul_simple(&hidden[pos * D_MODEL], weights.output_weight, logits, 1, VOCAB_SIZE, D_MODEL);
+                      matmul_neon(&hidden[pos * D_MODEL], weights.output_weight, logits, 1, VOCAB_SIZE, D_MODEL);
                       for (int i = 0; i < VOCAB_SIZE; i++) {
                           logits[i] += weights.output_bias[i];
                       }
-                      softmax(logits, VOCAB_SIZE);
+                      softmax_neon(logits, VOCAB_SIZE);
                       
                       loss -= logf(logits[target] + EPSILON);
                       
@@ -218,33 +357,36 @@ jobs:
               }
               
               int generate_token(const int* input_ids, int seq_len) {
-                  float hidden[MAX_SEQ_LEN * D_MODEL];
-                  float logits[VOCAB_SIZE];
+                  static float* hidden = new float[MAX_SEQ_LEN * D_MODEL];
+                  static float* logits = new float[VOCAB_SIZE];
                   
                   for (int i = 0; i < seq_len; i++) {
                       int token_id = input_ids[i] % VOCAB_SIZE;
                       for (int j = 0; j < D_MODEL; j++) {
-                          hidden[i * D_MODEL + j] = weights.token_embedding[token_id * D_MODEL + j];
+                          hidden[i * D_MODEL + j] = weights.token_embedding[token_id * D_MODEL + j] + 
+                                                     weights.pos_embedding[i * D_MODEL + j];
                       }
                   }
                   
-                  matmul_simple(&hidden[(seq_len - 1) * D_MODEL], weights.output_weight, logits, 1, VOCAB_SIZE, D_MODEL);
+                  matmul_neon(&hidden[(seq_len - 1) * D_MODEL], weights.output_weight, logits, 1, VOCAB_SIZE, D_MODEL);
                   for (int i = 0; i < VOCAB_SIZE; i++) {
                       logits[i] += weights.output_bias[i];
                   }
-                  softmax(logits, VOCAB_SIZE);
+                  softmax_neon(logits, VOCAB_SIZE);
                   
-                  int top_indices[30];
-                  float top_probs[30];
-                  for (int i = 0; i < 30; i++) {
+                  static const int TOP_K = 50;
+                  int top_indices[TOP_K];
+                  float top_probs[TOP_K];
+                  
+                  for (int i = 0; i < TOP_K; i++) {
                       top_indices[i] = i;
                       top_probs[i] = logits[i];
                   }
                   
-                  for (int i = 30; i < VOCAB_SIZE; i++) {
-                      for (int j = 0; j < 30; j++) {
+                  for (int i = TOP_K; i < VOCAB_SIZE; i++) {
+                      for (int j = 0; j < TOP_K; j++) {
                           if (logits[i] > top_probs[j]) {
-                              for (int k = 29; k > j; k--) {
+                              for (int k = TOP_K - 1; k > j; k--) {
                                   top_probs[k] = top_probs[k-1];
                                   top_indices[k] = top_indices[k-1];
                               }
@@ -255,16 +397,16 @@ jobs:
                       }
                   }
                   
-                  float temperature = 0.9f;
+                  float temperature = 0.7f;
                   float sum = 0.0f;
-                  for (int i = 0; i < 30; i++) {
+                  for (int i = 0; i < TOP_K; i++) {
                       top_probs[i] = powf(top_probs[i], 1.0f / temperature);
                       sum += top_probs[i];
                   }
                   
                   float r = ((rand() % 10000) / 10000.0f) * sum;
                   float cumsum = 0.0f;
-                  for (int i = 0; i < 30; i++) {
+                  for (int i = 0; i < TOP_K; i++) {
                       cumsum += top_probs[i];
                       if (r < cumsum) return top_indices[i];
                   }
@@ -283,11 +425,11 @@ jobs:
           #include <cstring>
           #include <cctype>
           
-          constexpr int MAX_WORD_LEN = 64;
+          constexpr int MAX_WORD_LEN = 128;
           
           class Tokenizer {
           public:
-              char vocab[4096][MAX_WORD_LEN];
+              char vocab[32768][MAX_WORD_LEN];
               int vocab_size = 0;
               
               void build_vocab_from_text(const char* text, int text_len) {
@@ -299,7 +441,7 @@ jobs:
                   strcpy(vocab[vocab_size++], "<EOS>");
                   strcpy(vocab[vocab_size++], "\n");
                   
-                  for (int i = 32; i < 127 && vocab_size < 4096; i++) {
+                  for (int i = 32; i < 127 && vocab_size < 32768; i++) {
                       vocab[vocab_size][0] = (char)i;
                       vocab[vocab_size][1] = '\0';
                       vocab_size++;
@@ -308,10 +450,10 @@ jobs:
                   char word[MAX_WORD_LEN];
                   int word_len = 0;
                   
-                  for (int i = 0; i < text_len && vocab_size < 4096; i++) {
+                  for (int i = 0; i < text_len && vocab_size < 32768; i++) {
                       char c = text[i];
                       
-                      if (isalnum(c) || c == '\'') {
+                      if (isalnum(c) || c == '\'' || c == '-') {
                           if (word_len < MAX_WORD_LEN - 1) {
                               word[word_len++] = tolower(c);
                           }
@@ -327,7 +469,7 @@ jobs:
                                   }
                               }
                               
-                              if (!exists && vocab_size < 4096) {
+                              if (!exists && vocab_size < 32768) {
                                   strcpy(vocab[vocab_size++], word);
                               }
                               
@@ -364,7 +506,7 @@ jobs:
                           continue;
                       }
                       
-                      if (isalnum(c) || c == '\'') {
+                      if (isalnum(c) || c == '\'' || c == '-') {
                           if (word_len < MAX_WORD_LEN - 1) {
                               word[word_len++] = tolower(c);
                           }
@@ -401,7 +543,7 @@ jobs:
           #endif
           EOF
 
-      - name: Create Android App with Error Handling
+      - name: Create Android App for Large Model
         run: |
           mkdir -p app/src/main/{java/com/aetherai,cpp,res/layout,res/raw,assets}
           
@@ -446,7 +588,7 @@ jobs:
           Java_com_aetherai_AIEngine_initModel(JNIEnv* env, jobject obj) {
               try {
                   env->GetJavaVM(&g_jvm);
-                  LOGI("Allocating memory...");
+                  LOGI("Allocating 1.3GB memory...");
                   
                   if (!model.allocate_memory()) {
                       return env->NewStringUTF("ERROR:MEMORY");
@@ -479,7 +621,7 @@ jobs:
                   std::string content = buffer.str();
                   file.close();
                   
-                  if (combined_training_data.length() + content.length() > 5000000) {
+                  if (combined_training_data.length() + content.length() > 50000000) {
                       env->ReleaseStringUTFChars(filepath, path);
                       return env->NewStringUTF("TOO_BIG");
                   }
@@ -489,7 +631,7 @@ jobs:
                   env->ReleaseStringUTFChars(filepath, path);
                   
                   char result[64];
-                  snprintf(result, sizeof(result), "%.1fKB", content.length() / 1024.0f);
+                  snprintf(result, sizeof(result), "%.1fMB", content.length() / 1024.0f / 1024.0f);
                   return env->NewStringUTF(result);
               } catch (...) {
                   return env->NewStringUTF("ERROR");
@@ -508,28 +650,17 @@ jobs:
                       return env->NewStringUTF("ERROR:NO_DATA");
                   }
                   
-                  if (combined_training_data.length() > 5000000) {
-                      return env->NewStringUTF("ERROR:TOO_MUCH_DATA");
-                  }
-                  
                   g_callback = env->NewGlobalRef(callback);
                   
                   report_progress(5, "Building vocabulary...");
                   tokenizer.build_vocab_from_text(combined_training_data.c_str(), combined_training_data.length());
                   
                   report_progress(10, "Tokenizing...");
-                  int max_tokens = (combined_training_data.length() / 4) + 1000;
-                  if (max_tokens > 50000) max_tokens = 50000;
+                  int max_tokens = (combined_training_data.length() / 4) + 10000;
+                  if (max_tokens > 500000) max_tokens = 500000;
                   
                   int* tokens = new int[max_tokens];
                   int total_tokens = tokenizer.tokenize(combined_training_data.c_str(), tokens, max_tokens);
-                  
-                  if (total_tokens < 10) {
-                      delete[] tokens;
-                      env->DeleteGlobalRef(g_callback);
-                      g_callback = nullptr;
-                      return env->NewStringUTF("ERROR:TOO_FEW_TOKENS");
-                  }
                   
                   float total_loss = 0.0f;
                   int steps = 0;
@@ -542,7 +673,7 @@ jobs:
                   
                   if (total_steps == 0) total_steps = 1;
                   
-                  report_progress(15, "Training...");
+                  report_progress(15, "Training large model...");
                   
                   for (int epoch = 0; epoch < epochs; epoch++) {
                       char epoch_msg[128];
@@ -556,11 +687,11 @@ jobs:
                           total_loss += loss;
                           steps++;
                           
-                          if (steps % 10 == 0) {
+                          if (steps % 20 == 0) {
                               int percent = 15 + (int)((steps / (float)total_steps) * 80);
                               if (percent > 95) percent = 95;
                               char msg[256];
-                              snprintf(msg, sizeof(msg), "%s - %d/%d (Loss: %.2f)", epoch_msg, steps, total_steps, loss);
+                              snprintf(msg, sizeof(msg), "%s - %d/%d (Loss: %.3f)", epoch_msg, steps, total_steps, loss);
                               report_progress(percent, msg);
                           }
                       }
@@ -569,14 +700,14 @@ jobs:
                   delete[] tokens;
                   is_trained = true;
                   
-                  report_progress(100, "Done!");
+                  report_progress(100, "Complete!");
                   
                   env->DeleteGlobalRef(g_callback);
                   g_callback = nullptr;
                   
                   char result[512];
                   snprintf(result, sizeof(result), 
-                           "✅ Training Complete!\n\nVocab: %d\nTokens: %d\nSteps: %d\nAvg Loss: %.3f", 
+                           "✅ Training Complete!\n\nVocab: %d\nTokens: %d\nSteps: %d\nAvg Loss: %.4f", 
                            tokenizer.vocab_size, total_tokens, steps, total_loss / steps);
                   return env->NewStringUTF(result);
               } catch (...) {
@@ -584,7 +715,6 @@ jobs:
                       env->DeleteGlobalRef(g_callback);
                       g_callback = nullptr;
                   }
-                  LOGE("Exception in training");
                   return env->NewStringUTF("ERROR:CRASH");
               }
           }
@@ -632,21 +762,28 @@ jobs:
           extern "C" JNIEXPORT jstring JNICALL
           Java_com_aetherai_AIEngine_getModelInfo(JNIEnv* env, jobject) {
               char info[1024];
-              long long params = (long long)VOCAB_SIZE * D_MODEL + D_MODEL * VOCAB_SIZE;
+              long long params = (long long)VOCAB_SIZE * D_MODEL + 
+                                 N_LAYERS * ((long long)D_MODEL * D_MODEL * 4 + (long long)D_MODEL * D_FF * 2) +
+                                 (long long)D_MODEL * VOCAB_SIZE;
               
               snprintf(info, sizeof(info), 
-                       "🧠 AetherAI Lightweight\n\n"
+                       "🧠 AetherAI Large Model\n\n"
                        "📐 Architecture:\n"
                        "  • Vocab: %d\n"
+                       "  • Layers: %d\n"
                        "  • Hidden: %d\n"
-                       "  • Context: %d\n"
-                       "  • Params: %.1fM\n\n"
+                       "  • Heads: %d\n"
+                       "  • FFN: %d\n"
+                       "  • Context: %d tokens\n\n"
+                       "📊 Size:\n"
+                       "  • Params: %.1fM\n"
+                       "  • Memory: ~1.3GB\n\n"
                        "📈 Status: %s\n"
-                       "💾 Data: %.1fKB",
-                       VOCAB_SIZE, D_MODEL, MAX_SEQ_LEN,
+                       "💾 Data: %.1fMB",
+                       VOCAB_SIZE, N_LAYERS, D_MODEL, N_HEADS, D_FF, MAX_SEQ_LEN,
                        (float)params / 1000000.0f,
                        is_trained ? "✅ Trained" : "⏳ Waiting",
-                       combined_training_data.length() / 1024.0f);
+                       combined_training_data.length() / 1024.0f / 1024.0f);
               return env->NewStringUTF(info);
           }
           EOF
@@ -659,7 +796,12 @@ jobs:
           
           target_link_libraries(aetherai android log)
           
-          target_compile_options(aetherai PRIVATE -O2 -ffast-math)
+          target_compile_options(aetherai PRIVATE 
+              -O3 
+              -ffast-math 
+              -march=armv8-a+simd
+              -mtune=cortex-a76
+          )
           EOF
           
           cp aetherai_core/src/transformer.h app/src/main/cpp/
@@ -708,7 +850,7 @@ jobs:
               
               private AIEngine ai;
               private EditText inputText, outputText, epochsInput;
-              private TextView statusText, modelInfoText, filesListText, progressPercentText;
+              private TextView statusText, modelInfoText, filesListText, progressPercentText, warningText;
               private Button selectFilesButton, trainButton, generateButton, infoButton, clearFilesButton;
               private ProgressBar progressBar;
               private ArrayList<String> loadedFiles = new ArrayList<>();
@@ -727,6 +869,7 @@ jobs:
                   modelInfoText = findViewById(R.id.modelInfoText);
                   filesListText = findViewById(R.id.filesListText);
                   progressPercentText = findViewById(R.id.progressPercentText);
+                  warningText = findViewById(R.id.warningText);
                   selectFilesButton = findViewById(R.id.selectFilesButton);
                   trainButton = findViewById(R.id.trainButton);
                   generateButton = findViewById(R.id.generateButton);
@@ -737,16 +880,17 @@ jobs:
                   epochsInput.setText("3");
                   progressBar.setMax(100);
                   
-                  statusText.setText("⏳ Initializing...");
+                  statusText.setText("⏳ Allocating 1.3GB...");
                   new Thread(() -> {
                       String result = ai.initModel();
                       runOnUiThread(() -> {
                           if (result.equals("OK")) {
-                              statusText.setText("✅ Ready! Select files.");
+                              statusText.setText("✅ Ready! (1.3GB allocated)");
                               selectFilesButton.setEnabled(true);
                           } else {
-                              statusText.setText("❌ Error: " + result);
-                              Toast.makeText(this, "Init failed: " + result, Toast.LENGTH_LONG).show();
+                              statusText.setText("❌ Not enough RAM!");
+                              warningText.setText("Your device needs at least 2GB free RAM");
+                              Toast.makeText(this, "Out of memory!", Toast.LENGTH_LONG).show();
                           }
                       });
                   }).start();
@@ -774,7 +918,7 @@ jobs:
                       if (data != null) {
                           if (data.getClipData() != null) {
                               int count = data.getClipData().getItemCount();
-                              for (int i = 0; i < count && loadedFiles.size() < 10; i++) {
+                              for (int i = 0; i < count && loadedFiles.size() < 20; i++) {
                                   Uri uri = data.getClipData().getItemAt(i).getUri();
                                   loadFile(uri);
                               }
@@ -800,10 +944,8 @@ jobs:
                       FileWriter writer = new FileWriter(tempFile);
                       
                       String line;
-                      int lines = 0;
-                      while ((line = reader.readLine()) != null && lines < 5000) {
+                      while ((line = reader.readLine()) != null) {
                           writer.write(line + "\n");
-                          lines++;
                       }
                       
                       writer.close();
@@ -812,7 +954,7 @@ jobs:
                       String size = ai.addTrainingFile(tempFile.getAbsolutePath());
                       
                       if (size.equals("TOO_BIG")) {
-                          Toast.makeText(this, "File too big! Max 5MB total", Toast.LENGTH_SHORT).show();
+                          Toast.makeText(this, "Max 50MB total!", Toast.LENGTH_SHORT).show();
                       } else if (!size.equals("ERROR")) {
                           loadedFiles.add(uri.getLastPathSegment() + " (" + size + ")");
                       }
@@ -826,7 +968,7 @@ jobs:
               
               private void updateFilesList() {
                   StringBuilder sb = new StringBuilder();
-                  sb.append("📁 Files (" + loadedFiles.size() + "/10):\n\n");
+                  sb.append("📁 Files (" + loadedFiles.size() + "/20):\n\n");
                   for (int i = 0; i < loadedFiles.size(); i++) {
                       sb.append((i + 1) + ". " + loadedFiles.get(i) + "\n");
                   }
@@ -848,10 +990,6 @@ jobs:
                   }
                   
                   int epochs = Integer.parseInt(epochsInput.getText().toString());
-                  if (epochs > 5) {
-                      Toast.makeText(this, "Max 5 epochs recommended", Toast.LENGTH_SHORT).show();
-                      epochs = 5;
-                  }
                   
                   progressBar.setVisibility(View.VISIBLE);
                   progressBar.setProgress(0);
@@ -861,11 +999,9 @@ jobs:
                   selectFilesButton.setEnabled(false);
                   clearFilesButton.setEnabled(false);
                   
-                  final int finalEpochs = epochs;
-                  
                   new Thread(() -> {
                       try {
-                          String result = ai.startTraining(finalEpochs, new ProgressCallback() {
+                          String result = ai.startTraining(epochs, new ProgressCallback() {
                               @Override
                               public void onProgress(int percent, String message) {
                                   runOnUiThread(() -> {
@@ -882,7 +1018,6 @@ jobs:
                               
                               if (result.startsWith("ERROR:")) {
                                   statusText.setText("❌ " + result);
-                                  Toast.makeText(this, result, Toast.LENGTH_LONG).show();
                               } else {
                                   statusText.setText("✅ Done!");
                                   generateButton.setEnabled(true);
@@ -902,7 +1037,7 @@ jobs:
                           runOnUiThread(() -> {
                               progressBar.setVisibility(View.GONE);
                               progressPercentText.setVisibility(View.GONE);
-                              statusText.setText("❌ Crash: " + e.getMessage());
+                              statusText.setText("❌ Crash!");
                               trainButton.setEnabled(true);
                               selectFilesButton.setEnabled(true);
                               clearFilesButton.setEnabled(true);
@@ -921,7 +1056,7 @@ jobs:
                   statusText.setText("🤖 Generating...");
                   
                   new Thread(() -> {
-                      String response = ai.generate(prompt, 80);
+                      String response = ai.generate(prompt, 150);
                       runOnUiThread(() -> {
                           outputText.setText(response);
                           statusText.setText("✅ Done!");
@@ -953,7 +1088,7 @@ jobs:
                   <TextView
                       android:layout_width="match_parent"
                       android:layout_height="wrap_content"
-                      android:text="🧠 AetherAI"
+                      android:text="🧠 AetherAI LARGE"
                       android:textSize="36sp"
                       android:textColor="#4AF626"
                       android:textStyle="bold"
@@ -963,9 +1098,19 @@ jobs:
                   <TextView
                       android:layout_width="match_parent"
                       android:layout_height="wrap_content"
-                      android:text="Lightweight Transformer"
+                      android:text="1.3GB Transformer Model"
                       android:textSize="14sp"
                       android:textColor="#89B4FA"
+                      android:gravity="center"
+                      android:layout_marginBottom="10dp"/>
+                  
+                  <TextView
+                      android:id="@+id/warningText"
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:text="⚠️ Requires 2GB+ RAM"
+                      android:textColor="#F38BA8"
+                      android:textSize="12sp"
                       android:gravity="center"
                       android:layout_marginBottom="15dp"/>
                   
@@ -1129,7 +1274,7 @@ jobs:
                       android:id="@+id/infoButton"
                       android:layout_width="match_parent"
                       android:layout_height="wrap_content"
-                      android:text="ℹ️ Info"
+                      android:text="ℹ️ Model Info"
                       android:backgroundTint="#F38BA8"
                       android:textColor="#000"
                       android:layout_marginBottom="10dp"/>
@@ -1153,12 +1298,14 @@ jobs:
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <application 
-                  android:label="AetherAI" 
+                  android:label="AetherAI LARGE" 
                   android:largeHeap="true"
+                  android:hardwareAccelerated="true"
                   android:theme="@android:style/Theme.Material.Light.NoActionBar">
                   <activity 
                       android:name="com.aetherai.MainActivity" 
                       android:exported="true"
+                      android:configChanges="orientation|screenSize"
                       android:screenOrientation="portrait">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/>
@@ -1179,15 +1326,15 @@ jobs:
               compileSdk 34
               
               defaultConfig {
-                  applicationId 'com.aetherai'
-                  minSdk 26
+                  applicationId 'com.aetherai.large'
+                  minSdk 28
                   targetSdk 34
                   versionCode 1
-                  versionName "2.0"
+                  versionName "2.0-LARGE"
                   
                   externalNativeBuild {
                       cmake {
-                          cppFlags "-O2 -ffast-math"
+                          cppFlags "-O3 -ffast-math -march=armv8-a+simd"
                           abiFilters 'arm64-v8a'
                       }
                   }
@@ -1241,56 +1388,68 @@ jobs:
       - name: Package Release
         run: |
           mkdir -p AetherAI_Release
-          cp app/build/outputs/apk/debug/app-debug.apk AetherAI_Release/AetherAI-Stable.apk
+          cp app/build/outputs/apk/debug/app-debug.apk AetherAI_Release/AetherAI-LARGE-1.3GB.apk
           
           cat > AetherAI_Release/README.md << 'EOF'
-          # 🧠 AetherAI - Stable Lightweight Version
+          # 🧠 AetherAI LARGE - 1.3GB Model
           
-          ## 🛡️ Fixed:
+          ## ⚡ Specifications:
           
-          - **No more crashes** - Memory optimized
-          - **Smaller model** - 5M parameters (was 120M)
-          - **Progress bar** - Shows % and status
-          - **Error handling** - Clear error messages
-          - **File limit** - Max 5MB total (prevents OOM)
+          **Architecture:**
+          - Vocab: 32,768 tokens
+          - Layers: 12
+          - Hidden: 1024
+          - Attention heads: 16
+          - FFN: 4096
+          - Context: 512 tokens
+          - Parameters: ~350M
+          - Memory: **1.3 GB**
           
-          ## 📊 Architecture:
+          ## 📱 Requirements:
           
-          - Vocab: 4,096 tokens
-          - Hidden: 128
-          - Context: 64 tokens
-          - Params: ~5M
-          - Memory: ~20MB
+          - **RAM**: Minimum 3GB (4GB+ recommended)
+          - **Android**: 9.0+ (API 28+)
+          - **Arch**: ARM64 only
+          - **Storage**: 1.5GB free space
           
           ## 🎯 Usage:
           
           1. Install APK
-          2. Select TXT files (max 10 files, 5MB total)
-          3. Set epochs (1-5)
-          4. Train and watch progress
-          5. Generate text
+          2. Wait for initialization (~30 seconds)
+          3. Select TXT files (max 50MB total)
+          4. Train (3-5 epochs recommended)
+          5. Generate high-quality text
           
-          ## ⚙️ Recommended:
+          ## ⚠️ Warnings:
           
-          - Epochs: 3
-          - Files: Small stories, dialogues
-          - Size: 100KB-500KB per file
+          - **First launch**: Takes 30-60 seconds to allocate memory
+          - **Training**: SLOW on weak devices
+          - **Battery**: Heavy power consumption
+          - **Heat**: Device may get warm
+          
+          ## 💡 Tips:
+          
+          - Close all other apps before training
+          - Use airplane mode during training
+          - Plug in charger
+          - Let device cool between sessions
           
           ---
           
-          **Version:** 2.0 Stable  
-          **License:** MIT
+          **Version:** 2.0-LARGE  
+          **License:** MIT  
+          **This is a LARGE model - use smaller version for low-end devices**
           EOF
           
           cd AetherAI_Release
-          zip -r ../AetherAI-Stable.zip .
+          zip -r ../AetherAI-LARGE.zip .
           cd ..
           
       - name: Upload Release
         uses: actions/upload-artifact@v4
         with:
-          name: AetherAI-Stable-Release
+          name: AetherAI-LARGE-Release
           path: |
-            AetherAI-Stable.zip
+            AetherAI-LARGE.zip
             AetherAI_Release/
           retention-days: 90
