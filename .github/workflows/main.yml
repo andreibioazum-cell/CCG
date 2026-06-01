@@ -8,32 +8,52 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ШАГ 1: Сначала создаем файлы, чтобы setup-java увидел их
+      # ШАГ 1: Создаем структуру проекта
       - name: Create Studio Structure
         run: |
           mkdir -p app/src/main/java/com/jsai/studio
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
 
+          # settings.gradle с правильными репозиториями для Gradle 8+
           cat > settings.gradle << 'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+                  maven { url "https://chaquo.com/maven" }
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+                  maven { url "https://chaquo.com/maven" }
+              }
+          }
           include ':app'
           EOF
           
           echo "android.useAndroidX=true" > gradle.properties
 
+          # Корневой build.gradle
           cat > build.gradle << 'EOF'
           buildscript {
-              repositories { google(); mavenCentral(); maven { url "https://chaquo.com/maven" } }
+              repositories {
+                  google()
+                  mavenCentral()
+                  maven { url "https://chaquo.com/maven" }
+              }
               dependencies {
                   classpath 'com.android.tools.build:gradle:8.2.2'
-                  classpath 'com.chaquo.python:gradle:15.0.0'
+                  classpath 'com.chaquo.python:gradle:15.0.1'
               }
-          }
-          allprojects {
-              repositories { google(); mavenCentral(); maven { url "https://chaquo.com/maven" } }
           }
           EOF
           
+          # app/build.gradle
           cat > app/build.gradle << 'EOF'
           apply plugin: 'com.android.application'
           apply plugin: 'com.chaquo.python'
@@ -47,6 +67,10 @@ jobs:
                   targetSdk 34
                   ndk { abiFilters "armeabi-v7a", "arm64-v8a", "x86_64" }
               }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
           }
           
           chaquopy {
@@ -55,9 +79,13 @@ jobs:
                   buildPython "python3"
               }
           }
+
+          dependencies {
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+          }
           EOF
 
-          # --- UI LAYOUT ---
+          # UI LAYOUT
           cat > app/src/main/res/layout/editor_main.xml << 'EOF'
           <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:background="#1E1E1E">
               <LinearLayout android:layout_width="140dp" android:layout_height="match_parent" android:orientation="vertical" android:background="#252525" android:padding="5dp">
@@ -80,7 +108,7 @@ jobs:
           </LinearLayout>
           EOF
 
-          # --- ENGINE CLASSES ---
+          # JAVA CLASSES
           cat > app/src/main/java/com/jsai/studio/Instance.java << 'EOF'
           package com.jsai.studio;
           import android.opengl.Matrix;
@@ -130,8 +158,8 @@ jobs:
                   GLES30.glClearColor(0.1f, 0.1f, 0.12f, 1f); GLES30.glEnable(GLES30.GL_DEPTH_TEST);
                   vBuf=ByteBuffer.allocateDirect(v.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(v); vBuf.position(0);
                   iBuf=ByteBuffer.allocateDirect(ind.length*2).order(ByteOrder.nativeOrder()).asShortBuffer().put(ind); iBuf.position(0);
-                  int vs=GLES30.glCreateShader(35633); GLES30.glShaderSource(vs,"#version 300 es\nlayout(location=0) in vec4 p; uniform mat4 m; void main(){gl_Position=m*p;}"); GLES30.glCompileShader(vs);
-                  int fs=GLES30.glCreateShader(35632); GLES30.glShaderSource(fs,"#version 300 es\nprecision mediump float; uniform vec3 c; out vec4 f; void main(){f=vec4(c,1.0);}"); GLES30.glCompileShader(fs);
+                  int vs=GLES30.glCreateShader(GLES30.GL_VERTEX_SHADER); GLES30.glShaderSource(vs,"#version 300 es\nlayout(location=0) in vec4 p; uniform mat4 m; void main(){gl_Position=m*p;}"); GLES30.glCompileShader(vs);
+                  int fs=GLES30.glCreateShader(GLES30.GL_FRAGMENT_SHADER); GLES30.glShaderSource(fs,"#version 300 es\nprecision mediump float; uniform vec3 c; out vec4 f; void main(){f=vec4(c,1.0);}"); GLES30.glCompileShader(fs);
                   prg=GLES30.glCreateProgram(); GLES30.glAttachShader(prg,vs); GLES30.glAttachShader(prg,fs); GLES30.glLinkProgram(prg);
                   uMVP=GLES30.glGetUniformLocation(prg,"m"); uCol=GLES30.glGetUniformLocation(prg,"c"); last=System.nanoTime();
               }
@@ -189,19 +217,16 @@ jobs:
           </manifest>
           EOF
 
-      # ШАГ 2: Python 3.10
       - name: Set up Python 3.10
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
-      # ШАГ 3: Настраиваем JDK (Теперь файлы .gradle существуют, кэш сработает)
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: 'gradle'
 
       - name: Build APK
         run: |
@@ -214,5 +239,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: JsAI_Python_Studio_Ultimate
+          name: JsAI_Python_Studio_Final
           path: app/build/outputs/apk/debug/app-debug.apk
