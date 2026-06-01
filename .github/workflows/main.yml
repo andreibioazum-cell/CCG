@@ -1,4 +1,4 @@
-name: JsAI_Python_Studio_MegaFast_Ultimate_Fix
+name: JsAI_Python_Studio_Ultimate_Fixed
 on: [push, workflow_dispatch]
 
 jobs:
@@ -13,50 +13,52 @@ jobs:
         with:
           python-version: '3.10'
 
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
       - name: Create Studio Structure
         run: |
           mkdir -p app/src/main/java/com/jsai/studio
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
 
-          # --- 1. SETTINGS.GRADLE (Централизованное управление репозиториями) ---
+          # --- SETTINGS.GRADLE (Простой) ---
           cat > settings.gradle << 'EOF'
-          pluginManagement {
-              repositories {
-                  google()
-                  mavenCentral()
-                  gradlePluginPortal()
-                  maven { url "https://chaquo.com/maven" }
-              }
-          }
-          dependencyResolutionManagement {
-              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-              repositories {
-                  google()
-                  mavenCentral()
-                  maven { url "https://chaquo.com/maven" }
-              }
-          }
-          rootProject.name = "JsAI Studio"
           include ':app'
           EOF
           
           echo "android.useAndroidX=true" > gradle.properties
 
-          # --- 2. ROOT BUILD.GRADLE ---
+          # --- ROOT BUILD.GRADLE (ИСПОЛЬЗУЕМ CLASSPATH - САМЫЙ НАДЕЖНЫЙ МЕТОД) ---
           cat > build.gradle << 'EOF'
-          plugins {
-              id 'com.android.application' version '8.2.2' apply false
-              id 'com.chaquo.python' version '15.0.0' apply false
+          buildscript {
+              repositories {
+                  google()
+                  mavenCentral()
+                  maven { url "https://chaquo.com/maven" }
+              }
+              dependencies {
+                  classpath 'com.android.tools.build:gradle:8.2.2'
+                  classpath 'com.chaquo.python:gradle:15.0.0'
+              }
+          }
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+                  maven { url "https://chaquo.com/maven" }
+              }
           }
           EOF
           
-          # --- 3. APP BUILD.GRADLE (ИСПРАВЛЕННЫЙ ПОРЯДОК) ---
+          # --- APP BUILD.GRADLE ---
           cat > app/build.gradle << 'EOF'
-          plugins {
-              id 'com.android.application'
-              id 'com.chaquo.python'
-          }
+          apply plugin: 'com.android.application'
+          apply plugin: 'com.chaquo.python'
 
           android {
               namespace 'com.jsai.studio'
@@ -73,7 +75,6 @@ jobs:
               }
           }
           
-          // Блок конфигурации Chaquopy (строго после плагинов)
           chaquopy {
               defaultConfig {
                   version = "3.10"
@@ -83,46 +84,42 @@ jobs:
 
           dependencies {
               implementation 'androidx.appcompat:appcompat:1.6.1'
-              implementation 'com.google.android.material:material:1.11.0'
           }
           EOF
 
-          # --- 4. UI LAYOUT ---
+          # --- UI LAYOUT ---
           cat > app/src/main/res/layout/editor_main.xml << 'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
           <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:background="#1E1E1E">
               <LinearLayout android:layout_width="140dp" android:layout_height="match_parent" android:orientation="vertical" android:background="#252525" android:padding="5dp">
-                  <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Explorer" android:textColor="#FFF" android:textStyle="bold" android:layout_marginBottom="5dp"/>
-                  <Button android:id="@+id/btnAddBlock" android:layout_width="match_parent" android:layout_height="35dp" android:text="+ Block" android:textSize="10sp" android:backgroundTint="#333" android:textColor="#FFF"/>
-                  <Button android:id="@+id/btnAddScript" android:layout_width="match_parent" android:layout_height="35dp" android:text="+ PyScript" android:textSize="10sp" android:backgroundTint="#2D5A2D" android:textColor="#FFF" android:layout_marginTop="2dp"/>
+                  <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Explorer" android:textColor="#FFF" android:textStyle="bold"/>
+                  <Button android:id="@+id/btnAddBlock" android:layout_width="match_parent" android:layout_height="40dp" android:text="+ Block" android:textSize="10sp" android:layout_marginTop="10dp"/>
                   <ScrollView android:layout_width="match_parent" android:layout_height="match_parent" android:layout_marginTop="5dp">
                       <LinearLayout android:id="@+id/explorerList" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"/>
                   </ScrollView>
               </LinearLayout>
               <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:orientation="vertical">
-                  <LinearLayout android:layout_width="match_parent" android:layout_height="40dp" android:orientation="horizontal" android:background="#2D2D2D">
-                      <Button android:id="@+id/tabScene" android:layout_width="wrap_content" android:layout_height="35dp" android:text="Scene" android:backgroundTint="#444" android:textColor="#FFF"/>
-                      <Button android:id="@+id/tabScript" android:layout_width="wrap_content" android:layout_height="35dp" android:text="Python" android:backgroundTint="#222" android:textColor="#FFE873" android:layout_marginLeft="5dp"/>
+                  <LinearLayout android:layout_width="match_parent" android:layout_height="45dp" android:orientation="horizontal" android:background="#2D2D2D" android:padding="5dp">
+                      <Button android:id="@+id/tabScene" android:layout_width="wrap_content" android:layout_height="match_parent" android:text="SCENE" android:textSize="10sp"/>
+                      <Button android:id="@+id/tabScript" android:layout_width="wrap_content" android:layout_height="match_parent" android:text="PYTHON" android:textSize="10sp" android:layout_marginLeft="5dp"/>
                       <Space android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"/>
-                      <Button android:id="@+id/btnPlay" android:layout_width="wrap_content" android:layout_height="35dp" android:text="▶ PLAY" android:backgroundTint="#00A2FF" android:textColor="#FFF"/>
+                      <Button android:id="@+id/btnPlay" android:layout_width="wrap_content" android:layout_height="match_parent" android:text="▶ PLAY" android:backgroundTint="#00A2FF"/>
                   </LinearLayout>
                   <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent">
                       <android.opengl.GLSurfaceView android:id="@+id/glView" android:layout_width="match_parent" android:layout_height="match_parent"/>
-                      <EditText android:id="@+id/codeEditor" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#1E1E1E" android:textColor="#D4D4D4" android:fontFamily="monospace" android:gravity="top|left" android:padding="10dp" android:visibility="gone" android:text="part = Workspace.FindPart('Block 0')\ndef update(dt):\n    if part:\n        part.rotY += 100.0 * dt\n        part.posY += 2.0 * dt\n        if part.posY > 5.0: part.posY = 0.0" />
+                      <EditText android:id="@+id/codeEditor" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#1E1E1E" android:textColor="#D4D4D4" android:fontFamily="monospace" android:gravity="top" android:padding="10dp" android:visibility="gone" android:text="part = Workspace.FindPart('Block 0')\ndef update(dt):\n    if part:\n        part.rotY += 100.0 * dt\n        part.posY += 2.0 * dt\n        if part.posY > 5.0: part.posY = 0.0" />
                   </FrameLayout>
               </LinearLayout>
           </LinearLayout>
           EOF
 
-          # --- 5. JAVA CORE (ENGINE) ---
+          # --- ENGINE CLASSES ---
           cat > app/src/main/java/com/jsai/studio/Instance.java << 'EOF'
           package com.jsai.studio;
           import android.opengl.Matrix;
           public class Instance {
               public String name;
-              public float posX=0, posY=3, posZ=0, rotY=0, scale=1, colR=0.6f, colG=0.6f, colB=0.6f;
-              public boolean anchored=true; public float velocityY=0;
-              public Instance(String n) { this.name = n; }
+              public float posX=0, posY=3, posZ=0, rotY=0, scale=1, colR=0.2f, colG=0.6f, colB=1.0f;
+              public Instance(String n) { name=n; }
               public float[] getMatrix() {
                   float[] m = new float[16]; Matrix.setIdentityM(m,0);
                   Matrix.translateM(m,0,posX,posY,posZ); Matrix.rotateM(m,0,rotY,0,1,0); Matrix.scaleM(m,0,scale,scale,scale);
@@ -135,35 +132,65 @@ jobs:
           package com.jsai.studio;
           import java.util.*; import com.chaquo.python.*;
           public class EngineCore {
-              public static List<Instance> parts = new ArrayList<>();
-              public static String currentScript = "";
+              public static List<Instance> instances = new ArrayList<>();
               public static boolean isPlaying = false;
+              public static float camYaw=45, camPitch=-20;
               private static PyObject updateFunc = null;
 
-              public static void start() {
+              public static void start(String script) {
                   isPlaying = true;
                   try {
                       Python py = Python.getInstance();
                       PyObject globals = py.getModule("builtins").callAttr("dict");
                       globals.put("Workspace", new Object() {
                           public Instance FindPart(String n) {
-                              for(Instance i:parts) if(i.name.equals(n)) return i;
+                              for(Instance i : instances) if(i.name.equals(n)) return i;
                               return null;
                           }
                       });
-                      py.getModule("builtins").callAttr("exec", currentScript, globals);
-                      if(globals.get("update") != null) updateFunc = globals.get("update");
+                      py.getModule("builtins").callAttr("exec", script, globals);
+                      updateFunc = globals.get("update");
                   } catch(Exception e) { e.printStackTrace(); }
               }
 
               public static void step(float dt) {
-                  if(!isPlaying) return;
-                  if(updateFunc != null) try { updateFunc.call(dt); } catch(Exception e){}
-                  for(Instance p:parts) if(!p.anchored) {
-                      p.velocityY -= 9.8f * dt; p.posY += p.velocityY * dt;
-                      if(p.posY < 0.5f) { p.posY = 0.5f; p.velocityY = 0; }
+                  if(!isPlaying || updateFunc == null) return;
+                  try { updateFunc.call(dt); } catch(Exception e){}
+              }
+          }
+          EOF
+
+          # --- OPENGL RENDERER ---
+          cat > app/src/main/java/com/jsai/studio/RendererGL.java << 'EOF'
+          package com.jsai.studio;
+          import android.opengl.*; import javax.microedition.khronos.egl.EGLConfig; import javax.microedition.khronos.opengles.GL10; import java.nio.*;
+          public class RendererGL implements GLSurfaceView.Renderer {
+              private int prg, uMVP, uCol; private FloatBuffer vBuf; private long last;
+              float[] v = {-0.5f,-0.5f,-0.5f, 0.5f,-0.5f,-0.5f, 0.5f,0.5f,-0.5f, -0.5f,0.5f,-0.5f, -0.5f,-0.5f,0.5f, 0.5f,-0.5f,0.5f, 0.5f,0.5f,0.5f, -0.5f,0.5f,0.5f};
+              short[] ind = {0,1,2, 0,2,3, 4,5,6, 4,6,7, 0,1,5, 0,5,4, 2,3,7, 2,7,6, 0,3,7, 0,7,4, 1,2,6, 1,6,5};
+              ShortBuffer iBuf;
+              public void onSurfaceCreated(GL10 gl, EGLConfig c) {
+                  GLES30.glClearColor(0.1f, 0.1f, 0.12f, 1f); GLES30.glEnable(GLES30.GL_DEPTH_TEST);
+                  vBuf=ByteBuffer.allocateDirect(v.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(v); vBuf.position(0);
+                  iBuf=ByteBuffer.allocateDirect(ind.length*2).order(ByteOrder.nativeOrder()).asShortBuffer().put(ind); iBuf.position(0);
+                  int vs=GLES30.glCreateShader(GLES30.GL_VERTEX_SHADER); GLES30.glShaderSource(vs,"#version 300 es\nlayout(location=0) in vec4 p; uniform mat4 m; void main(){gl_Position=m*p;}"); GLES30.glCompileShader(vs);
+                  int fs=GLES30.glCreateShader(GLES30.GL_FRAGMENT_SHADER); GLES30.glShaderSource(fs,"#version 300 es\nprecision mediump float; uniform vec3 c; out vec4 f; void main(){f=vec4(c,1.0);}"); GLES30.glCompileShader(fs);
+                  prg=GLES30.glCreateProgram(); GLES30.glAttachShader(prg,vs); GLES30.glAttachShader(prg,fs); GLES30.glLinkProgram(prg);
+                  uMVP=GLES30.glGetUniformLocation(prg,"m"); uCol=GLES30.glGetUniformLocation(prg,"c"); last=System.nanoTime();
+              }
+              public void onDrawFrame(GL10 gl) {
+                  long n=System.nanoTime(); float dt=(n-last)/1000000000f; last=n; EngineCore.step(dt);
+                  GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
+                  float[] pM=new float[16], vM=new float[16], vp=new float[16]; Matrix.perspectiveM(pM,0,60,1.5f,0.1f,100f);
+                  Matrix.setLookAtM(vM,0,-5,5,5, 0,0,0, 0,1,0); Matrix.multiplyMM(vp,0,pM,0,vM,0);
+                  GLES30.glUseProgram(prg); GLES30.glEnableVertexAttribArray(0); GLES30.glVertexAttribPointer(0,3,GLES30.GL_FLOAT,false,0,vBuf);
+                  for(Instance i : EngineCore.instances) {
+                      float[] mvp=new float[16]; Matrix.multiplyMM(mvp,0,vp,0,i.getMatrix(),0);
+                      GLES30.glUniformMatrix4fv(uMVP,1,false,mvp,0); GLES30.glUniform3f(uCol,i.colR,i.colG,i.colB);
+                      GLES30.glDrawElements(GLES30.GL_TRIANGLES, 36, GLES30.GL_UNSIGNED_SHORT, iBuf);
                   }
               }
+              public void onSurfaceChanged(GL10 gl, int w, int h) {}
           }
           EOF
 
@@ -171,48 +198,35 @@ jobs:
           package com.jsai.studio;
           import android.app.Activity; import android.os.Bundle; import android.view.*; import android.widget.*;
           import com.chaquo.python.*; import com.chaquo.python.android.AndroidPlatform;
-
           public class EditorActivity extends Activity {
-              @Override protected void onCreate(Bundle b) {
+              protected void onCreate(Bundle b) {
                   super.onCreate(b); requestWindowFeature(1); getWindow().setFlags(1024,1024);
                   if(!Python.isStarted()) Python.start(new AndroidPlatform(this));
                   setContentView(R.layout.editor_main);
-                  
+                  android.opengl.GLSurfaceView gv = findViewById(R.id.glView);
+                  gv.setEGLContextClientVersion(3); gv.setRenderer(new RendererGL());
                   EditText ed = findViewById(R.id.codeEditor);
                   findViewById(R.id.btnAddBlock).setOnClickListener(v -> {
-                      Instance p = new Instance("Block " + EngineCore.parts.size());
-                      EngineCore.parts.add(p);
-                      Toast.makeText(this, "Added: " + p.name, 0).show();
+                      Instance p = new Instance("Block " + EngineCore.instances.size());
+                      EngineCore.instances.add(p);
+                      TextView tv = new TextView(this); tv.setText("🧊 " + p.name); tv.setTextColor(-1);
+                      ((LinearLayout)findViewById(R.id.explorerList)).addView(tv);
                   });
-
                   findViewById(R.id.btnPlay).setOnClickListener(v -> {
-                      if(!EngineCore.isPlaying) {
-                          EngineCore.currentScript = ed.getText().toString();
-                          EngineCore.start();
-                          ((Button)v).setText("STOP");
-                      } else {
-                          EngineCore.isPlaying = false;
-                          ((Button)v).setText("PLAY");
-                      }
+                      if(!EngineCore.isPlaying) { EngineCore.start(ed.getText().toString()); ((Button)v).setText("STOP"); }
+                      else { EngineCore.isPlaying = false; ((Button)v).setText("PLAY"); }
                   });
-
-                  findViewById(R.id.tabScript).setOnClickListener(v -> {
-                      findViewById(R.id.glView).setVisibility(View.GONE);
-                      ed.setVisibility(View.VISIBLE);
-                  });
-                  findViewById(R.id.tabScene).setOnClickListener(v -> {
-                      findViewById(R.id.glView).setVisibility(View.VISIBLE);
-                      ed.setVisibility(View.GONE);
-                  });
+                  findViewById(R.id.tabScript).setOnClickListener(v -> { gv.setVisibility(View.GONE); ed.setVisibility(View.VISIBLE); });
+                  findViewById(R.id.tabScene).setOnClickListener(v -> { gv.setVisibility(View.VISIBLE); ed.setVisibility(View.GONE); });
               }
           }
           EOF
 
-          # --- 6. MANIFEST ---
+          # --- MANIFEST ---
           cat > app/src/main/AndroidManifest.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="JsAI Python Studio" android:theme="@android:style/Theme.NoTitleBar">
+              <application android:label="JsAI Python Studio" android:theme="@android:style/Theme.NoTitleBar" android:hardwareAccelerated="true">
                   <activity android:name=".EditorActivity" android:exported="true" android:screenOrientation="landscape">
                       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
                   </activity>
@@ -220,14 +234,7 @@ jobs:
           </manifest>
           EOF
 
-      - name: Setup Java 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: 'gradle'
-
-      - name: Turbo Build
+      - name: Build APK
         run: |
           wget -q https://services.gradle.org/distributions/gradle-8.5-bin.zip
           unzip -q gradle-8.5-bin.zip
@@ -238,5 +245,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: JsAI_Python_Studio_Ultimate
+          name: JsAI_Python_Studio_Final
           path: app/build/outputs/apk/debug/app-debug.apk
