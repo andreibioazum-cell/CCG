@@ -31,7 +31,6 @@ jobs:
           cat > build.gradle << 'EOF'
           plugins {
               id 'com.android.application' version '8.1.1' apply false
-              id 'com.android.library' version '8.1.1' apply false
           }
           EOF
 
@@ -134,20 +133,25 @@ jobs:
           package com.jsai.studio;
           import java.util.*;
           import org.luaj.vm2.*;
+          import org.luaj.vm2.lib.*;
           import org.luaj.vm2.lib.jse.*;
+
           public class EngineCore {
               public static List<Instance> instances = new ArrayList<>();
               public static boolean isPlaying = false;
               private static Globals globals;
               private static LuaValue updateFunc;
+
               public static void startLua(String code) {
                   try {
                       globals = JsePlatform.standardGlobals();
                       LuaValue workspace = LuaValue.tableOf();
                       workspace.set("Find", new OneArgFunction() {
                           @Override public LuaValue call(LuaValue name) {
-                              for(Instance i : instances) if(i.name.equals(name.tojstring())) return CoerceJavaToLua.coerce(i);
-                              return NIL;
+                              for(Instance i : instances) {
+                                  if(i.name.equals(name.tojstring())) return CoerceJavaToLua.coerce(i);
+                              }
+                              return LuaValue.NIL;
                           }
                       });
                       globals.set("Workspace", workspace);
@@ -155,8 +159,9 @@ jobs:
                       updateFunc = globals.get("update");
                   } catch(Exception e) { e.printStackTrace(); }
               }
+
               public static void update(float dt) {
-                  if(!isPlaying || updateFunc == null) return;
+                  if(!isPlaying || updateFunc == null || updateFunc.isnil()) return;
                   try { updateFunc.call(LuaValue.valueOf(dt)); } catch(Exception e) {}
               }
           }
