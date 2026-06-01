@@ -17,25 +17,30 @@ jobs:
 
           # --- SETTINGS ---
           cat > settings.gradle << 'EOF'
-          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal(); } }
-          dependencyResolutionManagement { 
+          pluginManagement {
+              repositories { google(); mavenCentral(); gradlePluginPortal(); }
+          }
+          dependencyResolutionManagement {
               repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-              repositories { google(); mavenCentral(); } 
+              repositories { google(); mavenCentral(); }
           }
           include ':app'
           EOF
           
-          # --- BUILD.GRADLE (ROOT) ---
+          # --- ROOT BUILD.GRADLE ---
           cat > build.gradle << 'EOF'
-          buildscript {
-              repositories { google(); mavenCentral(); }
-              dependencies { classpath 'com.android.tools.build:gradle:8.1.1' }
+          plugins {
+              id 'com.android.application' version '8.1.1' apply false
+              id 'com.android.library' version '8.1.1' apply false
           }
           EOF
 
-          # --- BUILD.GRADLE (APP) ---
+          # --- APP BUILD.GRADLE ---
           cat > app/build.gradle << 'EOF'
-          apply plugin: 'com.android.application'
+          plugins {
+              id 'com.android.application'
+          }
+
           android {
               namespace 'com.jsai.studio'
               compileSdk 34
@@ -46,13 +51,23 @@ jobs:
                   versionCode 1
                   versionName "1.0"
               }
+              buildTypes {
+                  release {
+                      minifyEnabled false
+                  }
+              }
           }
+
           dependencies {
               implementation 'androidx.appcompat:appcompat:1.6.1'
               implementation 'com.google.android.material:material:1.9.0'
-              // Luaj библиотека для Lua
               implementation 'org.luaj:luaj-jse:3.0.1'
           }
+          EOF
+
+          cat > gradle.properties << 'EOF'
+          android.useAndroidX=true
+          org.gradle.jvmargs=-Xmx2048m
           EOF
 
           # --- UI LAYOUT ---
@@ -251,13 +266,13 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: 'gradle'
 
-      - name: Build APK
+      - name: Download and Run Gradle 8.2
         run: |
-          gradle wrapper --gradle-version 8.2
-          chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          wget -q https://services.gradle.org/distributions/gradle-8.2-bin.zip
+          unzip -q gradle-8.2-bin.zip
+          export PATH="$PWD/gradle-8.2/bin:$PATH"
+          gradle assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
