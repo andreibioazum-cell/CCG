@@ -8,7 +8,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ШАГ 1: Сначала создаем структуру, чтобы система кэширования увидела файлы
+      # ШАГ 1: Создаем файлы ПЕРЕД настройкой инструментов
       - name: Create Studio Structure
         run: |
           mkdir -p app/src/main/java/com/jsai/studio
@@ -16,7 +16,6 @@ jobs:
           mkdir -p app/src/main/res/values
           mkdir -p app/src/main/res/drawable
 
-          # --- CONFIGURATION ---
           cat > settings.gradle << 'EOF'
           pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal(); maven { url "https://chaquo.com/maven" } } }
           dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral(); maven { url "https://chaquo.com/maven" } } }
@@ -47,11 +46,8 @@ jobs:
                   applicationId 'com.jsai.studio'
                   minSdk 26 
                   targetSdk 34 
-                  versionCode 1
-                  versionName "1.0"
                   ndk { abiFilters "arm64-v8a", "x86_64" } 
               }
-              buildTypes { release { minifyEnabled false } }
           }
           chaquopy { defaultConfig { version = "3.10" } }
           dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }
@@ -83,12 +79,10 @@ jobs:
           # --- JAVA CLASSES ---
           cat > app/src/main/java/com/jsai/studio/Instance.java << 'EOF'
           package com.jsai.studio;
-          import android.graphics.Bitmap;
           public class Instance {
               public String name, type;
               public float x=100, y=100, rotation=0, scale=1;
               public int color = 0xFF00A2FF;
-              public Bitmap texture = null;
               public Instance(String n, String t) { name=n; type=t; }
           }
           EOF
@@ -246,13 +240,13 @@ jobs:
           </manifest>
           EOF
 
-      # ШАГ 2: Теперь настраиваем кэши (теперь файлы существуют, и ошибки не будет)
+      # ШАГ 2: Ставим Python БЕЗ кэширования pip (оно тут не нужно)
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-          cache: 'pip'
 
+      # ШАГ 3: Ставим Java с кэшем Gradle (теперь файлы build.gradle существуют)
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
