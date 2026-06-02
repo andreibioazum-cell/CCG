@@ -1,4 +1,4 @@
-name: JsAI_Russian_Retro_Studio
+name: JsAI_Russian_Retro_Studio_Fixed
 on: [push, workflow_dispatch]
 
 jobs:
@@ -14,19 +14,29 @@ jobs:
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
 
-          # --- CONFIG ---
+          # --- CONFIG (FIXED) ---
           cat > settings.gradle << 'EOF'
           pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal(); } }
           dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral(); } }
           include ':app'
           EOF
           
+          # Самое важное исправление для ошибки AndroidX
+          cat > gradle.properties << 'EOF'
+          android.useAndroidX=true
+          android.enableJetifier=true
+          org.gradle.jvmargs=-Xmx2048m
+          EOF
+
           cat > build.gradle << 'EOF'
-          plugins { id 'com.android.application' version '8.1.1' apply false }
+          buildscript {
+              repositories { google(); mavenCentral(); }
+              dependencies { classpath 'com.android.tools.build:gradle:8.1.1' }
+          }
           EOF
 
           cat > app/build.gradle << 'EOF'
-          plugins { id 'com.android.application' }
+          apply plugin: 'com.android.application'
           android {
               namespace 'com.jsai.studio'
               compileSdk 34
@@ -38,97 +48,74 @@ jobs:
           }
           EOF
 
-          # --- UI (RETRO) ---
+          # --- UI (RETRO РУССКИЙ) ---
           cat > app/src/main/res/layout/editor_main.xml << 'EOF'
           <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#121212">
               <LinearLayout android:id="@+id/toolbar" android:layout_width="match_parent" android:layout_height="36dp" android:background="#222" android:orientation="horizontal" android:padding="2dp">
-                  <Button android:id="@+id/btnAdd" android:layout_width="36dp" android:layout_height="match_parent" android:text="+" android:backgroundTint="#FFF" android:textColor="#000" android:textSize="14sp" android:padding="0dp"/>
-                  <Button android:id="@+id/btnNewScene" android:layout_width="wrap_content" android:layout_height="match_parent" android:text="Примеры" android:textSize="9sp" android:backgroundTint="#FFF" android:textColor="#000" android:layout_marginLeft="4dp"/>
+                  <Button android:id="@+id/btnPlay" android:layout_width="wrap_content" android:layout_height="match_parent" android:text="ЗАПУСК" android:backgroundTint="#FFF" android:textColor="#000" android:textSize="10sp" android:insetTop="0dp" android:insetBottom="0dp"/>
                   <Space android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"/>
-                  <Button android:id="@+id/btnPlay" android:layout_width="80dp" android:layout_height="match_parent" android:text="Запуск" android:backgroundTint="#FFF" android:textColor="#000" android:textSize="10sp"/>
+                  <TextView android:layout_width="wrap_content" android:layout_height="match_parent" android:text="Ретро Студия v1.0" android:textColor="#666" android:gravity="center" android:textSize="10sp" android:layout_marginRight="10dp"/>
               </LinearLayout>
-              <LinearLayout android:id="@+id/sidebar" android:layout_width="140dp" android:layout_height="match_parent" android:layout_below="@id/toolbar" android:layout_alignParentRight="true" android:background="#1A1A1A" android:orientation="vertical">
-                  <TextView android:layout_width="match_parent" android:layout_height="22dp" android:text=" Проводник" android:textColor="#FFF" android:gravity="center_vertical" android:textSize="9sp" android:background="#333"/>
-                  <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"><LinearLayout android:id="@+id/explorer" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"/></ScrollView>
-                  <TextView android:layout_width="match_parent" android:layout_height="22dp" android:text=" Свойства" android:textColor="#FFF" android:gravity="center_vertical" android:textSize="9sp" android:background="#333"/>
-                  <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1.2" android:background="#111"><LinearLayout android:id="@+id/properties" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="5dp"/></ScrollView>
-              </LinearLayout>
-              <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent" android:layout_below="@id/toolbar" android:layout_toLeftOf="@id/sidebar">
+              
+              <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent" android:layout_below="@id/toolbar">
                   <com.jsai.studio.GameView android:id="@+id/gameView" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000"/>
-                  <EditText android:id="@+id/codeEditor" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000" android:textColor="#0F0" android:fontFamily="monospace" android:gravity="top" android:padding="10dp" android:visibility="gone" android:textSize="12sp" 
-                    android:text="очки = 0&#10;размер = 60&#10;&#10;клик&#10;  очки = очки + 1&#10;  размер = 30&#10;конец&#10;&#10;игра&#10;  фон черный&#10;  цвет малиновый&#10;  круг 300, 200, размер&#10;  цвет белый&#10;  текст &quot;КЛИКОВ: &quot; + очки, 20, 50&#10;  если размер меньше 60&#10;    размер = размер + 1&#10;  конец&#10;конец" />
+                  <EditText android:id="@+id/codeEditor" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000" android:textColor="#00FF44" android:fontFamily="monospace" android:gravity="top" android:padding="12dp" android:textSize="14sp" 
+                    android:text="очки = 0&#10;размер = 60&#10;&#10;клик&#10;  очки = очки + 1&#10;  размер = 30&#10;конец&#10;&#10;игра&#10;  фон черный&#10;  цвет малиновый&#10;  круг 400, 300, размер&#10;  цвет белый&#10;  текст &quot;ОЧКИ: &quot; .. очки, 50, 80&#10;  если размер меньше 60 тогда&#10;    размер = размер + 1&#10;  конец&#10;конец" />
               </FrameLayout>
           </RelativeLayout>
           EOF
 
-          # --- ENGINE CLASSES (С ПАРСЕРОМ) ---
-          cat > app/src/main/java/com/jsai/studio/Instance.java << 'EOF'
-          package com.jsai.studio;
-          import java.util.*;
-          public class Instance {
-              public String name, type, luaCode = "", text = "";
-              public float x=300, y=300, scale=1;
-              public int color = 0xFFFFFFFF;
-              public Instance(String n, String t) { name=n; type=t; }
-          }
-          EOF
-
+          # --- ENGINE (ТРАНСЛЯТОР) ---
           cat > app/src/main/java/com/jsai/studio/EngineCore.java << 'EOF'
           package com.jsai.studio;
           import java.util.*;
           import org.luaj.vm2.*;
+          import org.luaj.vm2.lib.*;
           import org.luaj.vm2.lib.jse.*;
 
           public class EngineCore {
-              public static List<Instance> instances = new ArrayList<>();
               public static boolean isPlaying = false;
               public static int backgroundColor = 0xFF000000;
               public static List<DrawCmd> drawQueue = new ArrayList<>();
-              
               private static Globals globals;
               private static LuaValue loopFunc, clickFunc;
 
               public static class DrawCmd {
-                  String type; float x, y, r, w, h; int color; String text;
+                  String type; float x, y, r; int color; String text;
                   DrawCmd(String t, float x, float y, float r, int c, String txt) { 
                       this.type=t; this.x=x; this.y=y; this.r=r; this.color=c; this.text=txt; 
                   }
               }
 
-              // Тот самый парсер из твоего JS файла
               public static String compileToLua(String ruCode) {
-                  String code = ruCode
+                  return ruCode
                       .replace("игра", "function loop()")
                       .replace("клик", "function onClick(mx, my)")
                       .replace("конец", "end")
                       .replace("если", "if")
+                      .replace("тогда", "then")
                       .replace("иначе", "else")
-                      .replace(" или ", " or ")
-                      .replace(" и ", " and ")
                       .replace("меньше", "<")
                       .replace("больше", ">")
-                      .replace("равно", "==");
-
-                  // Команды графики
-                  code = code.replaceAll("фон (\\w+)", "setBackground('$1')");
-                  code = code.replaceAll("цвет (\\w+)", "setColor('$1')");
-                  code = code.replaceAll("круг ([^,\\n]+),\\s*([^,\\n]+),\\s*([^\\n]+)", "drawCircle($1, $2, $3)");
-                  code = code.replaceAll("текст ([^,\\n]+),\\s*([^,\\n]+),\\s*([^\\n]+)", "drawText($1, $2, $3)");
-                  code = code.replaceAll("рамка ([^,]+),\\s*([^,]+),\\s*([^,]+),\\s*([^\\n]+)", "drawRect($1, $2, $3, $4)");
-                  
-                  return code;
+                      .replace("равно", "==")
+                      .replace(" или ", " or ")
+                      .replace(" и ", " and ")
+                      // Команды
+                      .replaceAll("фон (\\w+)", "setBackground('$1')")
+                      .replaceAll("цвет (\\w+)", "setColor('$1')")
+                      .replaceAll("круг ([^,\\n]+),\\s*([^,\\n]+),\\s*([^\\n]+)", "drawCircle($1, $2, $3)")
+                      .replaceAll("текст ([^,\\n]+),\\s*([^,\\n]+),\\s*([^\\n]+)", "drawText($1, $2, $3)");
               }
 
               public static void start(String ruCode) {
-                  drawQueue.clear();
                   globals = JsePlatform.standardGlobals();
+                  globals.set("_curCol", LuaValue.valueOf(0xFFFFFFFF));
                   
-                  // Прокидываем API моста
                   globals.set("setBackground", new OneArgFunction() {
-                      @Override public LuaValue call(LuaValue arg) { backgroundColor = parseColor(arg.tojstring()); return NIL; }
+                      @Override public LuaValue call(LuaValue a) { backgroundColor = parseCol(a.tojstring()); return NIL; }
                   });
                   globals.set("setColor", new OneArgFunction() {
-                      @Override public LuaValue call(LuaValue arg) { globals.set("_curCol", parseColor(arg.tojstring())); return NIL; }
+                      @Override public LuaValue call(LuaValue a) { globals.set("_curCol", LuaValue.valueOf(parseCol(a.tojstring()))); return NIL; }
                   });
                   globals.set("drawCircle", new ThreeArgFunction() {
                       @Override public LuaValue call(LuaValue x, LuaValue y, LuaValue r) {
@@ -151,13 +138,10 @@ jobs:
                   } catch (Exception e) { isPlaying = false; }
               }
 
-              private static int parseColor(String name) {
-                  switch(name) {
-                      case "белый": return 0xFFFFFFFF; case "черный": return 0xFF000000;
-                      case "красный": return 0xFFFF0000; case "малиновый": return 0xFFDC143C;
-                      case "синий": return 0xFF0000FF; case "голубой": return 0xFF1E90FF;
-                      case "золото": return 0xFFFFD700; default: return 0xFF888888;
-                  }
+              private static int parseCol(String n) {
+                  if(n.equals("белый")) return 0xFFFFFFFF; if(n.equals("черный")) return 0xFF000000;
+                  if(n.equals("малиновый")) return 0xFFDC143C; if(n.equals("синий")) return 0xFF0000FF;
+                  return 0xFF888888;
               }
 
               public static void update() {
@@ -165,7 +149,6 @@ jobs:
                   drawQueue.clear();
                   try { loopFunc.call(); } catch(Exception e) {}
               }
-              
               public static void click(float x, float y) {
                   if(!isPlaying || clickFunc == null || clickFunc.isnil()) return;
                   try { clickFunc.call(LuaValue.valueOf(x), LuaValue.valueOf(y)); } catch(Exception e) {}
@@ -183,28 +166,20 @@ jobs:
           public class GameView extends View {
               private Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
               public GameView(Context c, AttributeSet a) { super(c, a); }
-
               @Override protected void onDraw(Canvas canvas) {
                   super.onDraw(canvas);
                   if(!EngineCore.isPlaying) return;
-                  
                   canvas.drawColor(EngineCore.backgroundColor);
                   EngineCore.update();
-
                   for(EngineCore.DrawCmd cmd : new java.util.ArrayList<>(EngineCore.drawQueue)) {
                       p.setColor(cmd.color);
-                      if(cmd.type.equals("circle")) {
-                          canvas.drawCircle(cmd.x, cmd.y, cmd.r, p);
-                      } else if(cmd.type.equals("text")) {
-                          p.setTextSize(40);
-                          canvas.drawText(cmd.text, cmd.x, cmd.y, p);
-                      }
+                      if(cmd.type.equals("circle")) canvas.drawCircle(cmd.x, cmd.y, cmd.r, p);
+                      else if(cmd.type.equals("text")) { p.setTextSize(50); canvas.drawText(cmd.text, cmd.x, cmd.y, p); }
                   }
                   invalidate();
               }
-
-              @Override public boolean onTouchEvent(MotionEvent event) {
-                  if(event.getAction() == MotionEvent.ACTION_DOWN) EngineCore.click(event.getX(), event.getY());
+              @Override public boolean onTouchEvent(MotionEvent e) {
+                  if(e.getAction() == MotionEvent.ACTION_DOWN) EngineCore.click(e.getX(), e.getY());
                   return true;
               }
           }
@@ -218,21 +193,20 @@ jobs:
           import android.widget.*;
 
           public class EditorActivity extends Activity {
-              EditText codeEd; Button btnPlay;
               protected void onCreate(Bundle b) {
                   super.onCreate(b); requestWindowFeature(1);
                   setContentView(R.layout.editor_main);
-                  codeEd = findViewById(R.id.codeEditor);
-                  btnPlay = findViewById(R.id.btnPlay);
+                  EditText codeEd = findViewById(R.id.codeEditor);
+                  Button play = findViewById(R.id.btnPlay);
 
-                  btnPlay.setOnClickListener(v -> {
+                  play.setOnClickListener(v -> {
                       if(!EngineCore.isPlaying) {
                           EngineCore.start(codeEd.getText().toString());
-                          btnPlay.setText("Стоп");
+                          play.setText("СТОП");
                           codeEd.setVisibility(View.GONE);
                       } else {
                           EngineCore.isPlaying = false;
-                          btnPlay.setText("Запуск");
+                          play.setText("ЗАПУСК");
                           codeEd.setVisibility(View.VISIBLE);
                       }
                   });
@@ -243,7 +217,7 @@ jobs:
           cat > app/src/main/AndroidManifest.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="JsAI Russian Retro" android:theme="@android:style/Theme.NoTitleBar">
+              <application android:label="Ретро Студия" android:theme="@android:style/Theme.NoTitleBar">
                   <activity android:name=".EditorActivity" android:exported="true" android:screenOrientation="landscape">
                       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
                   </activity>
@@ -267,5 +241,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: JsAI_Russian_Retro_IDE
+          name: JsAI_Russian_Retro_Final
           path: app/build/outputs/apk/debug/app-debug.apk
