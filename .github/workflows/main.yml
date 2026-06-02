@@ -1,4 +1,4 @@
-name: JsAI_Pro_Studio_Roblox_Style
+name: JsAI_Pro_Studio_Fixed
 on: [push, workflow_dispatch]
 
 jobs:
@@ -14,7 +14,6 @@ jobs:
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
 
-          # --- CONFIG ---
           cat > settings.gradle << 'EOF'
           pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal(); } }
           dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral(); } }
@@ -41,41 +40,28 @@ jobs:
           dependencies {
               implementation 'androidx.appcompat:appcompat:1.6.1'
               implementation 'org.luaj:luaj-jse:3.0.1'
-              implementation 'com.google.android.material:material:1.9.0'
           }
           EOF
 
           # --- UI (Roblox Studio Style) ---
           cat > app/src/main/res/layout/editor_main.xml << 'EOF'
           <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#1B1B1B">
-              <!-- Top Toolbar -->
-              <LinearLayout android:id="@+id/toolbar" android:layout_width="match_parent" android:layout_height="45dp" android:background="#222222" android:orientation="horizontal" android:gravity="center_vertical" android:paddingLeft="10dp" android:elevation="4dp">
-                  <Button android:id="@+id/btnAdd" android:layout_width="40dp" android:layout_height="35dp" android:text="+" android:backgroundTint="#333" android:textColor="#FFF" android:textSize="18sp" android:insetTop="0dp" android:insetBottom="0dp"/>
-                  <View android:layout_width="1dp" android:layout_height="25dp" android:background="#444" android:layout_marginHorizontal="10dp"/>
-                  <Button android:id="@+id/btnPlay" android:layout_width="80dp" android:layout_height="35dp" android:text="Запуск" android:backgroundTint="#00A2FF" android:textColor="#FFF" android:textSize="10sp" android:insetTop="0dp" android:insetBottom="0dp"/>
-                  <Space android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"/>
-                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="JsAI Studio Pro" android:textColor="#888" android:textSize="12sp" android:layout_marginRight="15dp"/>
+              <LinearLayout android:id="@+id/toolbar" android:layout_width="match_parent" android:layout_height="40dp" android:background="#222" android:orientation="horizontal" android:gravity="center_vertical" android:paddingLeft="10dp">
+                  <Button android:id="@+id/btnAdd" android:layout_width="40dp" android:layout_height="32dp" android:text="+" android:backgroundTint="#333" android:textColor="#FFF" android:insetTop="0dp" android:insetBottom="0dp"/>
+                  <View android:layout_width="1dp" android:layout_height="20dp" android:background="#444" android:layout_marginHorizontal="8dp"/>
+                  <Button android:id="@+id/btnPlay" android:layout_width="80dp" android:layout_height="32dp" android:text="Запуск" android:backgroundTint="#00A2FF" android:textColor="#FFF" android:textSize="10sp" android:insetTop="0dp" android:insetBottom="0dp"/>
               </LinearLayout>
               
-              <!-- Right Sidebars (Explorer & Properties) -->
-              <LinearLayout android:id="@+id/rightSidebar" android:layout_width="200dp" android:layout_height="match_parent" android:layout_below="@id/toolbar" android:layout_alignParentRight="true" android:background="#252525" android:orientation="vertical" android:elevation="2dp">
-                  <TextView android:layout_width="match_parent" android:layout_height="25dp" android:text=" Explorer" android:textColor="#AAA" android:gravity="center_vertical" android:textSize="10sp" android:background="#2D2D2D" android:textStyle="bold"/>
-                  <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="#252525"><LinearLayout android:id="@+id/explorer" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"/></ScrollView>
-                  <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#333"/>
-                  <TextView android:layout_width="match_parent" android:layout_height="25dp" android:text=" Properties" android:textColor="#AAA" android:gravity="center_vertical" android:textSize="10sp" android:background="#2D2D2D" android:textStyle="bold"/>
-                  <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1.2" android:background="#252525"><LinearLayout android:id="@+id/properties" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="8dp"/></ScrollView>
+              <LinearLayout android:id="@+id/rightSidebar" android:layout_width="180dp" android:layout_height="match_parent" android:layout_below="@id/toolbar" android:layout_alignParentRight="true" android:background="#252525" android:orientation="vertical">
+                  <TextView android:layout_width="match_parent" android:layout_height="22dp" android:text=" Explorer" android:textColor="#AAA" android:gravity="center_vertical" android:textSize="9sp" android:background="#2D2D2D" android:textStyle="bold"/>
+                  <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"><LinearLayout android:id="@+id/explorer" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"/></ScrollView>
+                  <TextView android:layout_width="match_parent" android:layout_height="22dp" android:text=" Properties" android:textColor="#AAA" android:gravity="center_vertical" android:textSize="9sp" android:background="#2D2D2D" android:textStyle="bold"/>
+                  <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1.2"><LinearLayout android:id="@+id/properties" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="6dp"/></ScrollView>
               </LinearLayout>
 
-              <!-- Bottom Output -->
-              <LinearLayout android:id="@+id/bottomPanel" android:layout_width="match_parent" android:layout_height="80dp" android:layout_alignParentBottom="true" android:layout_toLeftOf="@id/rightSidebar" android:background="#1E1E1E" android:orientation="vertical" android:padding="5dp">
-                  <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Output" android:textColor="#666" android:textSize="9sp" android:textStyle="bold"/>
-                  <ScrollView android:layout_width="match_parent" android:layout_height="match_parent"><TextView android:id="@+id/output" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#CCC" android:textSize="10sp" android:fontFamily="monospace"/></ScrollView>
-              </LinearLayout>
-
-              <!-- Main Viewport / Script Editor -->
-              <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent" android:layout_below="@id/toolbar" android:layout_toLeftOf="@id/rightSidebar" android:layout_above="@id/bottomPanel">
+              <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent" android:layout_below="@id/toolbar" android:layout_toLeftOf="@id/rightSidebar">
                   <com.jsai.studio.GameView android:id="@+id/gameView" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#0F0F0F"/>
-                  <EditText android:id="@+id/codeEditor" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#1E1E1E" android:textColor="#D4D4D4" android:fontFamily="monospace" android:gravity="top" android:padding="15dp" android:visibility="gone" android:textSize="14sp" />
+                  <EditText android:id="@+id/codeEditor" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#1E1E1E" android:textColor="#D4D4D4" android:fontFamily="monospace" android:gravity="top" android:padding="12dp" android:visibility="gone" android:textSize="13sp" />
               </FrameLayout>
           </RelativeLayout>
           EOF
@@ -85,15 +71,15 @@ jobs:
           package com.jsai.studio;
           import java.util.*;
           public class Instance {
-              public String name, type, luaCode = "";
+              public String name, type, luaCode = "", textureUrl = "";
               public float x=300, y=300, w=100, h=100, scale=1;
-              public float startX, startY, startW, startH;
+              public float startX, startY, startW, startH, startScale;
               public int color = 0xFFFFFFFF;
               public Instance parent;
               public List<Instance> children = new ArrayList<>();
               public Instance(String n, String t) { name=n; type=t; }
-              public void save() { startX=x; startY=y; startW=w; startH=h; }
-              public void reset() { x=startX; y=startY; w=startW; h=startH; }
+              public void save() { startX=x; startY=y; startW=w; startH=h; startScale=scale; }
+              public void reset() { x=startX; y=startY; w=startW; h=startH; scale=startScale; }
           }
           EOF
 
@@ -101,53 +87,39 @@ jobs:
           package com.jsai.studio;
           import java.util.*;
           import org.luaj.vm2.*;
-          import org.luaj.vm2.lib.*;
           import org.luaj.vm2.lib.jse.*;
-
           public class EngineCore {
               public static List<Instance> root = new ArrayList<>();
               public static boolean isPlaying = false;
               private static List<LuaValue> scripts = new ArrayList<>();
-              public static StringBuilder log = new StringBuilder();
 
               public static String compile(String ru) {
-                  return ru.replace("игра", "function update(dt)")
-                           .replace("конец", "end")
-                           .replace("если", "if")
-                           .replace("тогда", "then")
-                           .replace("равно", "==")
-                           .replaceAll("позицияX\\s*=\\s*(.*)", "parent:setX($1)")
-                           .replaceAll("цвет\\s*=\\s*(.*)", "parent:setCol('$1')")
-                           .replace("печать", "print");
+                  return ru.replace("игра", "function update(dt)").replace("конец", "end");
               }
 
               public static void start() {
-                  scripts.clear(); log.setLength(0);
-                  processInstances(root);
+                  scripts.clear();
+                  process(root);
                   isPlaying = true;
               }
 
-              private static void processInstances(List<Instance> list) {
+              private static void process(List<Instance> list) {
                   for(Instance i : list) {
                       i.save();
                       if(i.type.equals("Script") && i.parent != null) {
                           Globals g = JsePlatform.standardGlobals();
                           g.set("parent", CoerceJavaToLua.coerce(i.parent));
-                          g.set("print", new OneArgFunction() { @Override public LuaValue call(LuaValue a) { log.append(a.tojstring()).append("\n"); return NIL; } });
-                          try { g.load(compile(i.luaCode)).call(); scripts.add(g.get("update")); } catch(Exception e) { log.append("Ошибка: ").append(e.getMessage()); }
+                          try { g.load(compile(i.luaCode)).call(); scripts.add(g.get("update")); } catch(Exception e) {}
                       }
-                      processInstances(i.children);
+                      process(i.children);
                   }
               }
 
               public static void stop() {
                   isPlaying = false;
-                  resetInstances(root);
+                  for(Instance i : root) resetR(i);
               }
-
-              private static void resetInstances(List<Instance> list) {
-                  for(Instance i : list) { i.reset(); resetInstances(i.children); }
-              }
+              private static void resetR(Instance i) { i.reset(); for(Instance c:i.children) resetR(c); }
 
               public static void update(float dt) {
                   if(!isPlaying) return;
@@ -168,18 +140,15 @@ jobs:
               public GameView(Context c, AttributeSet a) { super(c, a); }
               @Override protected void onDraw(Canvas canvas) {
                   super.onDraw(canvas);
-                  drawRecursive(canvas, EngineCore.root);
+                  drawR(canvas, EngineCore.root);
                   if(EngineCore.isPlaying) invalidate();
               }
-              private void drawRecursive(Canvas canvas, java.util.List<Instance> list) {
+              private void drawR(Canvas canvas, java.util.List<Instance> list) {
                   for(Instance i : list) {
                       p.setColor(i.color);
-                      if(i.type.equals("Part (Блок)")) {
-                          canvas.drawRect(i.x, i.y, i.x + i.w*i.scale, i.y + i.h*i.scale, p);
-                      } else if(i.type.equals("Part (Шар)")) {
-                          canvas.drawCircle(i.x + (i.w/2), i.y + (i.h/2), (i.w/2)*i.scale, p);
-                      }
-                      drawRecursive(canvas, i.children);
+                      if(i.type.contains("Блок")) canvas.drawRect(i.x, i.y, i.x+i.w*i.scale, i.y+i.h*i.scale, p);
+                      else if(i.type.contains("Шар")) canvas.drawCircle(i.x+i.w/2, i.y+i.h/2, (i.w/2)*i.scale, p);
+                      drawR(canvas, i.children);
                   }
               }
           }
@@ -194,15 +163,15 @@ jobs:
           import android.graphics.Color;
 
           public class EditorActivity extends Activity {
-              LinearLayout explorer, props; EditText codeEd; TextView output; Instance sel;
+              LinearLayout explorer, props; EditText codeEd; View gameView; Instance sel;
               protected void onCreate(Bundle b) {
                   super.onCreate(b); requestWindowFeature(1); setContentView(R.layout.editor_main);
                   explorer = findViewById(R.id.explorer); props = findViewById(R.id.properties);
-                  codeEd = findViewById(R.id.codeEditor); output = findViewById(R.id.output);
+                  codeEd = findViewById(R.id.codeEditor); gameView = findViewById(R.id.gameView);
 
                   findViewById(R.id.btnAdd).setOnClickListener(v -> {
                       PopupMenu pm = new PopupMenu(this, v);
-                      pm.getMenu().add("Part (Блок)"); pm.getMenu().add("Part (Шар)"); pm.getMenu().add("Folder"); pm.getMenu().add("Script");
+                      pm.getMenu().add("Блок"); pm.getMenu().add("Шар"); pm.getMenu().add("Folder"); pm.getMenu().add("Script");
                       pm.setOnMenuItemClickListener(item -> {
                           Instance i = new Instance(item.getTitle().toString(), item.getTitle().toString());
                           if(sel != null && (item.getTitle().equals("Script") || sel.type.equals("Folder"))) {
@@ -215,37 +184,34 @@ jobs:
                   findViewById(R.id.btnPlay).setOnClickListener(v -> {
                       if(!EngineCore.isPlaying) { EngineCore.start(); ((Button)v).setText("Стоп"); }
                       else { EngineCore.stop(); ((Button)v).setText("Запуск"); }
-                      findViewById(R.id.gameView).invalidate();
+                      gameView.invalidate();
                   });
-
-                  new Thread(() -> {
-                      while(true) {
-                          try { Thread.sleep(500); if(EngineCore.isPlaying) runOnUiThread(() -> output.setText(EngineCore.log.toString())); } catch(Exception e){}
-                      }
-                  }).start();
               }
 
               void updateExp() {
                   explorer.removeAllViews();
-                  renderRecursive(EngineCore.root, 0);
+                  renderR(EngineCore.root, 0);
               }
 
-              void renderRecursive(java.util.List<Instance> list, int ind) {
+              void renderR(java.util.List<Instance> list, int ind) {
                   for(Instance i : list) {
                       TextView tv = new TextView(this); tv.setText("  ".repeat(ind) + "• " + i.name);
                       tv.setTextColor(sel == i ? Color.WHITE : 0xFFAAAAAA);
-                      tv.setPadding(10, 5, 10, 5);
+                      tv.setPadding(10, 8, 10, 8);
                       tv.setBackgroundColor(sel == i ? 0xFF444444 : 0);
                       tv.setOnClickListener(v -> { sel = i; showProps(i); updateExp(); });
                       explorer.addView(tv);
-                      renderRecursive(i.children, ind + 1);
+                      renderR(i.children, ind + 1);
                   }
               }
 
               void showProps(Instance i) {
                   props.removeAllViews();
-                  codeEd.setVisibility(i.type.equals("Script") ? View.VISIBLE : View.GONE);
-                  if(i.type.equals("Script")) {
+                  boolean isScript = i.type.equals("Script");
+                  codeEd.setVisibility(isScript ? View.VISIBLE : View.GONE);
+                  gameView.setVisibility(isScript ? View.GONE : View.VISIBLE);
+                  
+                  if(isScript) {
                       codeEd.setText(i.luaCode);
                       codeEd.addTextChangedListener(new android.text.TextWatcher() {
                           public void afterTextChanged(android.text.Editable s) { i.luaCode = s.toString(); }
@@ -253,22 +219,22 @@ jobs:
                           public void onTextChanged(CharSequence s, int st, int b, int c) {}
                       });
                   }
-                  addSlider("Поз X", 0, 1000, i.x, v -> i.x = v);
-                  addSlider("Поз Y", 0, 1000, i.y, v -> i.y = v);
-                  addSlider("Ширина", 10, 500, i.w, v -> i.w = v);
-                  addSlider("Высота", 10, 500, i.h, v -> i.h = v);
-                  addSlider("Масштаб", 0.1f, 5, i.scale, v -> i.scale = v);
+                  addS("X", 0, 1000, i.x, v -> i.x = v);
+                  addS("Y", 0, 1000, i.y, v -> i.y = v);
+                  addS("W", 10, 500, i.w, v -> i.w = v);
+                  addS("H", 10, 500, i.h, v -> i.h = v);
+                  addS("Scale", 0.1f, 5, i.scale, v -> i.scale = v);
                   
-                  EditText colorIn = new EditText(this); colorIn.setHint("#HEX Цвет"); colorIn.setTextColor(Color.WHITE);
-                  colorIn.setOnEditorActionListener((v,a,e) -> { try { i.color = Color.parseColor(v.getText().toString()); } catch(Exception ex){} return true; });
-                  props.addView(colorIn);
+                  EditText col = new EditText(this); col.setHint("#HEX Цвет"); col.setTextColor(-1);
+                  col.setOnEditorActionListener((v,a,e) -> { try { i.color = Color.parseColor(v.getText().toString()); } catch(Exception ex){} return true; });
+                  props.addView(col);
               }
 
-              void addSlider(String l, float min, float max, float cur, Upd u) {
-                  TextView t = new TextView(this); t.setText(l + ": " + cur); t.setTextColor(Color.GRAY); t.textSize = 8;
+              void addS(String l, float min, float max, float cur, Upd u) {
+                  TextView t = new TextView(this); t.setText(l + ": " + (int)cur); t.setTextColor(Color.GRAY); t.setTextSize(9);
                   SeekBar s = new SeekBar(this); s.setMax(100); s.setProgress((int)((cur-min)/(max-min)*100));
                   s.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-                      public void onProgressChanged(SeekBar sb, int p, boolean b) { float v = min+(max-min)*(p/100f); u.u(v); t.setText(l + ": " + (int)v); }
+                      public void onProgressChanged(SeekBar sb, int p, boolean b) { float v = min+(max-min)*(p/100f); u.u(v); t.setText(l+": "+(int)v); }
                       public void onStartTrackingTouch(SeekBar sb) {} public void onStopTrackingTouch(SeekBar sb) {}
                   });
                   props.addView(t); props.addView(s);
@@ -280,7 +246,7 @@ jobs:
           cat > app/src/main/AndroidManifest.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="JsAI Pro Studio" android:theme="@android:style/Theme.NoTitleBar">
+              <application android:label="JsAI Studio Pro" android:theme="@android:style/Theme.NoTitleBar">
                   <activity android:name=".EditorActivity" android:exported="true" android:screenOrientation="landscape" android:windowSoftInputMode="adjustPan">
                       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
                   </activity>
