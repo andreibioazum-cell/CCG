@@ -1,4 +1,4 @@
-name: JsAI_Russian_Retro_Final
+name: JsAI_Russian_Pro_Studio
 on: [push, workflow_dispatch]
 
 jobs:
@@ -14,7 +14,7 @@ jobs:
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
 
-          # --- CONFIG ---
+          # --- SETTINGS ---
           cat > settings.gradle << 'EOF'
           pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal(); } }
           dependencyResolutionManagement { 
@@ -24,21 +24,19 @@ jobs:
           include ':app'
           EOF
           
-          cat > gradle.properties << 'EOF'
-          android.useAndroidX=true
-          org.gradle.jvmargs=-Xmx2048m
-          EOF
-
+          # --- ROOT BUILD.GRADLE ---
           cat > build.gradle << 'EOF'
           plugins { id 'com.android.application' version '8.1.1' apply false }
           EOF
 
+          # --- APP BUILD.GRADLE ---
           cat > app/build.gradle << 'EOF'
           plugins { id 'com.android.application' }
           android {
               namespace 'com.jsai.studio'
               compileSdk 34
               defaultConfig { applicationId "com.jsai.studio"; minSdk 26; targetSdk 34; versionCode 1; versionName "1.0" }
+              compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17; }
           }
           dependencies {
               implementation 'androidx.appcompat:appcompat:1.6.1'
@@ -46,24 +44,50 @@ jobs:
           }
           EOF
 
-          # --- ИНТЕРФЕЙС (Ретро, Русские названия) ---
+          cat > gradle.properties << 'EOF'
+          android.useAndroidX=true
+          org.gradle.jvmargs=-Xmx2048m
+          EOF
+
+          # --- РЕТРО ИНТЕРФЕЙС (Белые кнопки) ---
           cat > app/src/main/res/layout/editor_main.xml << 'EOF'
           <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#121212">
-              <LinearLayout android:id="@+id/toolbar" android:layout_width="match_parent" android:layout_height="36dp" android:background="#222222" android:orientation="horizontal" android:padding="2dp">
-                  <Button android:id="@+id/btnPlay" android:layout_width="90dp" android:layout_height="match_parent" android:text="Запуск" android:backgroundTint="#FFFFFF" android:textColor="#000000" android:textSize="10sp" android:insetTop="0dp" android:insetBottom="0dp"/>
+              <LinearLayout android:id="@+id/toolbar" android:layout_width="match_parent" android:layout_height="36dp" android:background="#222" android:orientation="horizontal" android:padding="2dp">
+                  <Button android:id="@+id/btnAdd" android:layout_width="40dp" android:layout_height="match_parent" android:text="+" android:backgroundTint="#FFF" android:textColor="#000" android:textSize="16sp" android:insetTop="0dp" android:insetBottom="0dp" android:padding="0dp"/>
                   <Space android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"/>
-                  <TextView android:layout_width="wrap_content" android:layout_height="match_parent" android:text="JsAI: Русская Студия" android:textColor="#555" android:gravity="center" android:textSize="10sp" android:layout_marginRight="10dp"/>
+                  <Button android:id="@+id/btnPlay" android:layout_width="85dp" android:layout_height="match_parent" android:text="Запуск" android:backgroundTint="#FFF" android:textColor="#000" android:textSize="10sp" android:insetTop="0dp" android:insetBottom="0dp"/>
               </LinearLayout>
               
-              <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent" android:layout_below="@id/toolbar">
-                  <com.jsai.studio.GameView android:id="@+id/gameView" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000000"/>
-                  <EditText android:id="@+id/codeEditor" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000000" android:textColor="#00FF44" android:fontFamily="monospace" android:gravity="top" android:padding="15dp" android:textSize="14sp" 
-                    android:text="очки = 0&#10;размер = 60&#10;&#10;клик&#10;  очки = очки + 1&#10;  размер = 30&#10;конец&#10;&#10;игра&#10;  фон черный&#10;  цвет малиновый&#10;  круг 400, 300, размер&#10;  цвет белый&#10;  текст &quot;Счет: &quot; .. очки, 50, 80&#10;  если размер меньше 60 тогда&#10;    размер = размер + 1&#10;  конец&#10;конец" />
+              <LinearLayout android:id="@+id/sidebar" android:layout_width="150dp" android:layout_height="match_parent" android:layout_below="@id/toolbar" android:layout_alignParentRight="true" android:background="#1A1A1A" android:orientation="vertical">
+                  <TextView android:layout_width="match_parent" android:layout_height="24dp" android:text=" Проводник" android:textColor="#FFF" android:gravity="center_vertical" android:textSize="10sp" android:background="#333"/>
+                  <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"><LinearLayout android:id="@+id/explorer" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"/></ScrollView>
+                  <TextView android:layout_width="match_parent" android:layout_height="24dp" android:text=" Свойства" android:textColor="#FFF" android:gravity="center_vertical" android:textSize="10sp" android:background="#333"/>
+                  <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1.3" android:background="#121212"><LinearLayout android:id="@+id/properties" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="8dp"/></ScrollView>
+              </LinearLayout>
+
+              <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent" android:layout_below="@id/toolbar" android:layout_toLeftOf="@id/sidebar">
+                  <com.jsai.studio.GameView android:id="@+id/gameView" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000"/>
+                  <EditText android:id="@+id/codeEditor" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000" android:textColor="#0F4" android:fontFamily="monospace" android:gravity="top" android:padding="10dp" android:visibility="gone" android:textSize="13sp" />
               </FrameLayout>
           </RelativeLayout>
           EOF
 
-          # --- ЯДРО ДВИЖКА + ПАРСЕР ---
+          # --- ENGINE LOGIC ---
+          cat > app/src/main/java/com/jsai/studio/Instance.java << 'EOF'
+          package com.jsai.studio;
+          import java.util.*;
+          public class Instance {
+              public String name, type, luaCode = "";
+              public float x=300, y=300, scale=1, startX, startY;
+              public int color = 0xFFFFFFFF;
+              public Instance parent;
+              public List<Instance> children = new ArrayList<>();
+              public Instance(String n, String t) { name=n; type=t; }
+              public void setX(float v) { x=v; } public float getX() { return x; }
+              public void setY(float v) { y=v; } public float getY() { return y; }
+          }
+          EOF
+
           cat > app/src/main/java/com/jsai/studio/EngineCore.java << 'EOF'
           package com.jsai.studio;
           import java.util.*;
@@ -72,101 +96,76 @@ jobs:
           import org.luaj.vm2.lib.jse.*;
 
           public class EngineCore {
+              public static List<Instance> instances = new ArrayList<>();
               public static boolean isPlaying = false;
-              public static int backgroundColor = 0xFF000000;
+              public static int bgColor = 0xFF000000;
               public static List<DrawCmd> drawQueue = new ArrayList<>();
-              private static Globals globals;
-              private static LuaValue loopFunc, clickFunc;
+              private static List<LuaValue> activeScripts = new ArrayList<>();
 
               public static class DrawCmd {
-                  String type; float x, y, r, w, h; int color; String text;
+                  String type; float x, y, r; int color; String text;
                   DrawCmd(String t, float x, float y, float r, int c, String txt) { 
                       this.type=t; this.x=x; this.y=y; this.r=r; this.color=c; this.text=txt; 
                   }
               }
 
-              // Транслятор твоего языка в Lua
-              public static String compile(String ruCode) {
-                  return ruCode
-                      .replace("игра", "function loop()")
-                      .replace("клик", "function onClick(mx, my)")
-                      .replace("конец", "end")
-                      .replace("если", "if")
-                      .replace("тогда", "then")
-                      .replace("иначе", "else")
-                      .replace("меньше", "<")
-                      .replace("больше", ">")
-                      .replace("равно", "==")
-                      .replace(" или ", " or ")
-                      .replace(" и ", " and ")
-                      // Команды рисования
-                      .replaceAll("фон (\\w+)", "setBackground('$1')")
-                      .replaceAll("цвет (\\w+)", "setColor('$1')")
-                      .replaceAll("круг ([^,\\n]+),\\s*([^,\\n]+),\\s*([^\\n]+)", "drawCircle($1, $2, $3)")
-                      .replaceAll("текст ([^,\\n]+),\\s*([^,\\n]+),\\s*([^\\n]+)", "drawText($1, $2, $3)")
-                      .replaceAll("рамка ([^,]+),\\s*([^,]+),\\s*([^,]+),\\s*([^\\n]+)", "drawRect($1, $2, $3, $4)");
+              public static String compile(String ru) {
+                  return ru.replace("игра", "function update(dt)")
+                           .replace("конец", "end")
+                           .replace("если", "if")
+                           .replace("тогда", "then")
+                           .replace("иначе", "else")
+                           .replace("равно", "==")
+                           .replace("больше", ">")
+                           .replace("меньше", "<")
+                           .replaceAll("фон (\\w+)", "setBackground('$1')")
+                           .replaceAll("цвет (\\w+)", "setColor('$1')")
+                           .replaceAll("круг ([^,]+),\\s*([^,]+),\\s*([^\\n]+)", "drawCircle($1,$2,$3)")
+                           .replaceAll("текст ([^,]+),\\s*([^,]+),\\s*([^\\n]+)", "drawText($1,$2,$3)");
               }
 
-              public static void start(String code) {
-                  drawQueue.clear();
-                  backgroundColor = 0xFF000000;
-                  globals = JsePlatform.standardGlobals();
-                  globals.set("_curCol", LuaValue.valueOf(0xFFFFFFFF));
+              public static void prepare() {
+                  activeScripts.clear();
+                  for(Instance i : instances) {
+                      i.startX = i.x; i.startY = i.y;
+                      if(i.type.equals("Скрипт") && i.parent != null) {
+                          Globals g = JsePlatform.standardGlobals();
+                          g.set("script", CoerceJavaToLua.coerce(i));
+                          g.set("parent", CoerceJavaToLua.coerce(i.parent));
+                          // Мост для рисования
+                          g.set("setBackground", new OneArgFunction() { @Override public LuaValue call(LuaValue a) { bgColor = parseCol(a.tojstring()); return NIL; } });
+                          g.set("setColor", new OneArgFunction() { @Override public LuaValue call(LuaValue a) { g.set("_c", LuaValue.valueOf(parseCol(a.tojstring()))); return NIL; } });
+                          g.set("drawCircle", new ThreeArgFunction() { @Override public LuaValue call(LuaValue x, LuaValue y, LuaValue r) {
+                              drawQueue.add(new DrawCmd("circle", (float)x.todouble(), (float)y.todouble(), (float)r.todouble(), g.get("_c").toint(), "")); return NIL; } 
+                          });
+                          g.set("drawText", new ThreeArgFunction() { @Override public LuaValue call(LuaValue t, LuaValue x, LuaValue y) {
+                              drawQueue.add(new DrawCmd("text", (float)x.todouble(), (float)y.todouble(), 0, g.get("_c").toint(), t.tojstring())); return NIL; } 
+                          });
 
-                  // API Мост между Русским ЯП и Android Java
-                  globals.set("setBackground", new OneArgFunction() {
-                      @Override public LuaValue call(LuaValue arg) { backgroundColor = parseCol(arg.tojstring()); return NIL; }
-                  });
-                  globals.set("setColor", new OneArgFunction() {
-                      @Override public LuaValue call(LuaValue arg) { globals.set("_curCol", LuaValue.valueOf(parseCol(arg.tojstring()))); return NIL; }
-                  });
-                  globals.set("drawCircle", new ThreeArgFunction() {
-                      @Override public LuaValue call(LuaValue x, LuaValue y, LuaValue r) {
-                          drawQueue.add(new DrawCmd("circle", (float)x.todouble(), (float)y.todouble(), (float)r.todouble(), globals.get("_curCol").toint(), ""));
-                          return NIL;
+                          try { g.load(compile(i.luaCode)).call(); activeScripts.add(g.get("update")); } catch(Exception e) {}
                       }
-                  });
-                  globals.set("drawText", new ThreeArgFunction() {
-                      @Override public LuaValue call(LuaValue t, LuaValue x, LuaValue y) {
-                          drawQueue.add(new DrawCmd("text", (float)x.todouble(), (float)y.todouble(), 0, globals.get("_curCol").toint(), t.tojstring()));
-                          return NIL;
-                      }
-                  });
-
-                  try {
-                      globals.load(compile(code)).call();
-                      loopFunc = globals.get("loop");
-                      clickFunc = globals.get("onClick");
-                      isPlaying = true;
-                  } catch (Exception e) { isPlaying = false; }
+                  }
+                  isPlaying = true;
               }
 
               public static void stop() {
                   isPlaying = false;
-                  loopFunc = null;
-                  clickFunc = null;
+                  activeScripts.clear();
                   drawQueue.clear();
-                  backgroundColor = 0xFF000000;
+                  bgColor = 0xFF000000;
+                  for(Instance i : instances) { i.x = i.startX; i.y = i.startY; }
               }
 
-              public static void update() {
-                  if (!isPlaying || loopFunc == null) return;
-                  drawQueue.clear(); // Очистка экрана перед каждым кадром (Reset)
-                  try { loopFunc.call(); } catch (Exception e) {}
-              }
-
-              public static void click(float x, float y) {
-                  if (!isPlaying || clickFunc == null) return;
-                  try { clickFunc.call(LuaValue.valueOf(x), LuaValue.valueOf(y)); } catch (Exception e) {}
+              public static void update(float dt) {
+                  if(!isPlaying) return;
+                  drawQueue.clear();
+                  LuaValue d = LuaValue.valueOf(dt);
+                  for(LuaValue f : activeScripts) if(!f.isnil()) try { f.call(d); } catch(Exception e) {}
               }
 
               private static int parseCol(String n) {
-                  switch(n) {
-                      case "белый": return 0xFFFFFFFF; case "черный": return 0xFF000000;
-                      case "красный": return 0xFFFF0000; case "малиновый": return 0xFFDC143C;
-                      case "синий": return 0xFF0000FF; case "голубой": return 0xFF1E90FF;
-                      case "желтый": return 0xFFFFFF00; default: return 0xFF888888;
-                  }
+                  if(n.equals("белый")) return 0xFFFFFFFF; if(n.equals("малиновый")) return 0xFFDC143C;
+                  if(n.equals("синий")) return 0xFF0000FF; return 0xFFFFFFFF;
               }
           }
           EOF
@@ -176,66 +175,75 @@ jobs:
           import android.content.Context;
           import android.graphics.*;
           import android.util.AttributeSet;
-          import android.view.*;
-
+          import android.view.View;
           public class GameView extends View {
               private Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
               public GameView(Context c, AttributeSet a) { super(c, a); }
-
               @Override protected void onDraw(Canvas canvas) {
                   super.onDraw(canvas);
-                  if (!EngineCore.isPlaying) return;
-
-                  canvas.drawColor(EngineCore.backgroundColor);
-                  EngineCore.update();
-
-                  // Рисуем всё из очереди, которую наполнил твой ЯП
+                  if(!EngineCore.isPlaying) return;
+                  canvas.drawColor(EngineCore.bgColor);
+                  EngineCore.update(0.016f);
                   for (EngineCore.DrawCmd cmd : new java.util.ArrayList<>(EngineCore.drawQueue)) {
                       p.setColor(cmd.color);
-                      if (cmd.type.equals("circle")) {
-                          canvas.drawCircle(cmd.x, cmd.y, cmd.r, p);
-                      } else if (cmd.type.equals("text")) {
-                          p.setTextSize(50);
-                          canvas.drawText(cmd.text, cmd.x, cmd.y, p);
-                      }
+                      if(cmd.type.equals("circle")) canvas.drawCircle(cmd.x, cmd.y, cmd.r, p);
+                      else if(cmd.type.equals("text")) { p.setTextSize(40); canvas.drawText(cmd.text, cmd.x, cmd.y, p); }
                   }
                   invalidate();
-              }
-
-              @Override public boolean onTouchEvent(MotionEvent event) {
-                  if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                      EngineCore.click(event.getX(), event.getY());
-                  }
-                  return true;
               }
           }
           EOF
 
           cat > app/src/main/java/com/jsai/studio/EditorActivity.java << 'EOF'
           package com.jsai.studio;
-          import android.app.Activity;
+          import android.app.*;
           import android.os.Bundle;
-          import android.view.View;
+          import android.view.*;
           import android.widget.*;
-
+          import android.graphics.Color;
           public class EditorActivity extends Activity {
+              LinearLayout explorer, props; EditText codeEd; Instance sel;
               protected void onCreate(Bundle b) {
-                  super.onCreate(b); requestWindowFeature(1);
-                  setContentView(R.layout.editor_main);
-                  final EditText codeEd = findViewById(R.id.codeEditor);
-                  final Button btnPlay = findViewById(R.id.btnPlay);
-
-                  btnPlay.setOnClickListener(v -> {
-                      if (!EngineCore.isPlaying) {
-                          EngineCore.start(codeEd.getText().toString());
-                          btnPlay.setText("Стоп");
-                          codeEd.setVisibility(View.GONE);
-                      } else {
-                          EngineCore.stop(); // Полный сброс системы
-                          btnPlay.setText("Запуск");
-                          codeEd.setVisibility(View.VISIBLE);
-                      }
+                  super.onCreate(b); requestWindowFeature(1); setContentView(R.layout.editor_main);
+                  explorer = findViewById(R.id.explorer); props = findViewById(R.id.properties); codeEd = findViewById(R.id.codeEditor);
+                  findViewById(R.id.btnAdd).setOnClickListener(v -> {
+                      PopupMenu pm = new PopupMenu(this, v); pm.getMenu().add("Спрайт"); pm.getMenu().add("Скрипт");
+                      pm.setOnMenuItemClickListener(item -> {
+                          Instance i = new Instance(item.getTitle().toString(), item.getTitle().toString());
+                          if(sel != null && item.getTitle().equals("Скрипт")) i.parent = sel;
+                          EngineCore.instances.add(i); updateExp(); return true;
+                      }); pm.show();
                   });
+                  findViewById(R.id.btnPlay).setOnClickListener(v -> {
+                      if(!EngineCore.isPlaying) { EngineCore.prepare(); ((Button)v).setText("Стоп"); }
+                      else { EngineCore.stop(); ((Button)v).setText("Запуск"); }
+                  });
+              }
+              void updateExp() {
+                  explorer.removeAllViews();
+                  for(Instance i : EngineCore.instances) {
+                      Button b = new Button(this); b.setText((i.parent!=null?"> ":"")+i.name); b.setAllCaps(false);
+                      b.setBackgroundColor(sel == i ? Color.WHITE : 0); b.setTextColor(sel == i ? Color.BLACK : Color.WHITE);
+                      b.setOnClickListener(v -> { sel = i; showProps(i); }); explorer.addView(b);
+                  }
+              }
+              void showProps(Instance i) {
+                  props.removeAllViews(); updateExp();
+                  codeEd.setVisibility(i.type.equals("Скрипт") ? View.VISIBLE : View.GONE);
+                  if(i.type.equals("Скрипт")) {
+                      codeEd.setText(i.luaCode);
+                      codeEd.addTextChangedListener(new android.text.TextWatcher() {
+                          public void afterTextChanged(android.text.Editable s) { i.luaCode = s.toString(); }
+                          public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
+                          public void onTextChanged(CharSequence s, int st, int b, int c) {}
+                      });
+                  }
+                  Button ren = new Button(this); ren.setText("Переименовать"); ren.setBackgroundColor(Color.WHITE); ren.setTextColor(Color.BLACK);
+                  ren.setOnClickListener(v -> {
+                      EditText et = new EditText(this); et.setText(i.name);
+                      new AlertDialog.Builder(this).setTitle("Имя").setView(et).setPositiveButton("ОК", (d, w) -> { i.name = et.getText().toString(); updateExp(); }).show();
+                  });
+                  props.addView(ren);
               }
           }
           EOF
@@ -268,5 +276,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: JsAI_Russian_Retro_Studio
+          name: JsAI_Russian_Pro_IDE
           path: app/build/outputs/apk/debug/app-debug.apk
