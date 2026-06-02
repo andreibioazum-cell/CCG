@@ -14,7 +14,6 @@ jobs:
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
 
-          # --- CONFIG ---
           cat > settings.gradle << 'EOF'
           pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal(); } }
           dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral(); } }
@@ -40,31 +39,29 @@ jobs:
           }
           EOF
 
-          # --- UI ---
           cat > app/src/main/res/layout/editor_main.xml << 'EOF'
           <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#1B1B1B">
               <LinearLayout android:id="@+id/toolbar" android:layout_width="match_parent" android:layout_height="40dp" android:background="#222" android:orientation="horizontal" android:gravity="center_vertical" android:paddingHorizontal="10dp">
-                  <Button android:id="@+id/btnAdd" android:layout_width="40dp" android:layout_height="32dp" android:text="+" android:backgroundTint="#333" android:textColor="#FFF"/>
-                  <Button android:id="@+id/btnPlay" android:layout_width="80dp" android:layout_height="32dp" android:text="Запуск" android:backgroundTint="#00A2FF" android:textColor="#FFF" android:textSize="10sp" android:layout_marginLeft="10dp"/>
+                  <Button android:id="@+id/btnAdd" android:layout_width="40dp" android:layout_height="32dp" android:text="+" android:backgroundTint="#333" android:textColor="#FFF" android:insetTop="0dp" android:insetBottom="0dp"/>
+                  <Button android:id="@+id/btnPlay" android:layout_width="80dp" android:layout_height="32dp" android:text="Запуск" android:backgroundTint="#00A2FF" android:textColor="#FFF" android:textSize="10sp" android:layout_marginLeft="10dp" android:insetTop="0dp" android:insetBottom="0dp"/>
                   <Space android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"/>
-                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="JsAI PRO" android:textColor="#555" android:textSize="10sp"/>
+                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="JsAI PRO STUDIO" android:textColor="#555" android:textSize="10sp"/>
               </LinearLayout>
               
               <LinearLayout android:id="@+id/sidebar" android:layout_width="160dp" android:layout_height="match_parent" android:layout_below="@id/toolbar" android:layout_alignParentRight="true" android:background="#252525" android:orientation="vertical">
-                  <TextView android:layout_width="match_parent" android:layout_height="22dp" android:text=" Проводник" android:textColor="#AAA" android:textSize="9sp" android:background="#2D2D2D" android:gravity="center_vertical"/>
+                  <TextView android:layout_width="match_parent" android:layout_height="22dp" android:text=" Explorer" android:textColor="#AAA" android:textSize="9sp" android:background="#2D2D2D" android:gravity="center_vertical"/>
                   <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"><LinearLayout android:id="@+id/explorer" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"/></ScrollView>
-                  <TextView android:layout_width="match_parent" android:layout_height="22dp" android:text=" Свойства" android:textColor="#AAA" android:textSize="9sp" android:background="#2D2D2D" android:gravity="center_vertical"/>
+                  <TextView android:layout_width="match_parent" android:layout_height="22dp" android:text=" Properties" android:textColor="#AAA" android:textSize="9sp" android:background="#2D2D2D" android:gravity="center_vertical"/>
                   <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1.2" android:background="#202020"><LinearLayout android:id="@+id/properties" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="5dp"/></ScrollView>
               </LinearLayout>
 
               <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent" android:layout_below="@id/toolbar" android:layout_toLeftOf="@id/sidebar">
                   <com.jsai.studio.GameView android:id="@+id/gameView" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000"/>
-                  <EditText android:id="@+id/codeEditor" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#1E1E1E" android:textColor="#0F4" android:fontFamily="monospace" android:gravity="top" android:padding="10dp" android:visibility="gone" android:textSize="13sp" android:imeOptions="actionDone" android:inputType="textMultiLine"/>
+                  <EditText android:id="@+id/codeEditor" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#1E1E1E" android:textColor="#0F4" android:fontFamily="monospace" android:gravity="top" android:padding="10dp" android:visibility="gone" android:textSize="13sp" android:inputType="textMultiLine|textNoSuggestions"/>
               </FrameLayout>
           </RelativeLayout>
           EOF
 
-          # --- ENGINE ---
           cat > app/src/main/java/com/jsai/studio/Instance.java << 'EOF'
           package com.jsai.studio;
           import java.util.*;
@@ -132,6 +129,7 @@ jobs:
               public GameView(Context c, AttributeSet a) { super(c, a); }
               @Override protected void onDraw(Canvas canvas) {
                   super.onDraw(canvas);
+                  canvas.drawColor(Color.BLACK);
                   drawR(canvas, EngineCore.root);
                   if(EngineCore.isPlaying) { EngineCore.update(0.016f); invalidate(); }
               }
@@ -139,6 +137,7 @@ jobs:
                   for(Instance i : list) {
                       if(i.type.contains("Блок") || i.type.contains("Шар")) {
                           p.setColor(i.color);
+                          p.setStyle(Paint.Style.FILL);
                           if(i.type.contains("Блок")) canvas.drawRect(i.x, i.y, i.x+i.w*i.scale, i.y+i.h*i.scale, p);
                           else canvas.drawCircle(i.x+i.w/2, i.y+i.h/2, (i.w/2)*i.scale, p);
                       }
@@ -160,7 +159,7 @@ jobs:
 
           public class EditorActivity extends Activity {
               LinearLayout explorer, props; EditText codeEd; View gameView; 
-              Instance sel, clipboard; boolean isCut = false;
+              Instance sel, clipboard;
 
               protected void onCreate(Bundle b) {
                   super.onCreate(b); requestWindowFeature(1); setContentView(R.layout.editor_main);
@@ -171,8 +170,8 @@ jobs:
                       PopupMenu pm = new PopupMenu(this, v);
                       pm.getMenu().add("Блок"); pm.getMenu().add("Шар"); pm.getMenu().add("Folder"); pm.getMenu().add("Script");
                       pm.setOnMenuItemClickListener(item -> {
-                          Instance i = new Instance(item.getTitle().toString(), item.getTitle().toString());
-                          if(sel != null && (sel.type.equals("Folder") || sel.type.equals("Script"))) { i.parent = sel; sel.children.add(i); }
+                          Instance i = new Instance(item.getTitle().toString() + " " + (new Random().nextInt(100)), item.getTitle().toString());
+                          if(sel != null && (sel.type.equals("Folder"))) { i.parent = sel; sel.children.add(i); }
                           else { EngineCore.root.add(i); }
                           updateExp(); return true;
                       }); pm.show();
@@ -184,8 +183,6 @@ jobs:
                       else { EngineCore.stop(); ((Button)v).setText("Запуск"); }
                       gameView.invalidate();
                   });
-
-                  codeEd.setOnEditorActionListener((v, actionId, event) -> { if(actionId == 5 || actionId == 6) { hideKB(); return true; } return false; });
               }
 
               void updateExp() {
@@ -196,7 +193,8 @@ jobs:
               void renderR(List<Instance> list, int ind) {
                   for(Instance i : list) {
                       LinearLayout row = new LinearLayout(this);
-                      row.setOrientation(LinearLayout.horizontal);
+                      row.setOrientation(LinearLayout.HORIZONTAL);
+                      row.setPadding(ind * 20, 5, 5, 5);
                       
                       if(i.type.equals("Folder")) {
                           TextView toggle = new TextView(this);
@@ -207,7 +205,7 @@ jobs:
                       }
 
                       TextView tv = new TextView(this);
-                      tv.setText("  ".repeat(ind) + i.name + (i.type.equals("Script")?" (S)":""));
+                      tv.setText(i.name + (i.type.equals("Script")?" (S)":""));
                       tv.setTextColor(sel == i ? Color.WHITE : Color.GRAY);
                       tv.setBackgroundColor(sel == i ? 0xFF444444 : 0);
                       tv.setOnClickListener(v -> { sel = i; showProps(i); updateExp(); hideKB(); });
@@ -222,16 +220,16 @@ jobs:
                   PopupMenu pm = new PopupMenu(this, v);
                   pm.getMenu().add("Вырезать"); pm.getMenu().add("Вставить сюда"); pm.getMenu().add("Удалить");
                   pm.setOnMenuItemClickListener(item -> {
-                      if(item.getTitle().equals("Удалить")) { remove(i); }
-                      else if(item.getTitle().equals("Вырезать")) { clipboard = i; isCut = true; }
+                      if(item.getTitle().equals("Удалить")) { removeI(i); }
+                      else if(item.getTitle().equals("Вырезать")) { clipboard = i; }
                       else if(item.getTitle().equals("Вставить сюда") && clipboard != null) {
-                          remove(clipboard); clipboard.parent = i; i.children.add(clipboard);
+                          removeI(clipboard); clipboard.parent = i; i.children.add(clipboard);
                       }
                       updateExp(); return true;
                   }); pm.show();
               }
 
-              void remove(Instance i) { if(i.parent!=null) i.parent.children.remove(i); else EngineCore.root.remove(i); }
+              void removeI(Instance i) { if(i.parent!=null) i.parent.children.remove(i); else EngineCore.root.remove(i); }
 
               void showProps(Instance i) {
                   props.removeAllViews();
@@ -240,16 +238,19 @@ jobs:
                   boolean isS = i.type.equals("Script");
                   codeEd.setVisibility(isS ? View.VISIBLE : View.GONE);
                   gameView.setVisibility(isS ? View.GONE : View.VISIBLE);
-                  if(isS) { codeEd.setText(i.luaCode); codeEd.addTextChangedListener(new android.text.TextWatcher() {
-                      public void afterTextChanged(android.text.Editable s) { i.luaCode = s.toString(); }
-                      public void beforeTextChanged(CharSequence s, int st, int c, int a) {} public void onTextChanged(CharSequence s, int st, int b, int c) {}
-                  }); }
+                  if(isS) { 
+                      codeEd.setText(i.luaCode); 
+                      codeEd.addTextChangedListener(new android.text.TextWatcher() {
+                          public void afterTextChanged(android.text.Editable s) { i.luaCode = s.toString(); }
+                          public void beforeTextChanged(CharSequence s, int st, int c, int a) {} public void onTextChanged(CharSequence s, int st, int b, int c) {}
+                      });
+                  }
 
-                  addS("X", 0, 1500, i.x, v -> i.x = v);
-                  addS("Y", 0, 1500, i.y, v -> i.y = v);
-                  addS("Разм", 10, 800, i.w, v -> { i.w = v; i.h = v; });
+                  addS("Позиция X", 0, 1500, i.x, v -> i.x = v);
+                  addS("Позиция Y", 0, 1500, i.y, v -> i.y = v);
+                  addS("Размер", 10, 800, i.w, v -> { i.w = v; i.h = v; });
                   
-                  EditText col = new EditText(this); col.setHint("HEX Цвет"); col.setTextColor(-1);
+                  EditText col = new EditText(this); col.setHint("Цвет #HEX"); col.setTextColor(Color.WHITE);
                   col.setOnEditorActionListener((v,a,e) -> { try { i.color = Color.parseColor(v.getText().toString()); hideKB(); } catch(Exception ex){} return true; });
                   props.addView(col);
               }
@@ -263,7 +264,7 @@ jobs:
                   });
                   props.addView(t); props.addView(s);
               }
-              void hideKB() { InputMethodManager imm = (InputMethodManager)getSystemService(INPUT_METHOD_SERVICE); if(getCurrentFocus()!=null) imm.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), 0); }
+              void hideKB() { InputMethodManager imm = (InputMethodManager)getSystemService(INPUT_METHOD_SERVICE); View f = getCurrentFocus(); if(f!=null) imm.hideSoftInputFromWindow(f.getWindowToken(), 0); }
               interface Upd { void u(float v); }
           }
           EOF
@@ -296,5 +297,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: JsAI_Pro_Studio_V2
+          name: JsAI_Pro_Studio_Final
           path: app/build/outputs/apk/debug/app-debug.apk
