@@ -1,4 +1,4 @@
-name: APK_Injector_Internal_Cheat_Fixed
+name: JsAI_Russian_Retro_Studio
 on: [push, workflow_dispatch]
 
 jobs:
@@ -8,392 +8,247 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Create APK Injector
+      - name: Create Studio Structure
         run: |
-          mkdir -p app/src/main/java/com/apkinjector/{ui,core,inject}
-          mkdir -p app/src/main/res/{layout,values,drawable,xml,raw}
-          mkdir -p app/src/main/assets/payload
+          mkdir -p app/src/main/java/com/jsai/studio
+          mkdir -p app/src/main/res/layout
+          mkdir -p app/src/main/res/values
 
+          # --- CONFIG ---
           cat > settings.gradle << 'EOF'
-          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
-          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal(); } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral(); } }
           include ':app'
           EOF
-
-          cat > gradle.properties << 'EOF'
-          android.useAndroidX=true
-          org.gradle.parallel=true
-          org.gradle.caching=true
-          org.gradle.jvmargs=-Xmx3072m
-          EOF
-
+          
           cat > build.gradle << 'EOF'
-          buildscript {
-              repositories { google(); mavenCentral() }
-              dependencies { classpath 'com.android.tools.build:gradle:8.2.2' }
-          }
+          plugins { id 'com.android.application' version '8.1.1' apply false }
           EOF
 
-          # ИСПРАВЛЕНО: Добавлена поддержка Java 17
           cat > app/build.gradle << 'EOF'
           plugins { id 'com.android.application' }
           android {
-              namespace 'com.apkinjector'
+              namespace 'com.jsai.studio'
               compileSdk 34
-              defaultConfig {
-                  applicationId 'com.apkinjector'
-                  minSdk 21
-                  targetSdk 34
-                  versionCode 1
-                  versionName "1.0"
-              }
-              compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_17
-                  targetCompatibility JavaVersion.VERSION_17
-              }
-              buildFeatures { viewBinding true }
+              defaultConfig { applicationId "com.jsai.studio"; minSdk 26; targetSdk 34; versionCode 1; versionName "1.0" }
           }
           dependencies {
               implementation 'androidx.appcompat:appcompat:1.6.1'
-              implementation 'com.google.android.material:material:1.11.0'
-              implementation 'androidx.recyclerview:recyclerview:1.3.2'
-              implementation 'net.lingala.zip4j:zip4j:2.11.5'
+              implementation 'org.luaj:luaj-jse:3.0.1'
+          }
+          EOF
+
+          # --- UI (RETRO) ---
+          cat > app/src/main/res/layout/editor_main.xml << 'EOF'
+          <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#121212">
+              <LinearLayout android:id="@+id/toolbar" android:layout_width="match_parent" android:layout_height="36dp" android:background="#222" android:orientation="horizontal" android:padding="2dp">
+                  <Button android:id="@+id/btnAdd" android:layout_width="36dp" android:layout_height="match_parent" android:text="+" android:backgroundTint="#FFF" android:textColor="#000" android:textSize="14sp" android:padding="0dp"/>
+                  <Button android:id="@+id/btnNewScene" android:layout_width="wrap_content" android:layout_height="match_parent" android:text="Примеры" android:textSize="9sp" android:backgroundTint="#FFF" android:textColor="#000" android:layout_marginLeft="4dp"/>
+                  <Space android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"/>
+                  <Button android:id="@+id/btnPlay" android:layout_width="80dp" android:layout_height="match_parent" android:text="Запуск" android:backgroundTint="#FFF" android:textColor="#000" android:textSize="10sp"/>
+              </LinearLayout>
+              <LinearLayout android:id="@+id/sidebar" android:layout_width="140dp" android:layout_height="match_parent" android:layout_below="@id/toolbar" android:layout_alignParentRight="true" android:background="#1A1A1A" android:orientation="vertical">
+                  <TextView android:layout_width="match_parent" android:layout_height="22dp" android:text=" Проводник" android:textColor="#FFF" android:gravity="center_vertical" android:textSize="9sp" android:background="#333"/>
+                  <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"><LinearLayout android:id="@+id/explorer" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"/></ScrollView>
+                  <TextView android:layout_width="match_parent" android:layout_height="22dp" android:text=" Свойства" android:textColor="#FFF" android:gravity="center_vertical" android:textSize="9sp" android:background="#333"/>
+                  <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1.2" android:background="#111"><LinearLayout android:id="@+id/properties" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="5dp"/></ScrollView>
+              </LinearLayout>
+              <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent" android:layout_below="@id/toolbar" android:layout_toLeftOf="@id/sidebar">
+                  <com.jsai.studio.GameView android:id="@+id/gameView" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000"/>
+                  <EditText android:id="@+id/codeEditor" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000" android:textColor="#0F0" android:fontFamily="monospace" android:gravity="top" android:padding="10dp" android:visibility="gone" android:textSize="12sp" 
+                    android:text="очки = 0&#10;размер = 60&#10;&#10;клик&#10;  очки = очки + 1&#10;  размер = 30&#10;конец&#10;&#10;игра&#10;  фон черный&#10;  цвет малиновый&#10;  круг 300, 200, размер&#10;  цвет белый&#10;  текст &quot;КЛИКОВ: &quot; + очки, 20, 50&#10;  если размер меньше 60&#10;    размер = размер + 1&#10;  конец&#10;конец" />
+              </FrameLayout>
+          </RelativeLayout>
+          EOF
+
+          # --- ENGINE CLASSES (С ПАРСЕРОМ) ---
+          cat > app/src/main/java/com/jsai/studio/Instance.java << 'EOF'
+          package com.jsai.studio;
+          import java.util.*;
+          public class Instance {
+              public String name, type, luaCode = "", text = "";
+              public float x=300, y=300, scale=1;
+              public int color = 0xFFFFFFFF;
+              public Instance(String n, String t) { name=n; type=t; }
+          }
+          EOF
+
+          cat > app/src/main/java/com/jsai/studio/EngineCore.java << 'EOF'
+          package com.jsai.studio;
+          import java.util.*;
+          import org.luaj.vm2.*;
+          import org.luaj.vm2.lib.jse.*;
+
+          public class EngineCore {
+              public static List<Instance> instances = new ArrayList<>();
+              public static boolean isPlaying = false;
+              public static int backgroundColor = 0xFF000000;
+              public static List<DrawCmd> drawQueue = new ArrayList<>();
+              
+              private static Globals globals;
+              private static LuaValue loopFunc, clickFunc;
+
+              public static class DrawCmd {
+                  String type; float x, y, r, w, h; int color; String text;
+                  DrawCmd(String t, float x, float y, float r, int c, String txt) { 
+                      this.type=t; this.x=x; this.y=y; this.r=r; this.color=c; this.text=txt; 
+                  }
+              }
+
+              // Тот самый парсер из твоего JS файла
+              public static String compileToLua(String ruCode) {
+                  String code = ruCode
+                      .replace("игра", "function loop()")
+                      .replace("клик", "function onClick(mx, my)")
+                      .replace("конец", "end")
+                      .replace("если", "if")
+                      .replace("иначе", "else")
+                      .replace(" или ", " or ")
+                      .replace(" и ", " and ")
+                      .replace("меньше", "<")
+                      .replace("больше", ">")
+                      .replace("равно", "==");
+
+                  // Команды графики
+                  code = code.replaceAll("фон (\\w+)", "setBackground('$1')");
+                  code = code.replaceAll("цвет (\\w+)", "setColor('$1')");
+                  code = code.replaceAll("круг ([^,\\n]+),\\s*([^,\\n]+),\\s*([^\\n]+)", "drawCircle($1, $2, $3)");
+                  code = code.replaceAll("текст ([^,\\n]+),\\s*([^,\\n]+),\\s*([^\\n]+)", "drawText($1, $2, $3)");
+                  code = code.replaceAll("рамка ([^,]+),\\s*([^,]+),\\s*([^,]+),\\s*([^\\n]+)", "drawRect($1, $2, $3, $4)");
+                  
+                  return code;
+              }
+
+              public static void start(String ruCode) {
+                  drawQueue.clear();
+                  globals = JsePlatform.standardGlobals();
+                  
+                  // Прокидываем API моста
+                  globals.set("setBackground", new OneArgFunction() {
+                      @Override public LuaValue call(LuaValue arg) { backgroundColor = parseColor(arg.tojstring()); return NIL; }
+                  });
+                  globals.set("setColor", new OneArgFunction() {
+                      @Override public LuaValue call(LuaValue arg) { globals.set("_curCol", parseColor(arg.tojstring())); return NIL; }
+                  });
+                  globals.set("drawCircle", new ThreeArgFunction() {
+                      @Override public LuaValue call(LuaValue x, LuaValue y, LuaValue r) {
+                          drawQueue.add(new DrawCmd("circle", (float)x.todouble(), (float)y.todouble(), (float)r.todouble(), globals.get("_curCol").toint(), ""));
+                          return NIL;
+                      }
+                  });
+                  globals.set("drawText", new ThreeArgFunction() {
+                      @Override public LuaValue call(LuaValue t, LuaValue x, LuaValue y) {
+                          drawQueue.add(new DrawCmd("text", (float)x.todouble(), (float)y.todouble(), 0, globals.get("_curCol").toint(), t.tojstring()));
+                          return NIL;
+                      }
+                  });
+
+                  try {
+                      globals.load(compileToLua(ruCode)).call();
+                      loopFunc = globals.get("loop");
+                      clickFunc = globals.get("onClick");
+                      isPlaying = true;
+                  } catch (Exception e) { isPlaying = false; }
+              }
+
+              private static int parseColor(String name) {
+                  switch(name) {
+                      case "белый": return 0xFFFFFFFF; case "черный": return 0xFF000000;
+                      case "красный": return 0xFFFF0000; case "малиновый": return 0xFFDC143C;
+                      case "синий": return 0xFF0000FF; case "голубой": return 0xFF1E90FF;
+                      case "золото": return 0xFFFFD700; default: return 0xFF888888;
+                  }
+              }
+
+              public static void update() {
+                  if(!isPlaying || loopFunc == null || loopFunc.isnil()) return;
+                  drawQueue.clear();
+                  try { loopFunc.call(); } catch(Exception e) {}
+              }
+              
+              public static void click(float x, float y) {
+                  if(!isPlaying || clickFunc == null || clickFunc.isnil()) return;
+                  try { clickFunc.call(LuaValue.valueOf(x), LuaValue.valueOf(y)); } catch(Exception e) {}
+              }
+          }
+          EOF
+
+          cat > app/src/main/java/com/jsai/studio/GameView.java << 'EOF'
+          package com.jsai.studio;
+          import android.content.Context;
+          import android.graphics.*;
+          import android.util.AttributeSet;
+          import android.view.*;
+
+          public class GameView extends View {
+              private Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+              public GameView(Context c, AttributeSet a) { super(c, a); }
+
+              @Override protected void onDraw(Canvas canvas) {
+                  super.onDraw(canvas);
+                  if(!EngineCore.isPlaying) return;
+                  
+                  canvas.drawColor(EngineCore.backgroundColor);
+                  EngineCore.update();
+
+                  for(EngineCore.DrawCmd cmd : new java.util.ArrayList<>(EngineCore.drawQueue)) {
+                      p.setColor(cmd.color);
+                      if(cmd.type.equals("circle")) {
+                          canvas.drawCircle(cmd.x, cmd.y, cmd.r, p);
+                      } else if(cmd.type.equals("text")) {
+                          p.setTextSize(40);
+                          canvas.drawText(cmd.text, cmd.x, cmd.y, p);
+                      }
+                  }
+                  invalidate();
+              }
+
+              @Override public boolean onTouchEvent(MotionEvent event) {
+                  if(event.getAction() == MotionEvent.ACTION_DOWN) EngineCore.click(event.getX(), event.getY());
+                  return true;
+              }
+          }
+          EOF
+
+          cat > app/src/main/java/com/jsai/studio/EditorActivity.java << 'EOF'
+          package com.jsai.studio;
+          import android.app.Activity;
+          import android.os.Bundle;
+          import android.view.View;
+          import android.widget.*;
+
+          public class EditorActivity extends Activity {
+              EditText codeEd; Button btnPlay;
+              protected void onCreate(Bundle b) {
+                  super.onCreate(b); requestWindowFeature(1);
+                  setContentView(R.layout.editor_main);
+                  codeEd = findViewById(R.id.codeEditor);
+                  btnPlay = findViewById(R.id.btnPlay);
+
+                  btnPlay.setOnClickListener(v -> {
+                      if(!EngineCore.isPlaying) {
+                          EngineCore.start(codeEd.getText().toString());
+                          btnPlay.setText("Стоп");
+                          codeEd.setVisibility(View.GONE);
+                      } else {
+                          EngineCore.isPlaying = false;
+                          btnPlay.setText("Запуск");
+                          codeEd.setVisibility(View.VISIBLE);
+                      }
+                  });
+              }
           }
           EOF
 
           cat > app/src/main/AndroidManifest.xml << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
-              <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>
-              <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-              <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-              <application android:icon="@drawable/ic_launcher" android:label="APK Injector" android:theme="@style/DarkTheme" android:requestLegacyExternalStorage="true">
-                  <activity android:name=".ui.MainActivity" android:exported="true">
-                      <intent-filter>
-                          <action android:name="android.intent.action.MAIN"/>
-                          <category android:name="android.intent.category.LAUNCHER"/>
-                      </intent-filter>
+              <application android:label="JsAI Russian Retro" android:theme="@android:style/Theme.NoTitleBar">
+                  <activity android:name=".EditorActivity" android:exported="true" android:screenOrientation="landscape">
+                      <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
                   </activity>
-                  <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.fileprovider" android:exported="false" android:grantUriPermissions="true">
-                      <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths"/>
-                  </provider>
               </application>
           </manifest>
-          EOF
-
-          cat > app/src/main/res/values/themes.xml << 'EOF'
-          <resources>
-              <style name="DarkTheme" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
-                  <item name="colorPrimary">#6200EE</item>
-                  <item name="colorPrimaryDark">#3700B3</item>
-                  <item name="colorAccent">#03DAC5</item>
-                  <item name="android:windowBackground">#121212</item>
-              </style>
-          </resources>
-          EOF
-
-          cat > app/src/main/res/xml/file_paths.xml << 'EOF'
-          <paths><external-path name="external_files" path="."/></paths>
-          EOF
-
-          cat > app/src/main/res/drawable/ic_launcher.xml << 'EOF'
-          <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="48dp" android:height="48dp" android:viewportWidth="48" android:viewportHeight="48">
-              <path android:fillColor="#6200EE" android:pathData="M24,4L44,14L44,34L24,44L4,34L4,14Z"/>
-              <path android:fillColor="#FFF" android:pathData="M18,18h12v3h-12z M18,24h12v3h-12z M18,30h8v3h-8z"/>
-          </vector>
-          EOF
-
-          cat > app/src/main/res/layout/activity_main.xml << 'EOF'
-          <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:background="#121212">
-              <TextView android:layout_width="match_parent" android:layout_height="60dp" android:text="💉 APK Injector" android:textSize="24sp" android:textColor="#FFF" android:gravity="center" android:background="#6200EE"/>
-              <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Выберите приложение для внедрения читов:" android:textColor="#AAA" android:padding="12dp"/>
-              <androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerApps" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"/>
-              <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="12dp" android:background="#1E1E1E">
-                  <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="✅ Убрать Google Play зависимости\n✅ Встроить Memory Editor\n✅ Добавить Overlay меню читов" android:textColor="#03DAC5" android:textSize="12sp"/>
-              </LinearLayout>
-          </LinearLayout>
-          EOF
-
-          cat > app/src/main/res/layout/item_app.xml << 'EOF'
-          <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:padding="12dp" android:background="?attr/selectableItemBackground">
-              <ImageView android:id="@+id/appIcon" android:layout_width="48dp" android:layout_height="48dp"/>
-              <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:paddingLeft="12dp">
-                  <TextView android:id="@+id/appName" android:textColor="#FFF" android:textSize="16sp"/>
-                  <TextView android:id="@+id/appPackage" android:textColor="#777" android:textSize="12sp"/>
-              </LinearLayout>
-              <Button android:id="@+id/btnInject" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="💉 Inject" android:backgroundTint="#6200EE"/>
-          </LinearLayout>
-          EOF
-
-          cat > app/src/main/java/com/apkinjector/ui/MainActivity.java << 'EOF'
-          package com.apkinjector.ui;
-          import android.app.*; import android.content.pm.*; import android.os.Bundle;
-          import androidx.recyclerview.widget.*; import com.apkinjector.R; import com.apkinjector.core.*;
-          import com.apkinjector.inject.ApkInjector;
-          import java.util.*;
-          public class MainActivity extends Activity {
-              @Override protected void onCreate(Bundle s) {
-                  super.onCreate(s);
-                  setContentView(R.layout.activity_main);
-                  RecyclerView rv = findViewById(R.id.recyclerApps);
-                  rv.setLayoutManager(new LinearLayoutManager(this));
-                  List<AppInfo> apps = new ArrayList<>();
-                  PackageManager pm = getPackageManager();
-                  for (ApplicationInfo ai : pm.getInstalledApplications(0)) {
-                      if ((ai.flags & ApplicationInfo.FLAG_SYSTEM) == 0) {
-                          apps.add(new AppInfo(ai.loadLabel(pm).toString(), ai.packageName, ai.loadIcon(pm)));
-                      }
-                  }
-                  rv.setAdapter(new AppAdapter(apps, app -> {
-                      ProgressDialog pd = ProgressDialog.show(this, "Внедрение...", "Модификация APK...", true);
-                      new Thread(() -> {
-                          ApkInjector injector = new ApkInjector(this);
-                          boolean success = injector.injectCheatEngine(app.pkg);
-                          runOnUiThread(() -> {
-                              pd.dismiss();
-                              if (success) {
-                                  new AlertDialog.Builder(this)
-                                      .setTitle("✅ Успешно!")
-                                      .setMessage("APK модифицирован. Установить?")
-                                      .setPositiveButton("Установить", (d,w) -> injector.installModifiedApk())
-                                      .setNegativeButton("Отмена", null)
-                                      .show();
-                              }
-                          });
-                      }).start();
-                  }));
-              }
-          }
-          EOF
-
-          cat > app/src/main/java/com/apkinjector/core/AppInfo.java << 'EOF'
-          package com.apkinjector.core;
-          import android.graphics.drawable.Drawable;
-          public class AppInfo {
-              public String name, pkg;
-              public Drawable icon;
-              public AppInfo(String n, String p, Drawable i) { name=n; pkg=p; icon=i; }
-          }
-          EOF
-
-          cat > app/src/main/java/com/apkinjector/core/AppAdapter.java << 'EOF'
-          package com.apkinjector.core;
-          import android.view.*; import android.widget.*;
-          import androidx.recyclerview.widget.RecyclerView;
-          import com.apkinjector.R;
-          import java.util.List;
-          public class AppAdapter extends RecyclerView.Adapter<AppAdapter.VH> {
-              List<AppInfo> apps;
-              public interface Click { void on(AppInfo a); }
-              Click click;
-              public AppAdapter(List<AppInfo> a, Click c) { apps=a; click=c; }
-              public VH onCreateViewHolder(ViewGroup p, int t) {
-                  return new VH(LayoutInflater.from(p.getContext()).inflate(R.layout.item_app, p, false));
-              }
-              public void onBindViewHolder(VH h, int p) {
-                  AppInfo a = apps.get(p);
-                  h.name.setText(a.name);
-                  h.pkg.setText(a.pkg);
-                  h.icon.setImageDrawable(a.icon);
-                  h.btnInject.setOnClickListener(v -> click.on(a));
-              }
-              public int getItemCount() { return apps.size(); }
-              static class VH extends RecyclerView.ViewHolder {
-                  TextView name, pkg;
-                  ImageView icon;
-                  Button btnInject;
-                  VH(View v) {
-                      super(v);
-                      name = v.findViewById(R.id.appName);
-                      pkg = v.findViewById(R.id.appPackage);
-                      icon = v.findViewById(R.id.appIcon);
-                      btnInject = v.findViewById(R.id.btnInject);
-                  }
-              }
-          }
-          EOF
-
-          # ИСПРАВЛЕНО: Убраны text blocks, используем обычные строки
-          cat > app/src/main/java/com/apkinjector/inject/ApkInjector.java << 'EOF'
-          package com.apkinjector.inject;
-          import android.content.*; import android.content.pm.*; import android.net.Uri;
-          import androidx.core.content.FileProvider;
-          import net.lingala.zip4j.ZipFile;
-          import java.io.*;
-          import java.util.zip.*;
-          public class ApkInjector {
-              Context ctx;
-              File modifiedApk;
-              
-              public ApkInjector(Context c) { ctx = c; }
-              
-              public boolean injectCheatEngine(String pkg) {
-                  try {
-                      ApplicationInfo ai = ctx.getPackageManager().getApplicationInfo(pkg, 0);
-                      File srcApk = new File(ai.sourceDir);
-                      File workDir = new File(ctx.getCacheDir(), "apk_work");
-                      workDir.mkdirs();
-                      modifiedApk = new File(ctx.getExternalCacheDir(), pkg + "_cheated.apk");
-                      
-                      ZipFile zip = new ZipFile(srcApk);
-                      zip.extractAll(workDir.getAbsolutePath());
-                      
-                      File manifest = new File(workDir, "AndroidManifest.xml");
-                      String manifestXml = new String(readFile(manifest));
-                      
-                      manifestXml = manifestXml.replaceAll("<meta-data[^>]*android:name=\"com\\.android\\.vending\\..*?/>", "");
-                      manifestXml = manifestXml.replaceAll("<uses-library[^>]*android:name=\"com\\.google\\.android\\..*?/>", "");
-                      
-                      String injectedActivity = 
-                          "    <activity android:name=\"com.injected.CheatMenuActivity\" " +
-                          "android:theme=\"@android:style/Theme.Translucent.NoTitleBar\" " +
-                          "android:exported=\"false\"/>\n" +
-                          "    <service android:name=\"com.injected.MemoryService\" android:exported=\"false\"/>\n";
-                      
-                      manifestXml = manifestXml.replace("</application>", injectedActivity + "</application>");
-                      
-                      String permission = "    <uses-permission android:name=\"android.permission.SYSTEM_ALERT_WINDOW\"/>\n";
-                      manifestXml = manifestXml.replace("</manifest>", permission + "</manifest>");
-                      
-                      writeFile(manifest, manifestXml.getBytes());
-                      
-                      injectCheatClasses(workDir);
-                      repackApk(workDir, modifiedApk);
-                      
-                      return true;
-                  } catch (Exception e) {
-                      e.printStackTrace();
-                      return false;
-                  }
-              }
-              
-              void injectCheatClasses(File workDir) throws Exception {
-                  String cheatCode = getCheatEngineCode();
-                  File javaFile = new File(workDir, "CheatMenuActivity.java");
-                  writeFile(javaFile, cheatCode.getBytes());
-              }
-              
-              String getCheatEngineCode() {
-                  StringBuilder sb = new StringBuilder();
-                  sb.append("package com.injected;\n");
-                  sb.append("import android.app.*; import android.content.*; import android.graphics.*;\n");
-                  sb.append("import android.view.*; import android.widget.*; import java.io.*;\n\n");
-                  
-                  sb.append("public class CheatMenuActivity extends Activity {\n");
-                  sb.append("    WindowManager wm;\n");
-                  sb.append("    View overlay;\n\n");
-                  
-                  sb.append("    @Override protected void onCreate(Bundle s) {\n");
-                  sb.append("        super.onCreate(s);\n");
-                  sb.append("        wm = (WindowManager) getSystemService(WINDOW_SERVICE);\n");
-                  sb.append("        WindowManager.LayoutParams params = new WindowManager.LayoutParams(\n");
-                  sb.append("            300, 400, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,\n");
-                  sb.append("            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT);\n");
-                  sb.append("        params.gravity = Gravity.TOP | Gravity.LEFT;\n");
-                  sb.append("        params.x = 50; params.y = 50;\n\n");
-                  
-                  sb.append("        LinearLayout menu = new LinearLayout(this);\n");
-                  sb.append("        menu.setOrientation(LinearLayout.VERTICAL);\n");
-                  sb.append("        menu.setBackgroundColor(0xCC000000);\n");
-                  sb.append("        menu.setPadding(20, 20, 20, 20);\n\n");
-                  
-                  sb.append("        TextView title = new TextView(this);\n");
-                  sb.append("        title.setText(\"🎮 CHEAT MENU\");\n");
-                  sb.append("        title.setTextColor(0xFFFFFF00);\n");
-                  sb.append("        title.setTextSize(18);\n");
-                  sb.append("        menu.addView(title);\n\n");
-                  
-                  sb.append("        EditText searchInput = new EditText(this);\n");
-                  sb.append("        searchInput.setHint(\"Искать значение...\");\n");
-                  sb.append("        searchInput.setTextColor(0xFFFFFFFF);\n");
-                  sb.append("        menu.addView(searchInput);\n\n");
-                  
-                  sb.append("        Button btnSearch = new Button(this);\n");
-                  sb.append("        btnSearch.setText(\"🔍 Поиск\");\n");
-                  sb.append("        btnSearch.setOnClickListener(v -> searchMemory(searchInput.getText().toString()));\n");
-                  sb.append("        menu.addView(btnSearch);\n\n");
-                  
-                  sb.append("        Button btnClose = new Button(this);\n");
-                  sb.append("        btnClose.setText(\"❌ Закрыть\");\n");
-                  sb.append("        btnClose.setOnClickListener(v -> finish());\n");
-                  sb.append("        menu.addView(btnClose);\n\n");
-                  
-                  sb.append("        wm.addView(menu, params);\n");
-                  sb.append("        overlay = menu;\n");
-                  sb.append("    }\n\n");
-                  
-                  sb.append("    void searchMemory(String value) {\n");
-                  sb.append("        try {\n");
-                  sb.append("            File mapsFile = new File(\"/proc/self/maps\");\n");
-                  sb.append("            BufferedReader br = new BufferedReader(new FileReader(mapsFile));\n");
-                  sb.append("            String line;\n");
-                  sb.append("            while ((line = br.readLine()) != null) {\n");
-                  sb.append("                if (line.contains(\"rw\")) {\n");
-                  sb.append("                    String[] parts = line.split(\" \")[0].split(\"-\");\n");
-                  sb.append("                    long start = Long.parseLong(parts[0], 16);\n");
-                  sb.append("                    long end = Long.parseLong(parts[1], 16);\n");
-                  sb.append("                }\n");
-                  sb.append("            }\n");
-                  sb.append("        } catch (Exception e) {\n");
-                  sb.append("            Toast.makeText(this, \"Error: \" + e.getMessage(), Toast.LENGTH_SHORT).show();\n");
-                  sb.append("        }\n");
-                  sb.append("    }\n\n");
-                  
-                  sb.append("    @Override protected void onDestroy() {\n");
-                  sb.append("        super.onDestroy();\n");
-                  sb.append("        if (overlay != null) wm.removeView(overlay);\n");
-                  sb.append("    }\n");
-                  sb.append("}\n");
-                  
-                  return sb.toString();
-              }
-              
-              void repackApk(File workDir, File outApk) throws Exception {
-                  ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(outApk));
-                  zipDirectory(workDir, "", zos);
-                  zos.close();
-              }
-              
-              void zipDirectory(File folder, String parent, ZipOutputStream zos) throws Exception {
-                  for (File file : folder.listFiles()) {
-                      String path = parent.isEmpty() ? file.getName() : parent + "/" + file.getName();
-                      if (file.isDirectory()) {
-                          zipDirectory(file, path, zos);
-                      } else {
-                          zos.putNextEntry(new ZipEntry(path));
-                          FileInputStream fis = new FileInputStream(file);
-                          byte[] buf = new byte[8192]; int len;
-                          while ((len = fis.read(buf)) > 0) zos.write(buf, 0, len);
-                          fis.close();
-                          zos.closeEntry();
-                      }
-                  }
-              }
-              
-              public void installModifiedApk() {
-                  Intent i = new Intent(Intent.ACTION_VIEW);
-                  i.setDataAndType(FileProvider.getUriForFile(ctx, ctx.getPackageName() + ".fileprovider", modifiedApk),
-                      "application/vnd.android.package-archive");
-                  i.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
-                  ctx.startActivity(i);
-              }
-              
-              byte[] readFile(File f) throws IOException {
-                  FileInputStream fis = new FileInputStream(f);
-                  byte[] data = new byte[(int)f.length()];
-                  fis.read(data);
-                  fis.close();
-                  return data;
-              }
-              
-              void writeFile(File f, byte[] data) throws IOException {
-                  FileOutputStream fos = new FileOutputStream(f);
-                  fos.write(data);
-                  fos.close();
-              }
-          }
           EOF
 
       - name: Set up JDK 17
@@ -401,19 +256,16 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: 'gradle'
 
       - name: Build APK
         run: |
-          wget -q https://services.gradle.org/distributions/gradle-8.5-bin.zip
-          unzip -q gradle-8.5-bin.zip
-          export PATH="$PWD/gradle-8.5/bin:$PATH"
-          gradle wrapper --gradle-version 8.5
-          chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --parallel --build-cache
+          wget -q https://services.gradle.org/distributions/gradle-8.2-bin.zip
+          unzip -q gradle-8.2-bin.zip
+          export PATH="$PWD/gradle-8.2/bin:$PATH"
+          gradle assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: APK_Injector_Fixed
+          name: JsAI_Russian_Retro_IDE
           path: app/build/outputs/apk/debug/app-debug.apk
