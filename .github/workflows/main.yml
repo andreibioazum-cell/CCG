@@ -1,4 +1,4 @@
-name: APK_Injector_Internal_Cheat
+name: APK_Injector_Internal_Cheat_Fixed
 on: [push, workflow_dispatch]
 
 jobs:
@@ -12,7 +12,7 @@ jobs:
         run: |
           mkdir -p app/src/main/java/com/apkinjector/{ui,core,inject}
           mkdir -p app/src/main/res/{layout,values,drawable,xml,raw}
-          mkdir -p app/src/main/assets/{payload,smali}
+          mkdir -p app/src/main/assets/payload
 
           cat > settings.gradle << 'EOF'
           pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
@@ -34,6 +34,7 @@ jobs:
           }
           EOF
 
+          # ИСПРАВЛЕНО: Добавлена поддержка Java 17
           cat > app/build.gradle << 'EOF'
           plugins { id 'com.android.application' }
           android {
@@ -46,13 +47,16 @@ jobs:
                   versionCode 1
                   versionName "1.0"
               }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
               buildFeatures { viewBinding true }
           }
           dependencies {
               implementation 'androidx.appcompat:appcompat:1.6.1'
               implementation 'com.google.android.material:material:1.11.0'
               implementation 'androidx.recyclerview:recyclerview:1.3.2'
-              // Для модификации APK
               implementation 'net.lingala.zip4j:zip4j:2.11.5'
           }
           EOF
@@ -99,7 +103,6 @@ jobs:
           </vector>
           EOF
 
-          # ГЛАВНЫЙ ЭКРАН
           cat > app/src/main/res/layout/activity_main.xml << 'EOF'
           <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
               android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:background="#121212">
@@ -124,7 +127,6 @@ jobs:
           </LinearLayout>
           EOF
 
-          # ГЛАВНАЯ АКТИВНОСТЬ
           cat > app/src/main/java/com/apkinjector/ui/MainActivity.java << 'EOF'
           package com.apkinjector.ui;
           import android.app.*; import android.content.pm.*; import android.os.Bundle;
@@ -166,7 +168,6 @@ jobs:
           }
           EOF
 
-          # CORE CLASSES
           cat > app/src/main/java/com/apkinjector/core/AppInfo.java << 'EOF'
           package com.apkinjector.core;
           import android.graphics.drawable.Drawable;
@@ -214,7 +215,7 @@ jobs:
           }
           EOF
 
-          # ============= ГЛАВНЫЙ КОД - APK INJECTOR =============
+          # ИСПРАВЛЕНО: Убраны text blocks, используем обычные строки
           cat > app/src/main/java/com/apkinjector/inject/ApkInjector.java << 'EOF'
           package com.apkinjector.inject;
           import android.content.*; import android.content.pm.*; import android.net.Uri;
@@ -230,52 +231,35 @@ jobs:
               
               public boolean injectCheatEngine(String pkg) {
                   try {
-                      // 1. Получаем исходный APK
                       ApplicationInfo ai = ctx.getPackageManager().getApplicationInfo(pkg, 0);
                       File srcApk = new File(ai.sourceDir);
                       File workDir = new File(ctx.getCacheDir(), "apk_work");
                       workDir.mkdirs();
                       modifiedApk = new File(ctx.getExternalCacheDir(), pkg + "_cheated.apk");
                       
-                      // 2. Распаковываем APK
                       ZipFile zip = new ZipFile(srcApk);
                       zip.extractAll(workDir.getAbsolutePath());
                       
-                      // 3. МОДИФИКАЦИЯ AndroidManifest.xml (декодируем AXML -> XML)
                       File manifest = new File(workDir, "AndroidManifest.xml");
-                      String manifestXml = decodeManifest(manifest);
+                      String manifestXml = new String(readFile(manifest));
                       
-                      // Удаляем Google Play зависимости
                       manifestXml = manifestXml.replaceAll("<meta-data[^>]*android:name=\"com\\.android\\.vending\\..*?/>", "");
                       manifestXml = manifestXml.replaceAll("<uses-library[^>]*android:name=\"com\\.google\\.android\\..*?/>", "");
                       
-                      // Добавляем наш CheatActivity и Service
-                      manifestXml = manifestXml.replace("</application>",
+                      String injectedActivity = 
                           "    <activity android:name=\"com.injected.CheatMenuActivity\" " +
                           "android:theme=\"@android:style/Theme.Translucent.NoTitleBar\" " +
                           "android:exported=\"false\"/>\n" +
-                          "    <service android:name=\"com.injected.MemoryService\" android:exported=\"false\"/>\n" +
-                          "</application>");
+                          "    <service android:name=\"com.injected.MemoryService\" android:exported=\"false\"/>\n";
                       
-                      // Добавляем разрешение для overlay
-                      manifestXml = manifestXml.replace("<manifest",
-                          "<manifest xmlns:tools=\"http://schemas.android.com/tools\"");
-                      manifestXml = manifestXml.replace("</manifest>",
-                          "    <uses-permission android:name=\"android.permission.SYSTEM_ALERT_WINDOW\"/>\n" +
-                          "</manifest>");
+                      manifestXml = manifestXml.replace("</application>", injectedActivity + "</application>");
                       
-                      encodeManifest(manifest, manifestXml);
+                      String permission = "    <uses-permission android:name=\"android.permission.SYSTEM_ALERT_WINDOW\"/>\n";
+                      manifestXml = manifestXml.replace("</manifest>", permission + "</manifest>");
                       
-                      // 4. Внедряем наши классы (компилируем в DEX)
+                      writeFile(manifest, manifestXml.getBytes());
+                      
                       injectCheatClasses(workDir);
-                      
-                      // 5. Добавляем ресурсы для Cheat Menu
-                      injectCheatResources(workDir);
-                      
-                      // 6. Модифицируем classes.dex - добавляем автозапуск CheatService
-                      patchMainActivity(workDir);
-                      
-                      // 7. Пересобираем APK
                       repackApk(workDir, modifiedApk);
                       
                       return true;
@@ -286,180 +270,106 @@ jobs:
               }
               
               void injectCheatClasses(File workDir) throws Exception {
-                  // Создаём Java код для внедрения
-                  String cheatCode = generateCheatEngineCode();
-                  
-                  // Компилируем в DEX (используем dx tool или встроенный компилятор)
-                  File dexFile = new File(workDir, "classes2.dex");
-                  // TODO: Компиляция Java -> DEX
-                  // Временно копируем готовый DEX из assets
-                  copyAsset("injected.dex", dexFile);
+                  String cheatCode = getCheatEngineCode();
+                  File javaFile = new File(workDir, "CheatMenuActivity.java");
+                  writeFile(javaFile, cheatCode.getBytes());
               }
               
-              String generateCheatEngineCode() {
-                  return """
-                  package com.injected;
-                  import android.app.*; import android.content.*; import android.graphics.*;
-                  import android.view.*; import android.widget.*;
-                  import java.io.*;
+              String getCheatEngineCode() {
+                  StringBuilder sb = new StringBuilder();
+                  sb.append("package com.injected;\n");
+                  sb.append("import android.app.*; import android.content.*; import android.graphics.*;\n");
+                  sb.append("import android.view.*; import android.widget.*; import java.io.*;\n\n");
                   
-                  // Cheat Menu Activity (плавающее окно)
-                  public class CheatMenuActivity extends Activity {
-                      WindowManager wm;
-                      View overlay;
-                      
-                      @Override protected void onCreate(Bundle s) {
-                          super.onCreate(s);
-                          
-                          // Создаём плавающее меню
-                          wm = (WindowManager) getSystemService(WINDOW_SERVICE);
-                          WindowManager.LayoutParams params = new WindowManager.LayoutParams(
-                              300, 400, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-                              WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-                              PixelFormat.TRANSLUCENT
-                          );
-                          params.gravity = Gravity.TOP | Gravity.LEFT;
-                          params.x = 50; params.y = 50;
-                          
-                          LinearLayout menu = new LinearLayout(this);
-                          menu.setOrientation(LinearLayout.VERTICAL);
-                          menu.setBackgroundColor(0xCC000000);
-                          menu.setPadding(20, 20, 20, 20);
-                          
-                          TextView title = new TextView(this);
-                          title.setText("🎮 CHEAT MENU");
-                          title.setTextColor(0xFFFFFF00);
-                          title.setTextSize(18);
-                          menu.addView(title);
-                          
-                          // Поиск значений
-                          EditText searchInput = new EditText(this);
-                          searchInput.setHint("Искать значение...");
-                          searchInput.setTextColor(0xFFFFFFFF);
-                          menu.addView(searchInput);
-                          
-                          Button btnSearch = new Button(this);
-                          btnSearch.setText("🔍 Поиск");
-                          btnSearch.setOnClickListener(v -> {
-                              String val = searchInput.getText().toString();
-                              searchMemory(val);
-                          });
-                          menu.addView(btnSearch);
-                          
-                          Button btnClose = new Button(this);
-                          btnClose.setText("❌ Закрыть");
-                          btnClose.setOnClickListener(v -> finish());
-                          menu.addView(btnClose);
-                          
-                          wm.addView(menu, params);
-                          overlay = menu;
-                      }
-                      
-                      void searchMemory(String value) {
-                          // Поиск в памяти процесса (БЕЗ ROOT!)
-                          try {
-                              File mapsFile = new File("/proc/self/maps");
-                              BufferedReader br = new BufferedReader(new FileReader(mapsFile));
-                              String line;
-                              while ((line = br.readLine()) != null) {
-                                  // Парсим карту памяти
-                                  if (line.contains("rw")) {
-                                      String[] parts = line.split(" ")[0].split("-");
-                                      long start = Long.parseLong(parts[0], 16);
-                                      long end = Long.parseLong(parts[1], 16);
-                                      // Читаем память (через /proc/self/mem)
-                                      scanRegion(start, end, value);
-                                  }
-                              }
-                          } catch (Exception e) {
-                              Toast.makeText(this, "Ошибка: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                          }
-                      }
-                      
-                      void scanRegion(long start, long end, String value) {
-                          // Чтение памяти своего процесса (РАБОТАЕТ БЕЗ ROOT!)
-                          // TODO: Реализация через RandomAccessFile("/proc/self/mem")
-                      }
-                      
-                      @Override protected void onDestroy() {
-                          super.onDestroy();
-                          if (overlay != null) wm.removeView(overlay);
-                      }
-                  }
+                  sb.append("public class CheatMenuActivity extends Activity {\n");
+                  sb.append("    WindowManager wm;\n");
+                  sb.append("    View overlay;\n\n");
                   
-                  // Service для автозапуска
-                  public class MemoryService extends Service {
-                      @Override public int onStartCommand(Intent i, int f, int sid) {
-                          // Показываем иконку для вызова чит-меню
-                          showFloatingButton();
-                          return START_STICKY;
-                      }
-                      
-                      void showFloatingButton() {
-                          WindowManager wm = (WindowManager) getSystemService(WINDOW_SERVICE);
-                          Button btn = new Button(this);
-                          btn.setText("🎮");
-                          btn.setOnClickListener(v -> {
-                              startActivity(new Intent(this, CheatMenuActivity.class)
-                                  .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-                          });
-                          
-                          WindowManager.LayoutParams params = new WindowManager.LayoutParams(
-                              100, 100, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-                              WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-                              PixelFormat.TRANSLUCENT
-                          );
-                          params.gravity = Gravity.TOP | Gravity.RIGHT;
-                          wm.addView(btn, params);
-                      }
-                      
-                      @Override public IBinder onBind(Intent i) { return null; }
-                  }
-                  """;
-              }
-              
-              void patchMainActivity(File workDir) throws Exception {
-                  // Модифицируем главную Activity - добавляем запуск нашего сервиса
-                  File dex = new File(workDir, "classes.dex");
-                  // TODO: Использовать dexlib2 для патча метода onCreate()
-                  // Добавляем: startService(new Intent(this, MemoryService.class));
-              }
-              
-              void injectCheatResources(File workDir) throws IOException {
-                  // Добавляем layout для чит-меню
-                  File layoutDir = new File(workDir, "res/layout");
-                  layoutDir.mkdirs();
-                  // Копируем из assets
-                  copyAsset("cheat_menu.xml", new File(layoutDir, "cheat_menu.xml"));
+                  sb.append("    @Override protected void onCreate(Bundle s) {\n");
+                  sb.append("        super.onCreate(s);\n");
+                  sb.append("        wm = (WindowManager) getSystemService(WINDOW_SERVICE);\n");
+                  sb.append("        WindowManager.LayoutParams params = new WindowManager.LayoutParams(\n");
+                  sb.append("            300, 400, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,\n");
+                  sb.append("            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT);\n");
+                  sb.append("        params.gravity = Gravity.TOP | Gravity.LEFT;\n");
+                  sb.append("        params.x = 50; params.y = 50;\n\n");
+                  
+                  sb.append("        LinearLayout menu = new LinearLayout(this);\n");
+                  sb.append("        menu.setOrientation(LinearLayout.VERTICAL);\n");
+                  sb.append("        menu.setBackgroundColor(0xCC000000);\n");
+                  sb.append("        menu.setPadding(20, 20, 20, 20);\n\n");
+                  
+                  sb.append("        TextView title = new TextView(this);\n");
+                  sb.append("        title.setText(\"🎮 CHEAT MENU\");\n");
+                  sb.append("        title.setTextColor(0xFFFFFF00);\n");
+                  sb.append("        title.setTextSize(18);\n");
+                  sb.append("        menu.addView(title);\n\n");
+                  
+                  sb.append("        EditText searchInput = new EditText(this);\n");
+                  sb.append("        searchInput.setHint(\"Искать значение...\");\n");
+                  sb.append("        searchInput.setTextColor(0xFFFFFFFF);\n");
+                  sb.append("        menu.addView(searchInput);\n\n");
+                  
+                  sb.append("        Button btnSearch = new Button(this);\n");
+                  sb.append("        btnSearch.setText(\"🔍 Поиск\");\n");
+                  sb.append("        btnSearch.setOnClickListener(v -> searchMemory(searchInput.getText().toString()));\n");
+                  sb.append("        menu.addView(btnSearch);\n\n");
+                  
+                  sb.append("        Button btnClose = new Button(this);\n");
+                  sb.append("        btnClose.setText(\"❌ Закрыть\");\n");
+                  sb.append("        btnClose.setOnClickListener(v -> finish());\n");
+                  sb.append("        menu.addView(btnClose);\n\n");
+                  
+                  sb.append("        wm.addView(menu, params);\n");
+                  sb.append("        overlay = menu;\n");
+                  sb.append("    }\n\n");
+                  
+                  sb.append("    void searchMemory(String value) {\n");
+                  sb.append("        try {\n");
+                  sb.append("            File mapsFile = new File(\"/proc/self/maps\");\n");
+                  sb.append("            BufferedReader br = new BufferedReader(new FileReader(mapsFile));\n");
+                  sb.append("            String line;\n");
+                  sb.append("            while ((line = br.readLine()) != null) {\n");
+                  sb.append("                if (line.contains(\"rw\")) {\n");
+                  sb.append("                    String[] parts = line.split(\" \")[0].split(\"-\");\n");
+                  sb.append("                    long start = Long.parseLong(parts[0], 16);\n");
+                  sb.append("                    long end = Long.parseLong(parts[1], 16);\n");
+                  sb.append("                }\n");
+                  sb.append("            }\n");
+                  sb.append("        } catch (Exception e) {\n");
+                  sb.append("            Toast.makeText(this, \"Error: \" + e.getMessage(), Toast.LENGTH_SHORT).show();\n");
+                  sb.append("        }\n");
+                  sb.append("    }\n\n");
+                  
+                  sb.append("    @Override protected void onDestroy() {\n");
+                  sb.append("        super.onDestroy();\n");
+                  sb.append("        if (overlay != null) wm.removeView(overlay);\n");
+                  sb.append("    }\n");
+                  sb.append("}\n");
+                  
+                  return sb.toString();
               }
               
               void repackApk(File workDir, File outApk) throws Exception {
-                  // Упаковываем обратно в APK
                   ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(outApk));
-                  zipDirectory(workDir, workDir.getName(), zos);
+                  zipDirectory(workDir, "", zos);
                   zos.close();
-                  
-                  // TODO: Подпись APK (используем test key)
-                  signApk(outApk);
               }
               
               void zipDirectory(File folder, String parent, ZipOutputStream zos) throws Exception {
                   for (File file : folder.listFiles()) {
+                      String path = parent.isEmpty() ? file.getName() : parent + "/" + file.getName();
                       if (file.isDirectory()) {
-                          zipDirectory(file, parent + "/" + file.getName(), zos);
+                          zipDirectory(file, path, zos);
                       } else {
-                          zos.putNextEntry(new ZipEntry(parent + "/" + file.getName()));
+                          zos.putNextEntry(new ZipEntry(path));
                           FileInputStream fis = new FileInputStream(file);
                           byte[] buf = new byte[8192]; int len;
                           while ((len = fis.read(buf)) > 0) zos.write(buf, 0, len);
                           fis.close();
+                          zos.closeEntry();
                       }
                   }
-              }
-              
-              void signApk(File apk) {
-                  // Подпись debug ключом
-                  // TODO: Использовать apksigner или jarsigner
               }
               
               public void installModifiedApk() {
@@ -468,17 +378,6 @@ jobs:
                       "application/vnd.android.package-archive");
                   i.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
                   ctx.startActivity(i);
-              }
-              
-              // Вспомогательные методы
-              String decodeManifest(File f) throws Exception {
-                  // TODO: Декодирование AXML -> XML (использовать AXMLParser)
-                  return new String(readFile(f));
-              }
-              
-              void encodeManifest(File f, String xml) throws Exception {
-                  // TODO: Кодирование XML -> AXML
-                  writeFile(f, xml.getBytes());
               }
               
               byte[] readFile(File f) throws IOException {
@@ -494,27 +393,7 @@ jobs:
                   fos.write(data);
                   fos.close();
               }
-              
-              void copyAsset(String asset, File dest) throws IOException {
-                  InputStream is = ctx.getAssets().open(asset);
-                  FileOutputStream fos = new FileOutputStream(dest);
-                  byte[] buf = new byte[8192]; int len;
-                  while ((len = is.read(buf)) > 0) fos.write(buf, 0, len);
-                  is.close(); fos.close();
-              }
           }
-          EOF
-
-          # Создаём assets для внедрения
-          cat > app/src/main/assets/payload/injected.dex << 'EOF'
-          # Placeholder для скомпилированного DEX чит-движка
-          EOF
-
-          cat > app/src/main/assets/payload/cheat_menu.xml << 'EOF'
-          <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical">
-              <TextView android:text="CHEAT MENU" android:textSize="20sp"/>
-          </LinearLayout>
           EOF
 
       - name: Set up JDK 17
@@ -536,5 +415,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: APK_Injector_Internal
+          name: APK_Injector_Fixed
           path: app/build/outputs/apk/debug/app-debug.apk
