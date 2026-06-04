@@ -1,4 +1,4 @@
-name: JsAI_Russian_Ultimate_Studio
+name: JsAI_Craft_V14_SHADOWS_PRANK_SPEC
 on: [push, workflow_dispatch]
 
 jobs:
@@ -8,332 +8,224 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Create Studio Structure
+      - name: Create Files
         run: |
-          mkdir -p app/src/main/java/com/jsai/studio
-          mkdir -p app/src/main/res/layout
-          mkdir -p app/src/main/res/values
-
-          # --- CONFIG ---
-          cat > settings.gradle << 'EOF'
-          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal(); } }
-          dependencyResolutionManagement { 
-              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-              repositories { google(); mavenCentral(); } 
-          }
-          include ':app'
-          EOF
+          mkdir -p app/src/main/java/com/jsai/craft app/src/main/res/layout app/src/main/res/drawable
           
-          echo "android.useAndroidX=true" > gradle.properties
+          cat > app/src/main/res/drawable/dot.xml << 'EOF'
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval"><solid android:color="#FFF"/></shape>
+          EOF
+          cat > app/src/main/res/drawable/b1.xml << 'EOF'
+          <shape xmlns:android="http://schemas.android.com/apk/res/android"><solid android:color="#59BF40"/></shape>
+          EOF
+          cat > app/src/main/res/drawable/b2.xml << 'EOF'
+          <shape xmlns:android="http://schemas.android.com/apk/res/android"><solid android:color="#999"/></shape>
+          EOF
+          cat > app/src/main/res/drawable/b3.xml << 'EOF'
+          <shape xmlns:android="http://schemas.android.com/apk/res/android"><solid android:color="#8B4513"/></shape>
+          EOF
+          cat > app/src/main/res/drawable/jb.xml << 'EOF'
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval"><solid android:color="#12FFFFFF"/><stroke android:width="1.5dp" android:color="#20FFFFFF"/></shape>
+          EOF
+          cat > app/src/main/res/drawable/jh.xml << 'EOF'
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval"><solid android:color="#50FFFFFF"/></shape>
+          EOF
 
           cat > build.gradle << 'EOF'
-          plugins { id 'com.android.application' version '8.1.1' apply false }
+          buildscript { repositories { google(); mavenCentral() }; dependencies { classpath 'com.android.tools.build:gradle:8.2.2' } }
+          allprojects { repositories { google(); mavenCentral() } }
           EOF
-
+          echo "include ':app'" > settings.gradle
+          echo "android.useAndroidX=true" > gradle.properties
+          
           cat > app/build.gradle << 'EOF'
           plugins { id 'com.android.application' }
-          android {
-              namespace 'com.jsai.studio'
-              compileSdk 34
-              defaultConfig { applicationId "com.jsai.studio"; minSdk 26; targetSdk 34; versionCode 1; versionName "11.0" }
-          }
-          dependencies {
-              implementation 'androidx.appcompat:appcompat:1.6.1'
-              implementation 'org.luaj:luaj-jse:3.0.1'
-          }
+          android { namespace 'com.jsai.craft'; compileSdk 34; defaultConfig { applicationId 'com.jsai.craft'; minSdk 24; targetSdk 34 } }
           EOF
 
-          # --- UI ---
-          cat > app/src/main/res/layout/editor_main.xml << 'EOF'
-          <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#1B1B1B">
-              <LinearLayout android:id="@+id/toolbar" android:layout_width="match_parent" android:layout_height="36dp" android:background="#222" android:orientation="horizontal" android:gravity="center_vertical" android:paddingHorizontal="8dp">
-                  <Button android:id="@+id/btnAdd" android:layout_width="36dp" android:layout_height="30dp" android:text="+" android:backgroundTint="#FFF" android:textColor="#000" android:textSize="16sp" android:insetTop="0dp" android:insetBottom="0dp" android:padding="0dp"/>
-                  <Button android:id="@+id/btnPlay" android:layout_width="85dp" android:layout_height="30dp" android:text="Запуск" android:backgroundTint="#FFF" android:textColor="#000" android:textSize="10sp" android:layout_marginLeft="10dp" android:insetTop="0dp" android:insetBottom="0dp"/>
-                  <Space android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"/>
-                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="JsAI: Ultimate" android:textColor="#444" android:textSize="10sp"/>
-              </LinearLayout>
-              
-              <LinearLayout android:id="@+id/sidebar" android:layout_width="160dp" android:layout_height="match_parent" android:layout_below="@id/toolbar" android:layout_alignParentRight="true" android:background="#1A1A1A" android:orientation="vertical">
-                  <TextView android:layout_width="match_parent" android:layout_height="22dp" android:text=" Проводник" android:textColor="#AAA" android:textSize="9sp" android:background="#333" android:gravity="center_vertical"/>
-                  <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"><LinearLayout android:id="@+id/explorer" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"/></ScrollView>
-                  <TextView android:layout_width="match_parent" android:layout_height="22dp" android:text=" Свойства" android:textColor="#AAA" android:textSize="9sp" android:background="#333" android:gravity="center_vertical"/>
-                  <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1.2" android:background="#151515"><LinearLayout android:id="@+id/properties" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="5dp"/></ScrollView>
-              </LinearLayout>
-
-              <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent" android:layout_below="@id/toolbar" android:layout_toLeftOf="@id/sidebar">
-                  <com.jsai.studio.GameView android:id="@+id/gameView" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000"/>
-                  <EditText android:id="@+id/codeEditor" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#0F0F0F" android:textColor="#0F4" android:fontFamily="monospace" android:gravity="top" android:padding="12dp" android:visibility="gone" android:textSize="13sp" android:inputType="textMultiLine|textNoSuggestions"/>
-              </FrameLayout>
-          </RelativeLayout>
+          cat > app/src/main/res/layout/main.xml << 'EOF'
+          <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:clipChildren="false" android:clipToPadding="false"><android.opengl.GLSurfaceView android:id="@+id/gl" android:layout_width="match_parent" android:layout_height="match_parent"/><View android:layout_width="3dp" android:layout_height="3dp" android:background="@drawable/dot" android:layout_centerInParent="true"/><LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_centerHorizontal="true" android:layout_marginTop="10dp"><Button android:id="@+id/b1" android:layout_width="50dp" android:layout_height="50dp" android:background="@drawable/b1" android:text="1" android:textColor="#FFF"/><Button android:id="@+id/b2" android:layout_width="50dp" android:layout_height="50dp" android:background="@drawable/b2" android:text="2" android:textColor="#FFF" android:layout_marginLeft="5dp"/><Button android:id="@+id/b3" android:layout_width="50dp" android:layout_height="50dp" android:background="@drawable/b3" android:text="3" android:textColor="#FFF" android:layout_marginLeft="5dp"/></LinearLayout><FrameLayout android:id="@+id/jz" android:layout_width="90dp" android:layout_height="90dp" android:layout_alignParentBottom="true" android:layout_margin="35dp" android:background="@drawable/jb" android:clipChildren="false" android:clipToPadding="false"><View android:id="@+id/jh" android:layout_width="34dp" android:layout_height="34dp" android:layout_gravity="center" android:background="@drawable/jh"/></FrameLayout><LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_alignParentBottom="true" android:layout_alignParentRight="true" android:layout_margin="10dp" android:orientation="vertical"><LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"><Button android:id="@+id/brk" android:layout_width="65dp" android:layout_height="65dp" android:text="BRK"/><Button android:id="@+id/plc" android:layout_width="65dp" android:layout_height="65dp" android:text="PLC" android:layout_marginLeft="5dp"/></LinearLayout><LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="5dp"><Button android:id="@+id/jmp" android:layout_width="65dp" android:layout_height="70dp" android:text="JUMP"/><Button android:id="@+id/spc" android:layout_width="65dp" android:layout_height="70dp" android:text="SPEC" android:layout_marginLeft="5dp"/></LinearLayout></LinearLayout></RelativeLayout>
           EOF
 
-          # --- ENGINE ---
-          cat > app/src/main/java/com/jsai/studio/Instance.java << 'EOF'
-          package com.jsai.studio;
-          import java.util.*;
-          import org.luaj.vm2.LuaValue;
-          import org.luaj.vm2.Globals;
-          public class Instance {
-              public String name, type, luaCode = "";
-              public float x=400, y=400, w=150, h=150, scale=1;
-              public float sX, sY, sW, sH, sSc;
-              public int color = 0xFFFFFFFF;
-              public Instance parent;
-              public List<Instance> children = new ArrayList<>();
-              public LuaValue loopFunc = LuaValue.NIL;
-              public Globals scriptEnv;
+          cat > app/src/main/java/com/jsai/craft/App.java << 'EOF'
+          package com.jsai.craft;
+          import android.app.Activity; import android.os.Bundle; import android.view.*; import android.widget.*;
+          import android.opengl.*; import java.nio.*; import javax.microedition.khronos.egl.EGLConfig; import javax.microedition.khronos.opengles.GL10;
 
-              public Instance(String n, String t) { name=n; type=t; }
-              public void save() { sX=x; sY=y; sW=w; sH=h; sSc=scale; }
-              public void reset() { x=sX; y=sY; w=sW; h=sH; scale=sSc; loopFunc=LuaValue.NIL; scriptEnv=null; }
-              
-              public void setX(float v) { x=v; } public float getX() { return x; }
-              public void setY(float v) { y=v; } public float getY() { return y; }
-              public void setCol(String n) { 
-                  if(n.equals("малиновый")) color=0xFFDC143C; 
-                  else if(n.equals("черный")) color=0xFF000000;
-                  else if(n.equals("золото")) color=0xFFFFD700;
-                  else color=0xFFFFFFFF;
-              }
-          }
-          EOF
-
-          cat > app/src/main/java/com/jsai/studio/EngineCore.java << 'EOF'
-          package com.jsai.studio;
-          import java.util.*;
-          import org.luaj.vm2.*;
-          import org.luaj.vm2.lib.*;
-          import org.luaj.vm2.lib.jse.*;
-
-          public class EngineCore {
-              public static List<Instance> root = new ArrayList<>();
-              public static boolean isPlaying = false;
-              public static float mx, my;
-              public static int bgColor = 0xFF000000;
-
-              public static String compile(String code) {
-                  String[] lines = code.split("\n");
-                  StringBuilder sb = new StringBuilder();
-                  for(String line : lines) {
-                      String l = line.trim();
-                      if(l.isEmpty()) continue;
-                      String p = l.replace("игра", "function loop()")
-                                  .replace("конец", "end")
-                                  .replace("я.", "self:")
-                                  .replace("я:", "self:")
-                                  .replace("равно", "==");
-                      p = p.replaceAll("фон (\\w+)", "setBackground('$1')")
-                           .replaceAll("цвет (\\w+)", "self:setCol('$1')");
-                      sb.append(p).append("\n");
-                  }
-                  return sb.toString();
-              }
-
-              public static void start() {
-                  isPlaying = true;
-                  process(root);
-              }
-
-              private static void process(List<Instance> list) {
-                  for(Instance i : list) {
-                      i.save();
-                      if(i.type.equals("Script") && i.parent != null) {
-                          Globals g = JsePlatform.standardGlobals();
-                          g.set("self", CoerceJavaToLua.coerce(i.parent));
-                          g.set("setBackground", new OneArgFunction() {
-                              @Override public LuaValue call(LuaValue a) {
-                                  if(a.tojstring().equals("черный")) bgColor=0xFF000000; else bgColor=0xFFFFFFFF;
-                                  return LuaValue.NIL;
-                              }
-                          });
-                          try {
-                              g.load(compile(i.luaCode)).call();
-                              i.parent.loopFunc = g.get("loop");
-                              i.parent.scriptEnv = g;
-                          } catch(Exception e) {}
-                      }
-                      process(i.children);
-                  }
-              }
-
-              public static void stop() { isPlaying = false; bgColor=0xFF000000; for(Instance i : root) resetR(i); }
-              private static void resetR(Instance i) { i.reset(); for(Instance c:i.children) resetR(c); }
-
-              public static void update() {
-                  if(!isPlaying) return;
-                  updateR(root);
-              }
-              private static void updateR(List<Instance> list) {
-                  for(Instance i : list) {
-                      if(i.loopFunc != null && !i.loopFunc.isnil() && i.scriptEnv != null) {
-                          i.scriptEnv.set("мышьХ", LuaValue.valueOf(mx));
-                          i.scriptEnv.set("мышьУ", LuaValue.valueOf(my));
-                          try { i.loopFunc.call(); } catch(Exception e) {}
-                      }
-                      updateR(i.children);
-                  }
-              }
-          }
-          EOF
-
-          cat > app/src/main/java/com/jsai/studio/GameView.java << 'EOF'
-          package com.jsai.studio;
-          import android.content.Context;
-          import android.graphics.*;
-          import android.util.AttributeSet;
-          import android.view.*;
-          public class GameView extends View {
-              private Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-              public GameView(Context c, AttributeSet a) { super(c, a); }
-              @Override protected void onDraw(Canvas canvas) {
-                  super.onDraw(canvas);
-                  canvas.drawColor(EngineCore.isPlaying ? EngineCore.bgColor : Color.BLACK);
-                  if(EngineCore.isPlaying) EngineCore.update();
-                  drawR(canvas, EngineCore.root);
-                  invalidate();
-              }
-              private void drawR(Canvas canvas, java.util.List<Instance> list) {
-                  for(Instance i : list) {
-                      if(i.type.equals("Блок") || i.type.equals("Шар")) {
-                          p.setColor(i.color);
-                          if(i.type.equals("Блок")) canvas.drawRect(i.x, i.y, i.x+i.w*i.scale, i.y+i.h*i.scale, p);
-                          else canvas.drawCircle(i.x+i.w/2, i.y+i.h/2, (i.w/2)*i.scale, p);
-                      }
-                      drawR(canvas, i.children);
-                  }
-              }
-              @Override public boolean onTouchEvent(MotionEvent e) {
-                  EngineCore.mx = e.getX(); EngineCore.my = e.getY(); return true;
-              }
-          }
-          EOF
-
-          cat > app/src/main/java/com/jsai/studio/EditorActivity.java << 'EOF'
-          package com.jsai.studio;
-          import android.app.*;
-          import android.os.Bundle;
-          import android.view.*;
-          import android.view.inputmethod.InputMethodManager;
-          import android.widget.*;
-          import android.graphics.Color;
-          import java.util.*;
-
-          public class EditorActivity extends Activity {
-              LinearLayout explorer, props; EditText codeEd; View gameView; Instance sel, clip;
+          public class App extends Activity {
+              Rnd r;
               protected void onCreate(Bundle b) {
-                  super.onCreate(b); requestWindowFeature(1); setContentView(R.layout.editor_main);
-                  explorer = findViewById(R.id.explorer); props = findViewById(R.id.properties);
-                  codeEd = findViewById(R.id.codeEditor); gameView = findViewById(R.id.gameView);
-
-                  findViewById(R.id.btnAdd).setOnClickListener(v -> {
-                      PopupMenu pm = new PopupMenu(this, v);
-                      pm.getMenu().add("Блок"); pm.getMenu().add("Шар"); pm.getMenu().add("Folder"); pm.getMenu().add("Script");
-                      pm.setOnMenuItemClickListener(item -> {
-                          Instance i = new Instance(item.getTitle().toString() + " " + (new Random().nextInt(99)), item.getTitle().toString());
-                          if(sel != null && (sel.type.equals("Folder") || !item.getTitle().equals("Script"))) { i.parent = sel; sel.children.add(i); }
-                          else if(sel != null && item.getTitle().equals("Script")) { i.parent = sel; sel.children.add(i); }
-                          else { EngineCore.root.add(i); }
-                          updateExp(); return true;
-                      }); pm.show();
+                  super.onCreate(b); requestWindowFeature(1); getWindow().setFlags(1024,1024); setContentView(R.layout.main);
+                  GLSurfaceView gl=findViewById(R.id.gl); gl.setEGLContextClientVersion(3); gl.setEGLConfigChooser(8,8,8,8,16,0);
+                  r=new Rnd(); gl.setRenderer(r); gl.setRenderMode(1);
+                  gl.setOnTouchListener((v,e)->{
+                      float x=e.getX(), y=e.getY(); if(e.getAction()==0&&x>v.getWidth()/2f){r.isP=true;r.lx=x;r.ly=y;}
+                      else if(e.getAction()==2&&r.isP){r.yw-=(x-r.lx)*.3f;r.pt+=(y-r.ly)*.3f;if(r.pt>89)r.pt=89;if(r.pt<-89)r.pt=-89;r.lx=x;r.ly=y;}
+                      else if(e.getAction()==1)r.isP=false; return true;
                   });
-
-                  findViewById(R.id.btnPlay).setOnClickListener(v -> {
-                      hideKB();
-                      if(!EngineCore.isPlaying) { EngineCore.start(); ((Button)v).setText("Стоп"); }
-                      else { EngineCore.stop(); ((Button)v).setText("Запуск"); }
+                  findViewById(R.id.jmp).setOnClickListener(v->r.vy=Math.abs(r.vy)<.02f?.218f:r.vy);
+                  findViewById(R.id.spc).setOnClickListener(v->r.spc=!r.spc); // Кнопка Наблюдателя
+                  findViewById(R.id.brk).setOnTouchListener((v,e)->{if(e.getAction()==0)r.brk=System.currentTimeMillis();else if(e.getAction()==1)r.brk=0;return true;});
+                  findViewById(R.id.plc).setOnClickListener(v->r.plc());
+                  findViewById(R.id.b1).setOnClickListener(v->r.sb=1); findViewById(R.id.b2).setOnClickListener(v->r.sb=2); findViewById(R.id.b3).setOnClickListener(v->r.sb=3);
+                  View jz=findViewById(R.id.jz), jh=findViewById(R.id.jh);
+                  jz.setOnTouchListener((v,e)->{
+                      if(e.getAction()==1){jh.setTranslationX(0);jh.setTranslationY(0);r.mx=r.mz=0;}else{
+                      float rad=v.getWidth()/2f, dx=e.getX()-rad, dy=e.getY()-rad, d=(float)Math.sqrt(dx*dx+dy*dy);
+                      if(d>rad){dx=dx/d*rad;dy=dy/d*rad;} jh.setTranslationX(dx);jh.setTranslationY(dy);r.mx=dx/rad;r.mz=-dy/rad;}return true;
                   });
               }
+          }
 
-              void updateExp() {
-                  explorer.removeAllViews(); renderR(EngineCore.root, 0);
-              }
-
-              void renderR(List<Instance> list, int ind) {
-                  for(Instance i : list) {
-                      TextView tv = new TextView(this);
-                      tv.setText((i.parent != null ? "  > " : "• ") + i.name);
-                      tv.setTextColor(sel == i ? Color.BLACK : Color.WHITE);
-                      tv.setBackgroundColor(sel == i ? Color.WHITE : 0);
-                      tv.setPadding(ind * 20, 10, 10, 10);
-                      tv.setOnClickListener(v -> { sel = i; showProps(i); updateExp(); hideKB(); });
-                      tv.setOnLongClickListener(v -> { showCtx(v, i); return true; });
-                      explorer.addView(tv);
-                      renderR(i.children, ind + 1);
-                  }
-              }
-
-              void showCtx(View v, Instance i) {
-                  PopupMenu pm = new PopupMenu(this, v); pm.getMenu().add("Вырезать"); pm.getMenu().add("Вставить"); pm.getMenu().add("Удалить");
-                  pm.setOnMenuItemClickListener(item -> {
-                      if(item.getTitle().equals("Удалить")) { if(i.parent!=null) i.parent.children.remove(i); else EngineCore.root.remove(i); sel=null; }
-                      else if(item.getTitle().equals("Вырезать")) clip = i;
-                      else if(item.getTitle().equals("Вставить") && clip != null) {
-                          if(clip.parent!=null) clip.parent.children.remove(clip); else EngineCore.root.remove(clip);
-                          clip.parent = i; i.children.add(clip);
+          class Rnd implements GLSurfaceView.Renderer {
+              float yw=0, pt=0, px=64, py=35, pz=64, vy=0, mx=0, mz=0, lx, ly; boolean isP=false, spc=false;
+              float[] m=new float[16], pr=new float[16], v=new float[16]; byte[] w=new byte[1048576], hm=new byte[16384];
+              int[] vis=new int[15000]; int vC=0, lCx=-1, lCz=-1, lbI=-1, lpI=-1;
+              int[] sel, pA, lP; long brk=0, pSt=0; byte sb=1; Blk b;
+              
+              boolean crp = false; // ПРАНК: Триггер страшного мода
+              float sr = 0.5f, sg = 0.7f, sb_c = 1.0f, fd = 25f; // Цвета неба и туман
+              
+              public void onSurfaceCreated(GL10 g, EGLConfig c) {
+                  GLES30.glEnable(2929); GLES30.glEnable(2884); GLES30.glEnable(3042); GLES30.glBlendFunc(770,771);
+                  b=new Blk();
+                  for(int x=0;x<128;x++)for(int z=0;z<128;z++){
+                      int h=(int)(Math.sin(x*.12)*Math.cos(z*.12)*5+20);
+                      for(int y=0;y<h;y++){
+                          float n=(float)(Math.sin(x*.2)+Math.sin(y*.3)+Math.sin(z*.2));
+                          if(n>1.2f)continue;
+                          byte t=(byte)(n>1f?5:y==h-1?1:y<h-3?2:3);
+                          // ГЕНЕРАЦИЯ СТРАШНОЙ РУДЫ в пещерах (шанс 0.5%)
+                          if(y<25 && Math.random()<0.005) t=6; 
+                          sB(x,y,z,t);
                       }
-                      updateExp(); return true;
-                  }); pm.show();
-              }
-
-              void showProps(Instance i) {
-                  props.removeAllViews();
-                  boolean isS = i.type.equals("Script");
-                  codeEd.setVisibility(isS ? View.VISIBLE : View.GONE);
-                  gameView.setVisibility(isS ? View.GONE : View.VISIBLE);
-                  if(i.type.equals("Folder")) return;
-                  if(isS) {
-                      codeEd.setText(i.luaCode);
-                      codeEd.addTextChangedListener(new android.text.TextWatcher() {
-                          public void afterTextChanged(android.text.Editable s) { i.luaCode = s.toString(); }
-                          public void beforeTextChanged(CharSequence s, int st, int c, int a) {} public void onTextChanged(CharSequence s, int st, int b, int c) {}
-                      });
-                  } else {
-                      addS("X", 0, 2000, i.x, v -> i.x = v); addS("Y", 0, 2000, i.y, v -> i.y = v);
-                      addS("Разм", 10, 800, i.w, v -> { i.w = v; i.h = v; });
+                  }
+                  for(int x=15;x<110;x+=22)for(int z=15;z<110;z+=22)if((x*z)%7>2){
+                      int by=(int)(Math.sin(x*.12)*Math.cos(z*.12)*5+20);
+                      for(int i=-2;i<=2;i++)for(int j=-2;j<=2;j++)for(int h=0;h<5;h++)sB(x+i,by+h,z+j,(byte)(h==4?4:(i==-2||i==2||j==-2||j==2)?2:0));
+                      sB(x,by,z+2,(byte)0);sB(x,by+1,z+2,(byte)0);
                   }
               }
+              
+              void uH(int x,int z){for(int y=63;y>=0;y--)if(gB(x,y,z)>0){hm[x|(z<<7)]=(byte)y;return;}hm[x|(z<<7)]=0;}
+              public void sB(int x,int y,int z,byte t){if(x>=0&&x<128&&y>=0&&y<64&&z>=0&&z<128){w[x|(y<<7)|(z<<13)]=t;lCx=-1;uH(x,z);}}
+              byte gB(int x,int y,int z){return(x>=0&&x<128&&y>=0&&y<64&&z>=0&&z<128)?w[x|(y<<7)|(z<<13)]:0;}
+              public void plc(){if(pA!=null&&sel!=null&&gB(pA[0],pA[1],pA[2])==0&&!(Math.abs(px-pA[0])<.8f&&Math.abs(py-pA[1])<1.8f&&Math.abs(pz-pA[2])<.8f)){sB(pA[0],pA[1],pA[2],sb);lP=pA;pSt=System.currentTimeMillis();lCx=-1;}}
+              boolean cl(float cx,float cy,float cz){return gB((int)cx,(int)cy,(int)cz)>0||gB((int)cx,(int)(cy+1),(int)cz)>0||gB((int)cx,(int)(cy+1.5f),(int)cz)>0;}
 
-              void addS(String l, float min, float max, float cur, Upd u) {
-                  TextView t = new TextView(this); t.setText(l + ": " + (int)cur); t.setTextColor(Color.GRAY); t.setTextSize(9);
-                  SeekBar s = new SeekBar(this); s.setMax(100); s.setProgress((int)((cur-min)/(max-min)*100));
-                  s.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-                      public void onProgressChanged(SeekBar sb, int p, boolean b) { float v = min+(max-min)*(p/100f); u.u(v); t.setText(l+": "+(int)v); }
-                      public void onStartTrackingTouch(SeekBar sb) {} public void onStopTrackingTouch(SeekBar sb) {}
-                  });
-                  props.addView(t); props.addView(s);
+              public void onDrawFrame(GL10 g) {
+                  // Логика пранка (Сгущение тьмы)
+                  float tr=crp?0.05f:0.5f, tg=crp?0.0f:0.7f, tb=crp?0.0f:1.0f, tFd=crp?6f:25f;
+                  sr+=(tr-sr)*0.02f; sg+=(tg-sg)*0.02f; sb_c+=(tb-sb_c)*0.02f; fd+=(tFd-fd)*0.02f;
+                  GLES30.glClearColor(sr, sg, sb_c, 1f);
+                  GLES30.glClear(16640);
+                  
+                  float s=(float)Math.sin(Math.toRadians(yw)), cs=(float)Math.cos(Math.toRadians(yw));
+                  float lX=(float)(Math.cos(Math.toRadians(pt))*s), lY=(float)(-Math.sin(Math.toRadians(pt))), lZ=(float)(Math.cos(Math.toRadians(pt))*cs);
+                  
+                  if(spc) {
+                      px+=(mz*s-mx*cs)*0.25f; pz+=(mz*cs+mx*s)*0.25f; py+=(mz*lY)*0.25f;
+                  } else {
+                      float dx=(mz*s-mx*cs)*.108f, dz=(mz*cs+mx*s)*.108f;
+                      if(!cl(px+dx+(dx>0?.3f:-.3f),py,pz))px+=dx; if(!cl(px,py,pz+dz+(dz>0?.3f:-.3f)))pz+=dz;
+                      if(vy>0&&gB((int)px,(int)(py+1.8f),(int)pz)>0)vy=0; vy-=.0115f;py+=vy;
+                      if(cl(px,py,pz)){py=(int)py+1;vy=0;} if(py<-10){px=64;py=40;pz=64;vy=0;}
+                  }
+                  
+                  Matrix.setLookAtM(v,0,px,py+1.6f,pz,px+lX,py+1.6f+lY,pz+lZ,0,1,0); Matrix.multiplyMM(m,0,pr,0,v,0);
+                  
+                  sel=pA=null; for(float d=0;d<6;d+=.1f){int tx=(int)(px+lX*d),ty=(int)(py+1.6f+lY*d),tz=(int)(pz+lZ*d);if(gB(tx,ty,tz)>0){sel=new int[]{tx,ty,tz};pA=new int[]{(int)(px+lX*(d-.1f)),(int)(py+1.6f+lY*(d-.1f)),(int)(pz+lZ*(d-.1f))};break;}}
+                  float bp=0; if(brk>0&&sel!=null){bp=Math.min(1f,(System.currentTimeMillis()-brk)/800f);if(bp>=1f){
+                      if(gB(sel[0],sel[1],sel[2]) == 6) crp = true; // ПРАНК АКТИВИРОВАН!
+                      sB(sel[0],sel[1],sel[2],(byte)0);brk=0;bp=0;lCx=-1;
+                  }}
+                  
+                  int bX=-1,bY=-1,bZ=-1,pX=-1,pY=-1,pZ=-1; float bs=1,ba=1,ps=1,pa=1; byte bt=0,ptT=0;
+                  if(brk>0&&sel!=null){bX=sel[0];bY=sel[1];bZ=sel[2];bs=1f-(bp*.7f);ba=1f-bp;bt=gB(bX,bY,bZ);}
+                  if(lP!=null){long e=System.currentTimeMillis()-pSt;if(e<80){float prg=e/80f;pX=lP[0];pY=lP[1];pZ=lP[2];ps=.3f+(prg*.7f);pa=prg;ptT=gB(pX,pY,pZ);}else lP=null;}
+
+                  int cx=(int)px>>3, cz=(int)pz>>3, bI=bt>0?(bX|(bY<<7)|(bZ<<13)):-1, pI=ptT>0?(pX|(pY<<7)|(pZ<<13)):-1;
+                  if(cx!=lCx||cz!=lCz||bI!=lbI||pI!=lpI){vC=0; for(int x=(int)px-30;x<(int)px+30&&vC<14999;x++)for(int z=(int)pz-30;z<(int)pz+30&&vC<14999;z++)for(int y=(int)py-30;y<(int)py+30&&vC<14999;y++){
+                      if(x<1||x>126||y<1||y>62||z<1||z>126)continue; int i=x|(y<<7)|(z<<13); byte t=w[i]; if(t==0)continue;
+                      boolean oc=true; for(int d:new int[]{1,-1,128,-128,8192,-8192}){int a=i+d;if(w[a]==0||a==bI||a==pI){oc=false;break;}} if(oc)continue;
+                      vis[vC++]=i|(t<<20);
+                  } lCx=cx;lCz=cz;lbI=bI;lpI=pI;}
+
+                  GLES30.glUseProgram(b.p); GLES30.glUniformMatrix4fv(b.uM,1,false,m,0);
+                  GLES30.glUniform3f(b.uFC, sr, sg, sb_c); GLES30.glUniform1f(b.uFD, fd); // Передаем цвет тумана
+                  
+                  GLES30.glDepthMask(true);
+                  for(int k=0;k<vC;k++){
+                      int i=vis[k],x=i&127,y=(i>>7)&63,z=(i>>13)&127,t=i>>20;
+                      float d1=x-px, d2=z-pz; if((d1*lX+d2*lZ)/(float)Math.sqrt(d1*d1+d2*d2)<-0.3f&&d1*d1+d2*d2>25f)continue;
+                      if((x==bX&&y==bY&&z==bZ)||(x==pX&&y==pY&&z==pZ))continue; 
+                      
+                      // Настоящие тени на пол (Drop Shadows)
+                      float sh = (y < hm[x|(z<<7)]) ? 0.45f : 1.0f;
+                      b.d(x,y,z,sel!=null&&x==sel[0]&&y==sel[1]&&z==sel[2],t,1,1,sh);
+                  }
+                  
+                  GLES30.glDepthMask(false);
+                  if(bt>0)b.d(bX,bY,bZ,true,bt,bs,ba, (bY < hm[bX|(bZ<<7)]) ? 0.45f : 1.0f); 
+                  if(ptT>0)b.d(pX,pY,pZ,false,ptT,ps,pa, (pY < hm[pX|(pZ<<7)]) ? 0.45f : 1.0f);
+                  GLES30.glDepthMask(true);
               }
-              void hideKB() { InputMethodManager imm = (InputMethodManager)getSystemService(INPUT_METHOD_SERVICE); View f = getCurrentFocus(); if(f!=null) imm.hideSoftInputFromWindow(f.getWindowToken(), 0); }
-              interface Upd { void u(float v); }
+              public void onSurfaceChanged(GL10 g, int w, int h) {GLES30.glViewport(0,0,w,h); Matrix.perspectiveM(pr,0,75,(float)w/h,.1f,150f);}
+          }
+
+          class Blk {
+              int p, uM, uP, uC, uS, uA, uFC, uFD; FloatBuffer vb, wb;
+              float[] v={0,0,0,0,1,0,1,1,0,0,0,0,1,1,0,1,0,0,0,0,1,1,0,1,1,1,1,0,0,1,1,1,1,0,1,1,0,0,0,0,0,1,0,1,1,0,0,0,0,1,1,0,1,0,1,0,0,1,1,0,1,1,1,1,0,0,1,1,1,1,0,1,0,1,0,0,1,1,1,1,1,0,1,0,1,1,1,1,1,0,0,0,0,1,0,0,1,0,1,0,0,0,1,0,1,0,0,1},
+                      w={0,0,0,1,0,0, 1,0,0,1,0,1, 1,0,1,0,0,1, 0,0,1,0,0,0, 0,1,0,1,1,0, 1,1,0,1,1,1, 1,1,1,0,1,1, 0,1,1,0,1,0, 0,0,0,0,1,0, 1,0,0,1,1,0, 1,0,1,1,1,1, 0,0,1,0,1,1};
+              Blk() {
+                  vb=ByteBuffer.allocateDirect(v.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(v);vb.position(0);
+                  wb=ByteBuffer.allocateDirect(w.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(w);wb.position(0);
+                  int vs=GLES30.glCreateShader(35633); GLES30.glShaderSource(vs,"#version 300 es\nlayout(location=0) in vec4 p; uniform mat4 vp; uniform vec3 pos; uniform float s; out vec3 vP; void main(){gl_Position=vp*vec4((p.xyz-0.5)*s+0.5+pos,1.0); vP=p.xyz;}"); GLES30.glCompileShader(vs);
+                  int fs=GLES30.glCreateShader(35632); GLES30.glShaderSource(fs,"#version 300 es\nprecision mediump float; in vec3 vP; uniform vec3 c; uniform float a; uniform vec3 fc; uniform float fd; out vec4 fC; void main(){float l=0.75; if(vP.y>0.49)l=1.0; else if(vP.y<-0.49)l=0.4; float dist=gl_FragCoord.z/gl_FragCoord.w; float fog=clamp((dist-(fd*0.4))/(fd*0.6),0.0,1.0); vec3 col=c*l; if(a>0.99) col=mix(col,fc,fog); fC=vec4(col,a);}"); GLES30.glCompileShader(fs);
+                  p=GLES30.glCreateProgram(); GLES30.glAttachShader(p,vs); GLES30.glAttachShader(p,fs); GLES30.glLinkProgram(p);
+                  uM=GLES30.glGetUniformLocation(p,"vp"); uP=GLES30.glGetUniformLocation(p,"pos"); uC=GLES30.glGetUniformLocation(p,"c"); uS=GLES30.glGetUniformLocation(p,"s"); uA=GLES30.glGetUniformLocation(p,"a");
+                  uFC=GLES30.glGetUniformLocation(p,"fc"); uFD=GLES30.glGetUniformLocation(p,"fd");
+              }
+              void d(float x,float y,float z,boolean sL,int t,float s,float a,float sh) {
+                  GLES30.glUniform3f(uP,x,y,z); GLES30.glUniform1f(uS,s); GLES30.glUniform1f(uA,a);
+                  float r=.5f,g=.5f,b=.5f; 
+                  if(t==1){r=.35f;g=.75f;b=.25f;}else if(t==2){r=.6f;g=.6f;b=.6f;}else if(t==3){r=.55f;g=.35f;b=.2f;}
+                  else if(t==4){r=.54f;g=.35f;b=.17f;}else if(t==5){r=.2f;g=.8f;b=.2f;} 
+                  else if(t==6){r=.17f;g=.11f;b=.2f;} // СТРАШНАЯ РУДА (Тёмно-фиолетовая)
+                  
+                  GLES30.glVertexAttribPointer(0,3,5126,false,0,vb);
+                  GLES30.glUniform3f(uC,r*sh,g*sh,b*sh); GLES30.glDrawArrays(4,0,36); 
+                  
+                  if(sL){
+                      GLES30.glVertexAttribPointer(0,3,5126,false,0,wb);
+                      GLES30.glUniform1f(uS,1.02f);GLES30.glUniform3f(uC,1,1,1);GLES30.glUniform1f(uA,1);GLES30.glLineWidth(4f);
+                      GLES30.glDrawArrays(1,0,24); 
+                  }
+              }
           }
           EOF
 
           cat > app/src/main/AndroidManifest.xml << 'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="JsAI Russian Ultimate" android:theme="@android:style/Theme.NoTitleBar">
-                  <activity android:name=".EditorActivity" android:exported="true" android:screenOrientation="landscape" android:windowSoftInputMode="adjustPan">
-                      <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
-                  </activity>
-              </application>
-          </manifest>
+          <?xml version="1.0" encoding="utf-8"?><manifest xmlns:android="http://schemas.android.com/apk/res/android"><uses-feature android:glEsVersion="0x00030000" android:required="true"/><application android:label="JsAI Craft Shadows" android:hardwareAccelerated="true"><activity android:name="com.jsai.craft.App" android:exported="true" android:screenOrientation="landscape"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity></application></manifest>
           EOF
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: 8.2
-
-      - name: Set up JDK 17
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
+          cache: 'gradle'
 
       - name: Build APK
-        run: gradle assembleDebug --no-daemon
+        run: |
+          wget -q https://services.gradle.org/distributions/gradle-8.5-bin.zip
+          unzip -q gradle-8.5-bin.zip
+          export PATH="$PWD/gradle-8.5/bin:$PATH"
+          gradle wrapper --gradle-version 8.5
+          ./gradlew assembleDebug --no-daemon --parallel
 
-      - name: Upload APK
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: JsAI_Russian_Ultimate
+          name: JsAI_Craft_V14_PRANK
           path: app/build/outputs/apk/debug/app-debug.apk
