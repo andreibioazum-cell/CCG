@@ -1,4 +1,4 @@
-name: JsAI_Craft_V14_FINAL_PRO
+name: JsAI_Craft_V14_PERFORMANCE_ULTRA
 on: [push, workflow_dispatch]
 
 jobs:
@@ -29,15 +29,15 @@ jobs:
           cat > app/src/main/res/layout/main.xml << 'EOF'
           <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent">
               <android.opengl.GLSurfaceView android:id="@+id/gl" android:layout_width="match_parent" android:layout_height="match_parent"/>
-              <View android:layout_width="4dp" android:layout_height="4dp" android:background="#FFF" android:layout_centerInParent="true" android:alpha="0.4"/>
-              <FrameLayout android:id="@+id/jz" android:layout_width="90dp" android:layout_height="90dp" android:layout_alignParentBottom="true" android:layout_margin="30dp" android:background="@drawable/jb">
-                  <View android:id="@+id/jh" android:layout_width="34dp" android:layout_height="34dp" android:layout_gravity="center" android:background="@drawable/jh"/>
+              <View android:layout_width="4dp" android:layout_height="4dp" android:background="#FFF" android:layout_centerInParent="true" android:alpha="0.3"/>
+              <FrameLayout android:id="@+id/jz" android:layout_width="85dp" android:layout_height="85dp" android:layout_alignParentBottom="true" android:layout_margin="30dp" android:background="@drawable/jb">
+                  <View android:id="@+id/jh" android:layout_width="30dp" android:layout_height="30dp" android:layout_gravity="center" android:background="@drawable/jh"/>
               </FrameLayout>
               <GridLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_alignParentBottom="true" android:layout_alignParentRight="true" android:layout_margin="10dp" android:columnCount="2">
-                  <Button android:id="@+id/brk" android:layout_width="64dp" android:layout_height="64dp" android:text="BRK"/>
-                  <Button android:id="@+id/plc" android:layout_width="64dp" android:layout_height="64dp" android:text="PLC"/>
-                  <Button android:id="@+id/jmp" android:layout_width="64dp" android:layout_height="64dp" android:text="JMP"/>
-                  <Button android:id="@+id/spc" android:layout_width="64dp" android:layout_height="64dp" android:text="FLY"/>
+                  <Button android:id="@+id/brk" android:layout_width="60dp" android:layout_height="60dp" android:text="BRK"/>
+                  <Button android:id="@+id/plc" android:layout_width="60dp" android:layout_height="60dp" android:text="PLC"/>
+                  <Button android:id="@+id/jmp" android:layout_width="60dp" android:layout_height="60dp" android:text="JMP"/>
+                  <Button android:id="@+id/spc" android:layout_width="60dp" android:layout_height="60dp" android:text="FLY"/>
               </GridLayout>
           </RelativeLayout>
           EOF
@@ -56,10 +56,10 @@ jobs:
                   gl.setOnTouchListener((v,e)->{
                       float x=e.getX(), y=e.getY();
                       if(e.getAction()==0 && x > v.getWidth()/2f){ r.lx=x; r.ly=y; r.isP=true; }
-                      if(e.getAction()==2 && r.isP){ r.yw-=(x-r.lx)*0.25f; r.pt+=(y-r.ly)*0.25f; r.pt=Math.max(-89,Math.min(89,r.pt)); r.lx=x; r.ly=y; }
+                      if(e.getAction()==2 && r.isP){ r.yw-=(x-r.lx)*0.2f; r.pt+=(y-r.ly)*0.2f; r.pt=Math.max(-89,Math.min(89,r.pt)); r.lx=x; r.ly=y; }
                       if(e.getAction()==1) r.isP=false; return true;
                   });
-                  findViewById(R.id.jmp).setOnClickListener(v->{if(Math.abs(r.vy)<.05f||r.spc) r.vy=.18f;});
+                  findViewById(R.id.jmp).setOnClickListener(v->{if(Math.abs(r.vy)<.05f||r.spc) r.vy=.2f;});
                   findViewById(R.id.spc).setOnClickListener(v->r.spc=!r.spc);
                   findViewById(R.id.plc).setOnClickListener(v->r.plc());
                   findViewById(R.id.brk).setOnTouchListener((v,e)->{if(e.getAction()==0)r.brkT=System.currentTimeMillis();else if(e.getAction()==1)r.brkT=0;return true;});
@@ -75,8 +75,8 @@ jobs:
           class Rnd implements GLSurfaceView.Renderer {
               float yw=0,pt=0,px=64,py=35,pz=64,vy=0,mx=0,mz=0,lx,ly; boolean isP=false,spc=false;
               float[] m=new float[16],pr=new float[16],v=new float[16]; 
-              byte[] w=new byte[1048576], mask=new byte[1048576]; // mask хранит 8 бит (живые части)
-              int[] vis=new int[10000]; int vC=0; Blk b; long brkT=0, lastT=System.nanoTime(); int[] sel;
+              byte[] w=new byte[1048576], mask=new byte[1048576];
+              int[] vis=new int[5000]; int vC=0; Blk b; long brkT=0, lastT=System.nanoTime(); int[] sel;
 
               public void onSurfaceCreated(GL10 g, EGLConfig c) {
                   GLES30.glEnable(2929); GLES30.glEnable(2884);
@@ -92,84 +92,102 @@ jobs:
               public void plc(){ if(sel!=null){ int tx=sel[0], ty=sel[1], tz=sel[2]; sB(tx,ty+1,tz,(byte)1); mask[tx|((ty+1)<<7)|(tz<<13)]=(byte)255; }}
 
               public void onDrawFrame(GL10 g) {
-                  long now=System.nanoTime(); float dt=(now-lastT)/1000000000f; lastT=now; if(dt>0.1f) dt=0.1f;
-                  GLES30.glClearColor(0.5f, 0.7f, 1.0f, 1); GLES30.glClear(16640);
+                  long now=System.nanoTime(); float dt=(now-lastT)/1e9f; lastT=now; if(dt>0.05f) dt=0.05f;
+                  GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
+                  GLES30.glClearColor(0.5f, 0.7f, 1.0f, 1);
                   
                   float s=(float)Math.sin(Math.toRadians(yw)), cs=(float)Math.cos(Math.toRadians(yw));
                   float lX=(float)(Math.cos(Math.toRadians(pt))*s), lY=(float)(-Math.sin(Math.toRadians(pt))), lZ=(float)(Math.cos(Math.toRadians(pt))*cs);
                   
-                  // Физика с учетом DT
-                  if(spc){ px+=(mz*s-mx*cs)*8f*dt; pz+=(mz*cs+mx*s)*8f*dt; py+=lY*mz*8f*dt; vy=0; }
-                  else { float dx=(mz*s-mx*cs)*6f*dt, dz=(mz*cs+mx*s)*6f*dt; 
+                  if(spc){ px+=(mz*s-mx*cs)*10f*dt; pz+=(mz*cs+mx*s)*10f*dt; py+=lY*mz*10f*dt; vy=0; }
+                  else { float dx=(mz*s-mx*cs)*7f*dt, dz=(mz*cs+mx*s)*7f*dt; 
                          if(gB((int)(px+dx), (int)py, (int)pz)==0) px+=dx; if(gB((int)px, (int)py, (int)(pz+dz))==0) pz+=dz;
-                         vy-=(18f*dt*dt + 0.6f*dt); py+=vy; if(gB((int)px,(int)py,(int)pz)>0){py=(int)py+1; vy=0;} }
+                         vy-=22f*dt*dt + 0.7f*dt; py+=vy; if(gB((int)px,(int)py,(int)pz)>0){py=(int)py+1; vy=0;} }
                   
                   Matrix.setLookAtM(v,0,px,py+1.6f,pz,px+lX,py+1.6f+lY,pz+lZ,0,1,0); Matrix.multiplyMM(m,0,pr,0,v,0);
                   
-                  // Ломание частей по одной
-                  sel=null; for(float d=0;d<5;d+=0.15f){
+                  sel=null; for(float d=0;d<5;d+=0.2f){
                       int tx=(int)(px+lX*d), ty=(int)(py+1.6f+lY*d), tz=(int)(pz+lZ*d);
                       if(gB(tx,ty,tz)>0){ 
                           sel=new int[]{tx,ty,tz}; 
-                          if(brkT>0){
-                              long elapsed = System.currentTimeMillis()-brkT;
-                              int partsToKill = (int)(elapsed / 150); // Каждые 150мс - одна часть
-                              if(partsToKill > 0){
-                                  int currentMask = mask[tx|(ty<<7)|(tz<<13)] & 0xFF;
-                                  for(int k=0; k<partsToKill && currentMask > 0; k++) currentMask &= (currentMask - 1); // Убираем 1 бит
-                                  mask[tx|(ty<<7)|(tz<<13)] = (byte)currentMask;
-                                  if(currentMask == 0) sB(tx,ty,tz,(byte)0);
-                                  brkT = System.currentTimeMillis();
-                              }
+                          if(brkT>0 && System.currentTimeMillis()-brkT>150){
+                              int cur = mask[tx|(ty<<7)|(tz<<13)] & 0xFF;
+                              if(cur > 0) mask[tx|(ty<<7)|(tz<<13)] = (byte)(cur & (cur - 1));
+                              if((mask[tx|(ty<<7)|(tz<<13)] & 0xFF) == 0) sB(tx,ty,tz,(byte)0);
+                              brkT = System.currentTimeMillis();
                           } break;
                       }
                   }
 
-                  vC=0; int rD=16;
+                  vC=0; int rD=12; // Оптимизированный радиус
                   for(int x=(int)px-rD;x<(int)px+rD;x++)for(int z=(int)pz-rD;z<(int)pz+rD;z++)for(int y=(int)py-rD;y<(int)py+rD;y++){
                       byte t=gB(x,y,z); if(t==0)continue;
-                      vis[vC++]=x|(y<<7)|(z<<13)|(t<<20); if(vC>=9999) break;
+                      if(gB(x+1,y,z)>0&&gB(x-1,y,z)>0&&gB(x,y+1,z)>0&&gB(x,y-1,z)>0&&gB(x,y,z+1)>0&&gB(x,y,z-1)>0)continue;
+                      vis[vC++]=x|(y<<7)|(z<<13)|(t<<20); if(vC>=4999) break;
                   }
                   
                   GLES30.glUseProgram(b.p); GLES30.glUniformMatrix4fv(b.uM,1,false,m,0);
-                  GLES30.glEnableVertexAttribArray(0); GLES30.glEnableVertexAttribArray(1);
+                  GLES30.glEnableVertexAttribArray(0); GLES30.glEnableVertexAttribArray(1); GLES30.glEnableVertexAttribArray(2);
                   for(int k=0;k<vC;k++){
                       int i=vis[k], x=i&127, y=(i>>7)&63, z=(i>>13)&127, t=i>>20;
                       b.d(x,y,z,t, mask[x|(y<<7)|(z<<13)]);
                   }
               }
-              public void onSurfaceChanged(GL10 g,int w,int h){ GLES30.glViewport(0,0,w,h); Matrix.perspectiveM(pr,0,75,(float)w/h,0.1f,120f); }
+              public void onSurfaceChanged(GL10 g,int w,int h){ GLES30.glViewport(0,0,w,h); Matrix.perspectiveM(pr,0,75,(float)w/h,0.1f,100f); }
           }
 
           class Blk {
-              int p, uM, uP, uC; FloatBuffer vb, nb;
+              int p, uM, uP, uC, uMask; FloatBuffer vb;
               Blk() {
-                  float[] cubeV = {0,0,0, 1,0,0, 1,1,0, 0,0,0, 1,1,0, 0,1,0, 0,0,1, 1,0,1, 1,1,1, 0,0,1, 1,1,1, 0,1,1, 0,0,0, 0,1,0, 0,1,1, 0,0,0, 0,1,1, 0,0,1, 1,0,0, 1,1,0, 1,1,1, 1,0,0, 1,1,1, 1,0,1, 0,1,0, 1,1,0, 1,1,1, 0,1,0, 1,1,1, 0,1,1, 0,0,0, 1,0,0, 1,0,1, 0,0,0, 1,0,1, 0,0,1};
-                  float[] cubeN = {0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1, 0,0,1, 0,0,1, 0,0,1, 0,0,1, 0,0,1, 0,0,1, -1,0,0, -1,0,0, -1,0,0, -1,0,0, -1,0,0, -1,0,0, 1,0,0, 1,0,0, 1,0,0, 1,0,0, 1,0,0, 1,0,0, 0,1,0, 0,1,0, 0,1,0, 0,1,0, 0,1,0, 0,1,0, 0,-1,0, 0,-1,0, 0,-1,0, 0,-1,0, 0,-1,0, 0,-1,0};
-                  vb=ByteBuffer.allocateDirect(cubeV.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(cubeV); vb.position(0);
-                  nb=ByteBuffer.allocateDirect(cubeN.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer().put(cubeN); nb.position(0);
-                  String vs="#version 300 es\nlayout(location=0) in vec3 aP; layout(location=1) in vec3 aN; uniform mat4 uM; uniform vec3 uO; uniform float s; out float vL; void main(){gl_Position=uM*vec4(aP*s+uO,1.0); vL=dot(aN,normalize(vec3(0.3,1.0,0.5)))*0.4+0.6;}";
-                  String fs="#version 300 es\nprecision mediump float; in float vL; uniform vec3 uC; out vec4 fC; void main(){fC=vec4(uC*vL,1.0);}";
+                  float[] cV = {0,0,0, 1,0,0, 1,1,0, 0,0,0, 1,1,0, 0,1,0, 0,0,1, 1,0,1, 1,1,1, 0,0,1, 1,1,1, 0,1,1, 0,0,0, 0,1,0, 0,1,1, 0,0,0, 0,1,1, 0,0,1, 1,0,0, 1,1,0, 1,1,1, 1,0,0, 1,1,1, 1,0,1, 0,1,0, 1,1,0, 1,1,1, 0,1,0, 1,1,1, 0,1,1, 0,0,0, 1,0,0, 1,0,1, 0,0,0, 1,0,1, 0,0,1};
+                  float[] cN = {0,0,-1,0,0,-1,0,0,-1,0,0,-1,0,0,-1,0,0,-1, 0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1, -1,0,0,-1,0,0,-1,0,0,-1,0,0,-1,0,0,-1,0,0, 1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0, 0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0, 0,-1,0,0,-1,0,0,-1,0,0,-1,0,0,-1,0,0,-1,0};
+                  
+                  // Создаем ОДИН буфер для всех 8 частей сразу!
+                  ByteBuffer bb = ByteBuffer.allocateDirect(8 * 36 * (3+3+1) * 4).order(ByteOrder.nativeOrder());
+                  FloatBuffer fb = bb.asFloatBuffer();
+                  for(int i=0; i<8; i++) {
+                      float ox=(i&1)*0.5f, oy=((i>>1)&1)*0.5f, oz=((i>>2)&1)*0.5f;
+                      for(int v=0; v<36; v++) {
+                          fb.put(cV[v*3]*0.49f + ox); fb.put(cV[v*3+1]*0.49f + oy); fb.put(cV[v*3+2]*0.49f + oz);
+                          fb.put(cN[v*3]); fb.put(cN[v*3+1]); fb.put(cN[v*3+2]);
+                          fb.put((float)i); // Индекс части для шейдера
+                      }
+                  }
+                  fb.position(0); vb = fb;
+
+                  String vs = "#version 300 es\n" +
+                      "layout(location=0) in vec3 aP; layout(location=1) in vec3 aN; layout(location=2) in float aI;\n" +
+                      "uniform mat4 uM; uniform vec3 uO; uniform int uMask; out float vL;\n" +
+                      "void main(){\n" +
+                      "  int bit = (uMask >> int(aI)) & 1;\n" +
+                      "  vec3 pos = (bit == 1) ? (aP + uO) : vec3(1000.0);\n" +
+                      "  gl_Position = uM * vec4(pos, 1.0);\n" +
+                      "  vL = dot(aN, normalize(vec3(0.3, 1.0, 0.5))) * 0.4 + 0.6;\n" +
+                      "}";
+                  String fs = "#version 300 es\nprecision mediump float; in float vL; uniform vec3 uC; out vec4 fC; void main(){fC=vec4(uC*vL, 1.0);}";
+                  
                   p=GLES30.glCreateProgram();
                   int vS=GLES30.glCreateShader(35633); GLES30.glShaderSource(vS,vs); GLES30.glCompileShader(vS);
                   int fS=GLES30.glCreateShader(35632); GLES30.glShaderSource(fS,fs); GLES30.glCompileShader(fS);
                   GLES30.glAttachShader(p,vS); GLES30.glAttachShader(p,fS); GLES30.glLinkProgram(p);
-                  uM=GLES30.glGetUniformLocation(p,"uM"); uP=GLES30.glGetUniformLocation(p,"uO"); uC=GLES30.glGetUniformLocation(p,"uC");
+                  uM=GLES30.glGetUniformLocation(p,"uM"); uP=GLES30.glGetUniformLocation(p,"uO"); uC=GLES30.glGetUniformLocation(p,"uC"); uMask=GLES30.glGetUniformLocation(p,"uMask");
               }
               void d(float x,float y,float z,int t, byte m) {
-                  GLES30.glVertexAttribPointer(0,3,5126,false,0,vb); GLES30.glVertexAttribPointer(1,3,5126,false,0,nb);
+                  GLES30.glVertexAttribPointer(0,3,5126,false,28,vb); vb.position(3);
+                  GLES30.glVertexAttribPointer(1,3,5126,false,28,vb); vb.position(6);
+                  GLES30.glVertexAttribPointer(2,1,5126,false,28,vb); vb.position(0);
+                  
                   float r=.5f,g=.5f,b_c=.5f; if(t==1){r=.4f;g=.7f;b_c=.3f;}else if(t==2){r=.6f;g=.6f;b_c=.6f;}else if(t==3){r=.5f;g=.4f;b_c=.2f;}
-                  GLES30.glUniform3f(uC,r,g,b_c); GLES30.glUniform1f(GLES30.glGetUniformLocation(p,"s"), 0.49f);
-                  for(int i=0;i<8;i++) if(((m>>i)&1)==1) {
-                      GLES30.glUniform3f(uP, x+(i&1)*0.5f, y+((i>>1)&1)*0.5f, z+((i>>2)&1)*0.5f);
-                      GLES30.glDrawArrays(4,0,36);
-                  }
+                  GLES30.glUniform3f(uC,r,g,b_c);
+                  GLES30.glUniform3f(uP,x,y,z);
+                  GLES30.glUniform1i(uMask, m & 0xFF);
+                  GLES30.glDrawArrays(4,0,36*8); // РИСУЕМ ВЕСЬ БЛОК ЗА 1 РАЗ
               }
           }
           EOF
 
           cat > app/src/main/AndroidManifest.xml << 'EOF'
-          <?xml version="1.0" encoding="utf-8"?><manifest xmlns:android="http://schemas.android.com/apk/res/android"><application android:label="JsAI Craft Final" android:hardwareAccelerated="true"><activity android:name="com.jsai.craft.App" android:exported="true" android:screenOrientation="landscape"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity></application></manifest>
+          <?xml version="1.0" encoding="utf-8"?><manifest xmlns:android="http://schemas.android.com/apk/res/android"><application android:label="JsAI Craft Ultra" android:hardwareAccelerated="true"><activity android:name="com.jsai.craft.App" android:exported="true" android:screenOrientation="landscape"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity></application></manifest>
           EOF
 
       - name: Setup Java
@@ -190,5 +208,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: JsAI_Craft_V14_FINAL
+          name: JsAI_Craft_V14_ULTRA
           path: app/build/outputs/apk/debug/app-debug.apk
