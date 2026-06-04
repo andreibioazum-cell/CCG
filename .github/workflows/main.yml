@@ -35,7 +35,7 @@ jobs:
           android {
               namespace 'com.jsai.studio'
               compileSdk 34
-              defaultConfig { applicationId "com.jsai.studio"; minSdk 26; targetSdk 34; versionCode 1; versionName "10.0" }
+              defaultConfig { applicationId "com.jsai.studio"; minSdk 26; targetSdk 34; versionCode 1; versionName "11.0" }
           }
           dependencies {
               implementation 'androidx.appcompat:appcompat:1.6.1'
@@ -43,9 +43,9 @@ jobs:
           }
           EOF
 
-          # --- ИНТЕРФЕЙС (РЕТРО) ---
+          # --- UI ---
           cat > app/src/main/res/layout/editor_main.xml << 'EOF'
-          <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#121212">
+          <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#1B1B1B">
               <LinearLayout android:id="@+id/toolbar" android:layout_width="match_parent" android:layout_height="36dp" android:background="#222" android:orientation="horizontal" android:gravity="center_vertical" android:paddingHorizontal="8dp">
                   <Button android:id="@+id/btnAdd" android:layout_width="36dp" android:layout_height="30dp" android:text="+" android:backgroundTint="#FFF" android:textColor="#000" android:textSize="16sp" android:insetTop="0dp" android:insetBottom="0dp" android:padding="0dp"/>
                   <Button android:id="@+id/btnPlay" android:layout_width="85dp" android:layout_height="30dp" android:text="Запуск" android:backgroundTint="#FFF" android:textColor="#000" android:textSize="10sp" android:layout_marginLeft="10dp" android:insetTop="0dp" android:insetBottom="0dp"/>
@@ -72,21 +72,21 @@ jobs:
           package com.jsai.studio;
           import java.util.*;
           import org.luaj.vm2.LuaValue;
+          import org.luaj.vm2.Globals;
           public class Instance {
-              public String name, type, luaCode = "", text = "";
-              public float x=400, y=400, w=150, h=150, scale=1, rotation=0;
+              public String name, type, luaCode = "";
+              public float x=400, y=400, w=150, h=150, scale=1;
               public float sX, sY, sW, sH, sSc;
               public int color = 0xFFFFFFFF;
-              public boolean isOpen = true;
               public Instance parent;
               public List<Instance> children = new ArrayList<>();
               public LuaValue loopFunc = LuaValue.NIL;
+              public Globals scriptEnv;
 
               public Instance(String n, String t) { name=n; type=t; }
               public void save() { sX=x; sY=y; sW=w; sH=h; sSc=scale; }
-              public void reset() { x=sX; y=sY; w=sW; h=sH; scale=sSc; loopFunc=LuaValue.NIL; }
+              public void reset() { x=sX; y=sY; w=sW; h=sH; scale=sSc; loopFunc=LuaValue.NIL; scriptEnv=null; }
               
-              // API для Луа
               public void setX(float v) { x=v; } public float getX() { return x; }
               public void setY(float v) { y=v; } public float getY() { return y; }
               public void setCol(String n) { 
@@ -102,6 +102,7 @@ jobs:
           package com.jsai.studio;
           import java.util.*;
           import org.luaj.vm2.*;
+          import org.luaj.vm2.lib.*;
           import org.luaj.vm2.lib.jse.*;
 
           public class EngineCore {
@@ -116,22 +117,14 @@ jobs:
                   for(String line : lines) {
                       String l = line.trim();
                       if(l.isEmpty()) continue;
-                      
-                      // Базовый синтаксис без учета отступов
-                      String processed = l.replace("игра", "function loop()")
-                                          .replace("конец", "end")
-                                          .replace("мышьХ", "mx")
-                                          .replace("мышьУ", "my")
-                                          .replace("я.", "я:")
-                                          .replace("я:", "self:")
-                                          .replace("равно", "==");
-
-                      // Трансляция команд
-                      processed = processed.replaceAll("фон (\\w+)", "setBackground('$1')")
-                                           .replaceAll("цвет (\\w+)", "self:setCol('$1')")
-                                           .replaceAll("круг ([^,]+),\\s*([^,]+),\\s*([^\\n]+)", "drawCircle($1,$2,$3)");
-                      
-                      sb.append(processed).append("\n");
+                      String p = l.replace("игра", "function loop()")
+                                  .replace("конец", "end")
+                                  .replace("я.", "self:")
+                                  .replace("я:", "self:")
+                                  .replace("равно", "==");
+                      p = p.replaceAll("фон (\\w+)", "setBackground('$1')")
+                           .replaceAll("цвет (\\w+)", "self:setCol('$1')");
+                      sb.append(p).append("\n");
                   }
                   return sb.toString();
               }
@@ -147,19 +140,23 @@ jobs:
                       if(i.type.equals("Script") && i.parent != null) {
                           Globals g = JsePlatform.standardGlobals();
                           g.set("self", CoerceJavaToLua.coerce(i.parent));
-                          g.set("setBackground", new OneArgFunction() { @Override public LuaValue call(LuaValue a) {
-                              if(a.tojstring().equals("черный")) bgColor=0xFF000000; else bgColor=0xFFFFFFFF; return NIL; 
-                          }});
+                          g.set("setBackground", new OneArgFunction() {
+                              @Override public LuaValue call(LuaValue a) {
+                                  if(a.tojstring().equals("черный")) bgColor=0xFF000000; else bgColor=0xFFFFFFFF;
+                                  return LuaValue.NIL;
+                              }
+                          });
                           try {
                               g.load(compile(i.luaCode)).call();
                               i.parent.loopFunc = g.get("loop");
+                              i.parent.scriptEnv = g;
                           } catch(Exception e) {}
                       }
                       process(i.children);
                   }
               }
 
-              public static void stop() { isPlaying = false; bgColor=0xFF000000; for(Instance i:root) resetR(i); }
+              public static void stop() { isPlaying = false; bgColor=0xFF000000; for(Instance i : root) resetR(i); }
               private static void resetR(Instance i) { i.reset(); for(Instance c:i.children) resetR(c); }
 
               public static void update() {
@@ -168,9 +165,9 @@ jobs:
               }
               private static void updateR(List<Instance> list) {
                   for(Instance i : list) {
-                      if(!i.loopFunc.isnil()) {
-                          Globals g = i.loopFunc.getfenv();
-                          g.set("mx", LuaValue.valueOf(mx)); g.set("my", LuaValue.valueOf(my));
+                      if(i.loopFunc != null && !i.loopFunc.isnil() && i.scriptEnv != null) {
+                          i.scriptEnv.set("мышьХ", LuaValue.valueOf(mx));
+                          i.scriptEnv.set("мышьУ", LuaValue.valueOf(my));
                           try { i.loopFunc.call(); } catch(Exception e) {}
                       }
                       updateR(i.children);
@@ -233,13 +230,15 @@ jobs:
                       pm.getMenu().add("Блок"); pm.getMenu().add("Шар"); pm.getMenu().add("Folder"); pm.getMenu().add("Script");
                       pm.setOnMenuItemClickListener(item -> {
                           Instance i = new Instance(item.getTitle().toString() + " " + (new Random().nextInt(99)), item.getTitle().toString());
-                          if(sel != null && sel.type.equals("Folder")) { i.parent = sel; sel.children.add(i); }
+                          if(sel != null && (sel.type.equals("Folder") || !item.getTitle().equals("Script"))) { i.parent = sel; sel.children.add(i); }
+                          else if(sel != null && item.getTitle().equals("Script")) { i.parent = sel; sel.children.add(i); }
                           else { EngineCore.root.add(i); }
                           updateExp(); return true;
                       }); pm.show();
                   });
 
                   findViewById(R.id.btnPlay).setOnClickListener(v -> {
+                      hideKB();
                       if(!EngineCore.isPlaying) { EngineCore.start(); ((Button)v).setText("Стоп"); }
                       else { EngineCore.stop(); ((Button)v).setText("Запуск"); }
                   });
@@ -252,7 +251,7 @@ jobs:
               void renderR(List<Instance> list, int ind) {
                   for(Instance i : list) {
                       TextView tv = new TextView(this);
-                      tv.setText((i.parent != null ? "  " : "") + "• " + i.name);
+                      tv.setText((i.parent != null ? "  > " : "• ") + i.name);
                       tv.setTextColor(sel == i ? Color.BLACK : Color.WHITE);
                       tv.setBackgroundColor(sel == i ? Color.WHITE : 0);
                       tv.setPadding(ind * 20, 10, 10, 10);
@@ -268,7 +267,7 @@ jobs:
                   pm.setOnMenuItemClickListener(item -> {
                       if(item.getTitle().equals("Удалить")) { if(i.parent!=null) i.parent.children.remove(i); else EngineCore.root.remove(i); sel=null; }
                       else if(item.getTitle().equals("Вырезать")) clip = i;
-                      else if(item.getTitle().equals("Вставить") && clip != null && i.type.equals("Folder")) {
+                      else if(item.getTitle().equals("Вставить") && clip != null) {
                           if(clip.parent!=null) clip.parent.children.remove(clip); else EngineCore.root.remove(clip);
                           clip.parent = i; i.children.add(clip);
                       }
@@ -311,7 +310,7 @@ jobs:
           cat > app/src/main/AndroidManifest.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="JsAI Russian Pro" android:theme="@android:style/Theme.NoTitleBar">
+              <application android:label="JsAI Russian Ultimate" android:theme="@android:style/Theme.NoTitleBar">
                   <activity android:name=".EditorActivity" android:exported="true" android:screenOrientation="landscape" android:windowSoftInputMode="adjustPan">
                       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
                   </activity>
