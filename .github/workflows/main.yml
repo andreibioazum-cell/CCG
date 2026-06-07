@@ -1,4 +1,4 @@
-name: JsAI_Craft_V14_PERFORMANCE_ULTRA
+name: MadGPT_V13_Hybrid_Engine
 on: [push, workflow_dispatch]
 
 jobs:
@@ -8,205 +8,250 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Create Project
+      - name: Create Hybrid AI Project
         run: |
-          mkdir -p app/src/main/java/com/jsai/craft app/src/main/res/layout app/src/main/res/drawable
-          
-          echo '<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval"><solid android:color="#50FFFFFF"/></shape>' > app/src/main/res/drawable/jh.xml
-          echo '<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval"><solid android:color="#12FFFFFF"/><stroke android:width="1dp" android:color="#20FFFFFF"/></shape>' > app/src/main/res/drawable/jb.xml
+          PACKAGE_PATH="app/src/main/java/com/madgpt/v13"
+          mkdir -p $PACKAGE_PATH
+          mkdir -p app/src/main/res/layout
+          mkdir -p app/src/main/res/values
 
+          # --- CONFIG ---
+          cat > $PACKAGE_PATH/Config.java << 'EOF'
+          package com.madgpt.v13;
+          public class Config {
+              public static final int D_MODEL = 256;
+              public static final int N_HEADS = 8;
+              public static final int N_LAYERS = 4;
+          }
+          EOF
+
+          # --- MATH ENGINE ---
+          cat > $PACKAGE_PATH/MatrixMath.java << 'EOF'
+          package com.madgpt.v13;
+          public class MatrixMath {
+              public static void softmax(float[] x) {
+                  float max = -1e9f;
+                  for (float v : x) if (v > max) max = v;
+                  float sum = 0;
+                  for (int i = 0; i < x.length; i++) {
+                      x[i] = (float) Math.exp(x[i] - max);
+                      sum += x[i];
+                  }
+                  for (int i = 0; i < x.length; i++) x[i] /= sum;
+              }
+              public static float silu(float x) { return x * (float)(1.0 / (1.0 + Math.exp(-x))); }
+          }
+          EOF
+
+          # --- ГИБРИДНЫЙ ТОКЕНИЗАТОР ---
+          cat > $PACKAGE_PATH/FastTokenizer.java << 'EOF'
+          package com.madgpt.v13;
+          import java.util.*;
+          import java.util.regex.*;
+
+          public class FastTokenizer {
+              public Map<String, Integer> t2i = new HashMap<>();
+              public List<String> i2t = new ArrayList<>();
+              
+              public List<Integer> botMemory = new ArrayList<>(); // Для <BOT>...<END>
+              public List<Integer> generalMemory = new ArrayList<>(); // Для обычного текста
+
+              public FastTokenizer() {
+                  String[] spec = {"<USER>", "<BOT>", "<END>", "<UNK>"};
+                  for(String s : spec) add(s);
+              }
+
+              private int add(String s) {
+                  if(!t2i.containsKey(s)) {
+                      t2i.put(s, i2t.size());
+                      i2t.add(s);
+                  }
+                  return t2i.get(s);
+              }
+
+              public void train(String text) {
+                  // Логика определения формата: есть ли тег <BOT>
+                  boolean hasTags = text.contains("<BOT>");
+                  
+                  Pattern p = Pattern.compile("<\\w+>|\\w+|[^\\w\\s]");
+                  Matcher m = p.matcher(text);
+                  
+                  boolean isInsideBot = false;
+
+                  while(m.find()) {
+                      String t = m.group();
+                      int id = add(t);
+                      
+                      if(hasTags) {
+                          if(t.equals("<BOT>")) { isInsideBot = true; continue; }
+                          if(t.equals("<END>")) { isInsideBot = false; continue; }
+                          if(isInsideBot) botMemory.add(id);
+                      } else {
+                          // Если тегов нет - просто валим всё в общую кучу
+                          if(!t.trim().isEmpty()) generalMemory.add(id);
+                      }
+                  }
+              }
+          }
+          EOF
+
+          # --- MAIN ACTIVITY (С ЛОГИКОЙ ГИБРИДНОЙ ГЕНЕРАЦИИ) ---
+          cat > $PACKAGE_PATH/MainActivity.java << 'EOF'
+          package com.madgpt.v13;
+          import android.app.Activity;
+          import android.content.Intent;
+          import android.net.Uri;
+          import android.os.Bundle;
+          import android.view.*;
+          import android.widget.*;
+          import java.io.*;
+          import java.util.*;
+
+          public class MainActivity extends Activity {
+              FastTokenizer tokenizer = new FastTokenizer();
+              TextView terminal; ProgressBar pb;
+
+              @Override
+              protected void onCreate(Bundle b) {
+                  super.onCreate(b);
+                  setupUI();
+              }
+
+              private void setupUI() {
+                  LinearLayout root = new LinearLayout(this);
+                  root.setOrientation(LinearLayout.VERTICAL);
+                  root.setBackgroundColor(0xFF050505);
+                  root.setPadding(20, 20, 20, 20);
+
+                  terminal = new TextView(this);
+                  terminal.setTextColor(0xFF00FFCC);
+                  terminal.setTypeface(android.graphics.Typeface.MONOSPACE);
+                  terminal.setText("--- MadGPT V13 Hybrid Engine ---\n[SYSTEM]: Поддержка Тегов и Текста активна.\n");
+                  
+                  ScrollView scroll = new ScrollView(this);
+                  root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+                  scroll.addView(terminal);
+
+                  pb = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+                  pb.setVisibility(View.GONE);
+                  root.addView(pb);
+
+                  Button btn = new Button(this);
+                  btn.setText("ЗАГРУЗИТЬ ДАННЫЕ");
+                  btn.setOnClickListener(v -> {
+                      Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+                      i.setType("text/plain"); i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+                      startActivityForResult(i, 1);
+                  });
+                  root.addView(btn);
+
+                  EditText input = new EditText(this);
+                  input.setHint("Запрос к ИИ...");
+                  input.setTextColor(-1);
+                  root.addView(input);
+
+                  Button send = new Button(this);
+                  send.setText("ГЕНЕРАЦИЯ");
+                  send.setOnClickListener(v -> {
+                      String q = input.getText().toString();
+                      terminal.append("\n[YOU]: " + q + "\n[BOT]: ");
+                      generate();
+                      input.setText("");
+                  });
+                  root.addView(send);
+                  setContentView(root);
+              }
+
+              private void generate() {
+                  // Выбираем из какой памяти брать слова
+                  List<Integer> targetMemory = tokenizer.botMemory.isEmpty() ? tokenizer.generalMemory : tokenizer.botMemory;
+                  
+                  if(targetMemory.isEmpty()) {
+                      terminal.append("Ошибка: Память пуста. Загрузите файлы.");
+                      return;
+                  }
+
+                  new Thread(() -> {
+                      Random r = new Random();
+                      for(int i=0; i<20; i++) {
+                          int id = targetMemory.get(r.nextInt(targetMemory.size()));
+                          final String word = tokenizer.i2t.get(id) + " ";
+                          runOnUiThread(() -> terminal.append(word));
+                          try { Thread.sleep(40); } catch(Exception e){}
+                      }
+                  }).start();
+              }
+
+              @Override
+              protected void onActivityResult(int req, int res, Intent d) {
+                  if(res == RESULT_OK && d != null) {
+                      pb.setVisibility(View.VISIBLE);
+                      new Thread(() -> {
+                          try {
+                              if(d.getClipData() != null) {
+                                  for(int i=0; i<d.getClipData().getItemCount(); i++) read(d.getClipData().getItemAt(i).getUri());
+                              } else read(d.getData());
+                              
+                              runOnUiThread(() -> {
+                                  pb.setVisibility(View.GONE);
+                                  terminal.append("\n[SUCCESS]: Обучение завершено.");
+                                  terminal.append("\n[Memory]: " + tokenizer.botMemory.size() + " ответов, " + tokenizer.generalMemory.size() + " фактов.\n");
+                              });
+                          } catch(Exception e){}
+                      }).start();
+                  }
+              }
+
+              private void read(Uri uri) throws Exception {
+                  BufferedReader br = new BufferedReader(new InputStreamReader(getContentResolver().openInputStream(uri)));
+                  String line;
+                  while((line = br.readLine()) != null) tokenizer.train(line);
+                  br.close();
+              }
+          }
+          EOF
+
+          # --- ANDROID MANIFEST ---
+          cat > app/src/main/AndroidManifest.xml << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application android:label="MadGPT V13" android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+                  <activity android:name=".MainActivity" android:exported="true">
+                      <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          # --- BUILD FILES ---
+          cat > settings.gradle << 'EOF'
+          include ':app'
+          EOF
           cat > build.gradle << 'EOF'
-          buildscript { repositories { google(); mavenCentral() }; dependencies { classpath 'com.android.tools.build:gradle:8.2.2' } }
+          buildscript { repositories { google(); mavenCentral() }; dependencies { classpath 'com.android.tools.build:gradle:8.1.1' } }
           allprojects { repositories { google(); mavenCentral() } }
           EOF
-          echo "include ':app'" > settings.gradle
-          echo "android.useAndroidX=true" > gradle.properties
           cat > app/build.gradle << 'EOF'
           plugins { id 'com.android.application' }
-          android { namespace 'com.jsai.craft'; compileSdk 34; defaultConfig { applicationId 'com.jsai.craft'; minSdk 24; targetSdk 34 } }
+          android { namespace 'com.madgpt.v13'; compileSdk 34; defaultConfig { applicationId "com.madgpt.v13"; minSdk 26; targetSdk 34; versionCode 13; versionName "13.0-HYBRID" } }
           EOF
 
-          cat > app/src/main/res/layout/main.xml << 'EOF'
-          <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent">
-              <android.opengl.GLSurfaceView android:id="@+id/gl" android:layout_width="match_parent" android:layout_height="match_parent"/>
-              <View android:layout_width="4dp" android:layout_height="4dp" android:background="#FFF" android:layout_centerInParent="true" android:alpha="0.3"/>
-              <FrameLayout android:id="@+id/jz" android:layout_width="85dp" android:layout_height="85dp" android:layout_alignParentBottom="true" android:layout_margin="30dp" android:background="@drawable/jb">
-                  <View android:id="@+id/jh" android:layout_width="30dp" android:layout_height="30dp" android:layout_gravity="center" android:background="@drawable/jh"/>
-              </FrameLayout>
-              <GridLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_alignParentBottom="true" android:layout_alignParentRight="true" android:layout_margin="10dp" android:columnCount="2">
-                  <Button android:id="@+id/brk" android:layout_width="60dp" android:layout_height="60dp" android:text="BRK"/>
-                  <Button android:id="@+id/plc" android:layout_width="60dp" android:layout_height="60dp" android:text="PLC"/>
-                  <Button android:id="@+id/jmp" android:layout_width="60dp" android:layout_height="60dp" android:text="JMP"/>
-                  <Button android:id="@+id/spc" android:layout_width="60dp" android:layout_height="60dp" android:text="FLY"/>
-              </GridLayout>
-          </RelativeLayout>
-          EOF
-
-          cat > app/src/main/java/com/jsai/craft/App.java << 'EOF'
-          package com.jsai.craft;
-          import android.app.Activity; import android.os.*; import android.view.*; import android.widget.*;
-          import android.opengl.*; import java.nio.*; import javax.microedition.khronos.egl.EGLConfig; import javax.microedition.khronos.opengles.GL10;
-
-          public class App extends Activity {
-              Rnd r;
-              protected void onCreate(Bundle b) {
-                  super.onCreate(b); requestWindowFeature(1); getWindow().setFlags(1024,1024); setContentView(R.layout.main);
-                  GLSurfaceView gl=findViewById(R.id.gl); gl.setEGLContextClientVersion(3);
-                  r=new Rnd(); gl.setRenderer(r);
-                  gl.setOnTouchListener((v,e)->{
-                      float x=e.getX(), y=e.getY();
-                      if(e.getAction()==0 && x > v.getWidth()/2f){ r.lx=x; r.ly=y; r.isP=true; }
-                      if(e.getAction()==2 && r.isP){ r.yw-=(x-r.lx)*0.2f; r.pt+=(y-r.ly)*0.2f; r.pt=Math.max(-89,Math.min(89,r.pt)); r.lx=x; r.ly=y; }
-                      if(e.getAction()==1) r.isP=false; return true;
-                  });
-                  findViewById(R.id.jmp).setOnClickListener(v->{if(Math.abs(r.vy)<.05f||r.spc) r.vy=.2f;});
-                  findViewById(R.id.spc).setOnClickListener(v->r.spc=!r.spc);
-                  findViewById(R.id.plc).setOnClickListener(v->r.plc());
-                  findViewById(R.id.brk).setOnTouchListener((v,e)->{if(e.getAction()==0)r.brkT=System.currentTimeMillis();else if(e.getAction()==1)r.brkT=0;return true;});
-                  View jz=findViewById(R.id.jz), jh=findViewById(R.id.jh);
-                  jz.setOnTouchListener((v,e)->{
-                      if(e.getAction()==1){ jh.setTranslationX(0); jh.setTranslationY(0); r.mx=r.mz=0; }
-                      else { float rad=v.getWidth()/2f, dx=e.getX()-rad, dy=e.getY()-rad, d=(float)Math.sqrt(dx*dx+dy*dy);
-                      if(d>rad){dx*=rad/d; dy*=rad/d;} jh.setTranslationX(dx); jh.setTranslationY(dy); r.mx=dx/rad; r.mz=-dy/rad; } return true;
-                  });
-              }
-          }
-
-          class Rnd implements GLSurfaceView.Renderer {
-              float yw=0,pt=0,px=64,py=35,pz=64,vy=0,mx=0,mz=0,lx,ly; boolean isP=false,spc=false;
-              float[] m=new float[16],pr=new float[16],v=new float[16]; 
-              byte[] w=new byte[1048576], mask=new byte[1048576];
-              int[] vis=new int[5000]; int vC=0; Blk b; long brkT=0, lastT=System.nanoTime(); int[] sel;
-
-              public void onSurfaceCreated(GL10 g, EGLConfig c) {
-                  GLES30.glEnable(2929); GLES30.glEnable(2884);
-                  b=new Blk();
-                  for(int x=0;x<128;x++)for(int z=0;z<128;z++){
-                      int h=(int)(Math.sin(x*.1)*Math.cos(z*.1)*4+20);
-                      for(int y=0;y<h;y++) { sB(x,y,z,(byte)(y==h-1?1:y<h-3?2:3)); mask[x|(y<<7)|(z<<13)]=(byte)255; }
-                  }
-              }
-
-              void sB(int x,int y,int z,byte t){if(x>=0&&x<128&&y>=0&&y<64&&z>=0&&z<128) w[x|(y<<7)|(z<<13)]=t;}
-              byte gB(int x,int y,int z){return (x>=0&&x<128&&y>=0&&y<64&&z>=0&&z<128)?w[x|(y<<7)|(z<<13)]:0;}
-              public void plc(){ if(sel!=null){ int tx=sel[0], ty=sel[1], tz=sel[2]; sB(tx,ty+1,tz,(byte)1); mask[tx|((ty+1)<<7)|(tz<<13)]=(byte)255; }}
-
-              public void onDrawFrame(GL10 g) {
-                  long now=System.nanoTime(); float dt=(now-lastT)/1e9f; lastT=now; if(dt>0.05f) dt=0.05f;
-                  GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
-                  GLES30.glClearColor(0.5f, 0.7f, 1.0f, 1);
-                  
-                  float s=(float)Math.sin(Math.toRadians(yw)), cs=(float)Math.cos(Math.toRadians(yw));
-                  float lX=(float)(Math.cos(Math.toRadians(pt))*s), lY=(float)(-Math.sin(Math.toRadians(pt))), lZ=(float)(Math.cos(Math.toRadians(pt))*cs);
-                  
-                  if(spc){ px+=(mz*s-mx*cs)*10f*dt; pz+=(mz*cs+mx*s)*10f*dt; py+=lY*mz*10f*dt; vy=0; }
-                  else { float dx=(mz*s-mx*cs)*7f*dt, dz=(mz*cs+mx*s)*7f*dt; 
-                         if(gB((int)(px+dx), (int)py, (int)pz)==0) px+=dx; if(gB((int)px, (int)py, (int)(pz+dz))==0) pz+=dz;
-                         vy-=22f*dt*dt + 0.7f*dt; py+=vy; if(gB((int)px,(int)py,(int)pz)>0){py=(int)py+1; vy=0;} }
-                  
-                  Matrix.setLookAtM(v,0,px,py+1.6f,pz,px+lX,py+1.6f+lY,pz+lZ,0,1,0); Matrix.multiplyMM(m,0,pr,0,v,0);
-                  
-                  sel=null; for(float d=0;d<5;d+=0.2f){
-                      int tx=(int)(px+lX*d), ty=(int)(py+1.6f+lY*d), tz=(int)(pz+lZ*d);
-                      if(gB(tx,ty,tz)>0){ 
-                          sel=new int[]{tx,ty,tz}; 
-                          if(brkT>0 && System.currentTimeMillis()-brkT>150){
-                              int cur = mask[tx|(ty<<7)|(tz<<13)] & 0xFF;
-                              if(cur > 0) mask[tx|(ty<<7)|(tz<<13)] = (byte)(cur & (cur - 1));
-                              if((mask[tx|(ty<<7)|(tz<<13)] & 0xFF) == 0) sB(tx,ty,tz,(byte)0);
-                              brkT = System.currentTimeMillis();
-                          } break;
-                      }
-                  }
-
-                  vC=0; int rD=12; // Оптимизированный радиус
-                  for(int x=(int)px-rD;x<(int)px+rD;x++)for(int z=(int)pz-rD;z<(int)pz+rD;z++)for(int y=(int)py-rD;y<(int)py+rD;y++){
-                      byte t=gB(x,y,z); if(t==0)continue;
-                      if(gB(x+1,y,z)>0&&gB(x-1,y,z)>0&&gB(x,y+1,z)>0&&gB(x,y-1,z)>0&&gB(x,y,z+1)>0&&gB(x,y,z-1)>0)continue;
-                      vis[vC++]=x|(y<<7)|(z<<13)|(t<<20); if(vC>=4999) break;
-                  }
-                  
-                  GLES30.glUseProgram(b.p); GLES30.glUniformMatrix4fv(b.uM,1,false,m,0);
-                  GLES30.glEnableVertexAttribArray(0); GLES30.glEnableVertexAttribArray(1); GLES30.glEnableVertexAttribArray(2);
-                  for(int k=0;k<vC;k++){
-                      int i=vis[k], x=i&127, y=(i>>7)&63, z=(i>>13)&127, t=i>>20;
-                      b.d(x,y,z,t, mask[x|(y<<7)|(z<<13)]);
-                  }
-              }
-              public void onSurfaceChanged(GL10 g,int w,int h){ GLES30.glViewport(0,0,w,h); Matrix.perspectiveM(pr,0,75,(float)w/h,0.1f,100f); }
-          }
-
-          class Blk {
-              int p, uM, uP, uC, uMask; FloatBuffer vb;
-              Blk() {
-                  float[] cV = {0,0,0, 1,0,0, 1,1,0, 0,0,0, 1,1,0, 0,1,0, 0,0,1, 1,0,1, 1,1,1, 0,0,1, 1,1,1, 0,1,1, 0,0,0, 0,1,0, 0,1,1, 0,0,0, 0,1,1, 0,0,1, 1,0,0, 1,1,0, 1,1,1, 1,0,0, 1,1,1, 1,0,1, 0,1,0, 1,1,0, 1,1,1, 0,1,0, 1,1,1, 0,1,1, 0,0,0, 1,0,0, 1,0,1, 0,0,0, 1,0,1, 0,0,1};
-                  float[] cN = {0,0,-1,0,0,-1,0,0,-1,0,0,-1,0,0,-1,0,0,-1, 0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1, -1,0,0,-1,0,0,-1,0,0,-1,0,0,-1,0,0,-1,0,0, 1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0, 0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0, 0,-1,0,0,-1,0,0,-1,0,0,-1,0,0,-1,0,0,-1,0};
-                  
-                  // Создаем ОДИН буфер для всех 8 частей сразу!
-                  ByteBuffer bb = ByteBuffer.allocateDirect(8 * 36 * (3+3+1) * 4).order(ByteOrder.nativeOrder());
-                  FloatBuffer fb = bb.asFloatBuffer();
-                  for(int i=0; i<8; i++) {
-                      float ox=(i&1)*0.5f, oy=((i>>1)&1)*0.5f, oz=((i>>2)&1)*0.5f;
-                      for(int v=0; v<36; v++) {
-                          fb.put(cV[v*3]*0.49f + ox); fb.put(cV[v*3+1]*0.49f + oy); fb.put(cV[v*3+2]*0.49f + oz);
-                          fb.put(cN[v*3]); fb.put(cN[v*3+1]); fb.put(cN[v*3+2]);
-                          fb.put((float)i); // Индекс части для шейдера
-                      }
-                  }
-                  fb.position(0); vb = fb;
-
-                  String vs = "#version 300 es\n" +
-                      "layout(location=0) in vec3 aP; layout(location=1) in vec3 aN; layout(location=2) in float aI;\n" +
-                      "uniform mat4 uM; uniform vec3 uO; uniform int uMask; out float vL;\n" +
-                      "void main(){\n" +
-                      "  int bit = (uMask >> int(aI)) & 1;\n" +
-                      "  vec3 pos = (bit == 1) ? (aP + uO) : vec3(1000.0);\n" +
-                      "  gl_Position = uM * vec4(pos, 1.0);\n" +
-                      "  vL = dot(aN, normalize(vec3(0.3, 1.0, 0.5))) * 0.4 + 0.6;\n" +
-                      "}";
-                  String fs = "#version 300 es\nprecision mediump float; in float vL; uniform vec3 uC; out vec4 fC; void main(){fC=vec4(uC*vL, 1.0);}";
-                  
-                  p=GLES30.glCreateProgram();
-                  int vS=GLES30.glCreateShader(35633); GLES30.glShaderSource(vS,vs); GLES30.glCompileShader(vS);
-                  int fS=GLES30.glCreateShader(35632); GLES30.glShaderSource(fS,fs); GLES30.glCompileShader(fS);
-                  GLES30.glAttachShader(p,vS); GLES30.glAttachShader(p,fS); GLES30.glLinkProgram(p);
-                  uM=GLES30.glGetUniformLocation(p,"uM"); uP=GLES30.glGetUniformLocation(p,"uO"); uC=GLES30.glGetUniformLocation(p,"uC"); uMask=GLES30.glGetUniformLocation(p,"uMask");
-              }
-              void d(float x,float y,float z,int t, byte m) {
-                  GLES30.glVertexAttribPointer(0,3,5126,false,28,vb); vb.position(3);
-                  GLES30.glVertexAttribPointer(1,3,5126,false,28,vb); vb.position(6);
-                  GLES30.glVertexAttribPointer(2,1,5126,false,28,vb); vb.position(0);
-                  
-                  float r=.5f,g=.5f,b_c=.5f; if(t==1){r=.4f;g=.7f;b_c=.3f;}else if(t==2){r=.6f;g=.6f;b_c=.6f;}else if(t==3){r=.5f;g=.4f;b_c=.2f;}
-                  GLES30.glUniform3f(uC,r,g,b_c);
-                  GLES30.glUniform3f(uP,x,y,z);
-                  GLES30.glUniform1i(uMask, m & 0xFF);
-                  GLES30.glDrawArrays(4,0,36*8); // РИСУЕМ ВЕСЬ БЛОК ЗА 1 РАЗ
-              }
-          }
-          EOF
-
-          cat > app/src/main/AndroidManifest.xml << 'EOF'
-          <?xml version="1.0" encoding="utf-8"?><manifest xmlns:android="http://schemas.android.com/apk/res/android"><application android:label="JsAI Craft Ultra" android:hardwareAccelerated="true"><activity android:name="com.jsai.craft.App" android:exported="true" android:screenOrientation="landscape"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity></application></manifest>
-          EOF
-
-      - name: Setup Java
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: 'gradle'
 
-      - name: Build APK
-        run: |
-          wget -q https://services.gradle.org/distributions/gradle-8.5-bin.zip
-          unzip -q gradle-8.5-bin.zip
-          export PATH="$PWD/gradle-8.5/bin:$PATH"
-          gradle wrapper --gradle-version 8.5
-          ./gradlew assembleDebug --no-daemon
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: 8.2
 
-      - name: Upload
+      - name: Build Hybrid APK
+        run: gradle assembleDebug --no-daemon
+
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: JsAI_Craft_V14_ULTRA
+          name: MadGPT_V13_Hybrid
           path: app/build/outputs/apk/debug/app-debug.apk
