@@ -1,4 +1,4 @@
-name: JsAI_Raw_Studio_Fixed
+name: JsAI_Raw_Clicker
 on: [push, workflow_dispatch]
 
 jobs:
@@ -30,7 +30,7 @@ jobs:
           android {
               namespace 'com.jsai.studio'
               compileSdk 34
-              defaultConfig { applicationId "com.jsai.studio"; minSdk 26; targetSdk 34; versionCode 1; versionName "1.1" }
+              defaultConfig { applicationId "com.jsai.studio"; minSdk 26; targetSdk 34; versionCode 1; versionName "1.2" }
           }
           dependencies {
               implementation 'androidx.appcompat:appcompat:1.6.1'
@@ -44,7 +44,7 @@ jobs:
                   <Button android:id="@+id/add" android:layout_width="35dp" android:layout_height="30dp" android:text="+" android:backgroundTint="#FFF" android:textColor="#000" android:padding="0dp"/>
                   <Button android:id="@+id/play" android:layout_width="70dp" android:layout_height="30dp" android:text="ПУСК" android:backgroundTint="#FFF" android:textColor="#000" android:textSize="10sp" android:layout_marginLeft="5dp"/>
                   <Space android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"/>
-                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="RAW v1.1" android:textColor="#444" android:textSize="10sp"/>
+                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="RAW CLICKER" android:textColor="#444" android:textSize="10sp"/>
               </LinearLayout>
               <LinearLayout android:id="@+id/s" android:layout_width="150dp" android:layout_height="match_parent" android:layout_below="@id/t" android:layout_alignParentRight="true" android:background="#151515" android:orientation="vertical">
                   <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"><LinearLayout android:id="@+id/exp" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"/></ScrollView>
@@ -57,25 +57,26 @@ jobs:
           </RelativeLayout>
           EOF
 
-          # --- ENGINE CLASSES (FIXED IMPORTS) ---
+          # --- ENGINE CLASSES ---
           cat > app/src/main/java/com/jsai/studio/Instance.java << 'EOF'
           package com.jsai.studio;
           import java.util.*;
           import org.luaj.vm2.*;
           public class Instance {
-              public String name, type, code = "";
-              public float x=400, y=400, r=100;
-              public int c = 0xFFFFFFFF;
+              public String name, type, code = "", text = "";
+              public float x=400, y=400, r=200;
+              public int c = 0xFF00A2FF;
               public float sx, sy, sr;
               public Instance p;
               public List<Instance> kids = new ArrayList<>();
-              public LuaValue loop = LuaValue.NIL;
-              public Globals env; // Окружение скрипта
+              public LuaValue loop = LuaValue.NIL, click = LuaValue.NIL;
+              public Globals env;
               public Instance(String n, String t) { name=n; type=t; }
               public void save() { sx=x; sy=y; sr=r; }
-              public void reset() { x=sx; y=sy; r=sr; loop=LuaValue.NIL; env=null; }
+              public void reset() { x=sx; y=sy; r=sr; loop=LuaValue.NIL; click=LuaValue.NIL; env=null; }
               public void setX(float v) { x=v; } public void setY(float v) { y=v; }
               public void setR(float v) { r=v; } public void setC(int v) { c=v; }
+              public void setText(String v) { text=v; }
           }
           EOF
 
@@ -89,10 +90,10 @@ jobs:
               public static boolean active = false;
               public static float mx, my;
               public static String compile(String s) {
-                  return s.replace("игра", "function update()").replace("конец", "end")
-                          .replace("я.х", "я:setX").replace("я.у", "я:setY")
-                          .replace("я.р", "я:setR").replace("я.ц", "я:setC")
-                          .replace("мх", "mx").replace("му", "my");
+                  return s.replace("игра", "function update()").replace("нажат", "function onClick()")
+                          .replace("конец", "end").replace("я.х", "я:setX").replace("я.у", "я:setY")
+                          .replace("я.р", "я:setR").replace("я.ц", "я:setC").replace("я.текст", "я:setText")
+                          .replace("мх", "mx").replace("му", "my").replace("тогда", "then");
               }
               public static void start() {
                   active = true;
@@ -101,7 +102,7 @@ jobs:
                       if(i.type.equals("Script") && i.p != null) {
                           Globals g = JsePlatform.standardGlobals();
                           g.set("я", CoerceJavaToLua.coerce(i.p));
-                          try { g.load(compile(i.code)).call(); i.p.loop = g.get("update"); i.p.env = g; } catch(Exception e){}
+                          try { g.load(compile(i.code)).call(); i.p.loop = g.get("update"); i.p.click = g.get("onClick"); i.p.env = g; } catch(Exception e){}
                       }
                   }
               }
@@ -126,8 +127,7 @@ jobs:
                   if(EngineCore.active) {
                       for(Instance i : EngineCore.all()) {
                           if(i.env != null && !i.loop.isnil()) {
-                              i.env.set("mx", LuaValue.valueOf(EngineCore.mx));
-                              i.env.set("my", LuaValue.valueOf(EngineCore.my));
+                              i.env.set("mx", LuaValue.valueOf(EngineCore.mx)); i.env.set("my", LuaValue.valueOf(EngineCore.my));
                               try { i.loop.call(); } catch(Exception e){}
                           }
                       }
@@ -137,11 +137,22 @@ jobs:
                           p.setColor(i.c);
                           if(i.type.equals("Блок")) canvas.drawRect(i.x, i.y, i.x+i.r, i.y+i.r, p);
                           else canvas.drawCircle(i.x+i.r/2, i.y+i.r/2, i.r/2, p);
+                          if(!i.text.isEmpty()) { p.setColor(Color.WHITE); p.setTextSize(50); p.setTextAlign(Paint.Align.CENTER); canvas.drawText(i.text, i.x+i.r/2, i.y+i.r/2+15, p); }
                       }
                   }
                   invalidate();
               }
-              @Override public boolean onTouchEvent(MotionEvent e) { EngineCore.mx=e.getX(); EngineCore.my=e.getY(); return true; }
+              @Override public boolean onTouchEvent(MotionEvent e) {
+                  EngineCore.mx=e.getX(); EngineCore.my=e.getY();
+                  if(e.getAction() == MotionEvent.ACTION_DOWN && EngineCore.active) {
+                      for(Instance i : EngineCore.all()) {
+                          if(!i.click.isnil() && e.getX() > i.x && e.getX() < i.x+i.r && e.getY() > i.y && e.getY() < i.y+i.r) {
+                              try { i.click.call(); } catch(Exception ex){}
+                          }
+                      }
+                  }
+                  return true;
+              }
           }
           EOF
 
@@ -160,7 +171,7 @@ jobs:
                   findViewById(R.id.add).setOnClickListener(v -> {
                       PopupMenu pm = new PopupMenu(this, v); pm.getMenu().add("Блок"); pm.getMenu().add("Шар"); pm.getMenu().add("Script");
                       pm.setOnMenuItemClickListener(item -> {
-                          Instance i = new Instance(item.getTitle().toString(), item.getTitle().toString());
+                          Instance i = new Instance(item.getTitle().toString()+(int)(Math.random()*100), item.getTitle().toString());
                           if(sel != null) { i.p = sel; sel.kids.add(i); } else EngineCore.root.add(i);
                           upd(); return true;
                       }); pm.show();
@@ -191,14 +202,11 @@ jobs:
                           public void beforeTextChanged(CharSequence s, int t, int c, int a) {} public void onTextChanged(CharSequence s, int t, int b, int c) {}
                       });
                   } else {
-                      addS("X", v->sel.x=v); addS("Y", v->sel.y=v); addS("P", v->sel.r=v);
-                      EditText c = new EditText(this); c.setHint("Цвет HEX"); c.setTextColor(-1);
-                      c.setOnEditorActionListener((v,a,e)->{ try{ sel.c=(int)Long.parseLong(v.getText().toString(), 16); }catch(Exception ex){} return true; });
-                      props.addView(c);
+                      addS("X", v->sel.x=v, (int)sel.x); addS("Y", v->sel.y=v, (int)sel.y); addS("P", v->sel.r=v, (int)sel.r);
                   }
               }
-              void addS(String l, Upd u) {
-                  SeekBar s = new SeekBar(this); s.setMax(1500);
+              void addS(String l, Upd u, int cur) {
+                  SeekBar s = new SeekBar(this); s.setMax(1500); s.setProgress(cur);
                   s.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
                       public void onProgressChanged(SeekBar b, int p, boolean h) { u.u(p); }
                       public void onStartTrackingTouch(SeekBar b) {} public void onStopTrackingTouch(SeekBar b) {}
@@ -236,5 +244,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: JsAI_Raw_Studio
+          name: JsAI_Raw_Clicker
           path: app/build/outputs/apk/debug/app-debug.apk
