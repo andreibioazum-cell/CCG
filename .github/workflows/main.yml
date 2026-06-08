@@ -1,4 +1,4 @@
-name: Cubic_Battle_Game
+name: Cubic_Battle_Lua_Edition
 on: [push, workflow_dispatch]
 
 jobs:
@@ -14,8 +14,13 @@ jobs:
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
 
-          # --- CONFIG ---
+          # --- CONFIG (FIXED REPOS) ---
           cat > settings.gradle << 'EOF'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal(); } }
+          dependencyResolutionManagement { 
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories { google(); mavenCentral(); } 
+          }
           include ':app'
           EOF
           
@@ -35,153 +40,133 @@ jobs:
               compileSdk 34
               defaultConfig { applicationId "com.cubic.battle"; minSdk 26; targetSdk 34; versionCode 1; versionName "1.0" }
           }
-          dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }
+          dependencies { 
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+              implementation 'org.luaj:luaj-jse:3.0.1'
+          }
           EOF
 
           # --- UI: MENU ---
           cat > app/src/main/res/layout/activity_main.xml << 'EOF'
-          <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000">
+          <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#111">
               <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:layout_centerInParent="true" android:gravity="center">
-                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="CUBIC BATTLE" android:textColor="#FFF" android:textSize="40sp" android:textStyle="bold" android:fontFamily="sans-serif-black"/>
-                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="В новых красках 🎨" android:textColor="#FF4444" android:textSize="18sp" android:layout_marginBottom="30dp"/>
-                  <Button android:id="@+id/btnModes" android:layout_width="250dp" android:layout_height="50dp" android:text="Режимы" android:backgroundTint="#8A2BE2" android:textColor="#FFF"/>
+                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="CUBIC BATTLE" android:textColor="#FFF" android:textSize="42sp" android:textStyle="bold"/>
+                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="В новых красках 🎨" android:textColor="#FF3333" android:textSize="18sp" android:layout_marginBottom="40dp"/>
+                  <Button android:id="@+id/btnStart" android:layout_width="280dp" android:layout_height="60dp" android:text="Режимы" android:backgroundTint="#8A2BE2" android:textColor="#FFF" android:textSize="18sp"/>
               </LinearLayout>
           </RelativeLayout>
           EOF
 
-          # --- GAME ENGINE CODE ---
+          # --- ENGINE LOGIC (JAVA HOST) ---
           cat > app/src/main/java/com/cubic/battle/GameView.java << 'EOF'
           package com.cubic.battle;
           import android.content.Context;
           import android.graphics.*;
           import android.view.*;
-          import java.util.*;
+          import org.luaj.vm2.*;
+          import org.luaj.vm2.lib.jse.*;
 
           public class GameView extends View {
               private Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-              private float px=200, py=200, pAngle=0; // Игрок
-              private float joyX=200, joyY=800, curJoyX=200, curJoyY=800; // Джойстик
-              private boolean joyActive = false, atkActive = false;
-              private float atkX, atkY, aimAngle = 0;
-              
-              private List<PointF> enemies = new ArrayList<>();
-              private float score = 10079;
+              private Globals globals;
+              private LuaValue updateFunc;
+              private float mx, my;
+              private boolean pressed;
 
               public GameView(Context c) {
                   super(c);
-                  for(int i=0; i<5; i++) enemies.add(new PointF(600 + i*200, 300 + i*100));
+                  globals = JsePlatform.standardGlobals();
+                  
+                  // Lua Script (Логика на Луа)
+                  String script = 
+                      "player = {x=200, y=500, angle=0, aim=0, isAtk=false} " +
+                      "enemies = {{x=800,y=300}, {x=1000,y=600}} " +
+                      "function update(dt, mx, my, pressed) " +
+                      "  if pressed and mx < 800 then " + // Движение (левая часть)
+                      "    dx = mx - player.x " +
+                      "    dy = my - player.y " +
+                      "    dist = math.sqrt(dx*dx + dy*dy) " +
+                      "    if dist > 5 then " +
+                      "      player.x = player.x + (dx/dist)*8 " +
+                      "      player.y = player.y + (dy/dist)*8 " +
+                      "      player.angle = math.atan2(dy, dx) " +
+                      "    end " +
+                      "  end " +
+                      "  if pressed and mx > 800 then " + // Прицел (правая часть)
+                      "    player.isAtk = true " +
+                      "    target_aim = math.atan2(my - player.y, mx - player.x) " +
+                      "    diff = target_aim - player.angle " +
+                      "    while diff > math.pi do diff = diff - 2*math.pi end " +
+                      "    while diff < -math.pi do diff = diff + 2*math.pi end " +
+                      "    limit = 35 * (math.pi/180) " + // Лимит 35 градусов
+                      "    if math.abs(diff) < limit then player.aim = target_aim else " +
+                      "      if diff > 0 then player.aim = player.angle + limit else player.aim = player.angle - limit end " +
+                      "    end " +
+                      "  else player.isAtk = false end " +
+                      "end";
+
+                  globals.load(script).call();
+                  updateFunc = globals.get("update");
               }
 
               @Override protected void onDraw(Canvas canvas) {
-                  // 1. Фон (Песок) - Исправлен баг черного фона
+                  // Фон песок
                   canvas.drawColor(Color.parseColor("#D2B48C"));
                   p.setColor(Color.parseColor("#C2A47C"));
-                  for(int i=0; i<2000; i+=100) canvas.drawLine(0, i, 2000, i, p);
+                  p.setStrokeWidth(2);
+                  for(int i=0; i<getHeight(); i+=100) canvas.drawLine(0, i, getWidth(), i, p);
 
-                  // 2. Отрисовка Врагов
+                  // Данные из Lua
+                  updateFunc.call(LuaValue.valueOf(0.016), LuaValue.valueOf(mx), LuaValue.valueOf(my), LuaValue.valueOf(pressed));
+                  LuaValue pl = globals.get("player");
+                  float px = pl.get("x").tofloat();
+                  float py = pl.get("y").tofloat();
+                  float pa = pl.get("angle").tofloat();
+                  float aim = pl.get("aim").tofloat();
+                  boolean isAtk = pl.get("isAtk").toboolean();
+
+                  // Рисуем врагов (Черные кубы)
                   p.setColor(Color.BLACK);
-                  for(PointF e : enemies) {
-                      canvas.drawRect(e.x, e.y, e.x+80, e.y+80, p);
-                      p.setColor(Color.WHITE);
-                      canvas.drawRect(e.x+15, e.y+15, e.x+35, e.y+35, p);
-                      canvas.drawRect(e.x+45, e.y+15, e.x+65, e.y+35, p);
-                      p.setColor(Color.BLACK);
+                  LuaValue en = globals.get("enemies");
+                  for(int i=1; i<=en.length(); i++) {
+                      float ex = en.get(i).get("x").tofloat();
+                      float ey = en.get(i).get("y").tofloat();
+                      canvas.drawRect(ex, ey, ex+100, ey+100, p);
                   }
 
-                  // 3. Игрок
+                  // Рисуем игрока
                   canvas.save();
-                  canvas.translate(px+40, py+40);
-                  canvas.rotate((float)Math.toDegrees(pAngle));
+                  canvas.translate(px, py);
+                  canvas.rotate((float)Math.toDegrees(pa));
                   p.setColor(Color.BLACK);
-                  canvas.drawRect(-40, -40, 40, 40, p);
-                  p.setColor(Color.WHITE);
-                  canvas.drawRect(-25, -25, -5, -5, p);
-                  canvas.drawRect(5, -25, 25, -5, p);
-                  
-                  // Прицел (Линия)
-                  if(atkActive) {
-                      p.setColor(Color.RED);
-                      p.setStrokeWidth(5);
-                      canvas.drawLine(0, 0, 300, 0, p); // Линия направления
-                      canvas.drawCircle(300, 0, 10, p);
-                  }
+                  canvas.drawRect(-50, -50, 50, 50, p);
+                  p.setColor(Color.WHITE); // Глаза
+                  canvas.drawRect(-35, -35, -10, -10, p);
+                  canvas.drawRect(10, -35, 35, -10, p);
                   canvas.restore();
 
-                  // 4. Интерфейс (Джойстик и кнопки)
-                  p.setColor(Color.argb(100, 0, 0, 0));
-                  canvas.drawCircle(joyX, joyY, 100, p);
-                  canvas.drawCircle(curJoyX, curJoyY, 50, p);
+                  // Линия прицела (только если нажата атака)
+                  if(isAtk) {
+                      p.setColor(Color.RED);
+                      p.setStrokeWidth(8);
+                      float lx = (float)(px + Math.cos(aim)*400);
+                      float ly = (float)(py + Math.sin(aim)*400);
+                      canvas.drawLine(px, py, lx, ly, p);
+                  }
 
-                  p.setColor(atkActive ? Color.RED : Color.parseColor("#8A2BE2"));
-                  canvas.drawCircle(getWidth()-200, getHeight()-200, 80, p); // Кнопка атаки
-                  p.setColor(Color.WHITE); p.setTextSize(30);
-                  canvas.drawText("АТАКА", getWidth()-250, getHeight()-190, p);
+                  // Джойстик (визуальный)
+                  p.setColor(Color.argb(80, 0,0,0));
+                  canvas.drawCircle(250, getHeight()-250, 150, p);
+                  p.setColor(Color.WHITE);
+                  p.setTextSize(40);
+                  canvas.drawText("АТАКА (Справа)", getWidth()-400, getHeight()-100, p);
 
-                  // Текст сверху
-                  p.setColor(Color.BLACK); p.setTextSize(50);
-                  canvas.drawText("Счет: " + (int)score, 50, 80, p);
-
-                  update();
                   invalidate();
               }
 
-              private void update() {
-                  if(joyActive) {
-                      float dx = curJoyX - joyX;
-                      float dy = curJoyY - joyY;
-                      float dist = (float)Math.sqrt(dx*dx + dy*dy);
-                      if(dist > 0) {
-                          float speed = 5;
-                          px += (dx/dist) * speed;
-                          py += (dy/dist) * speed;
-                          pAngle = (float)Math.atan2(dy, dx);
-                      }
-                  }
-              }
-
               @Override public boolean onTouchEvent(MotionEvent e) {
-                  int action = e.getActionMasked();
-                  int index = e.getActionIndex();
-                  float tx = e.getX(index);
-                  float ty = e.getY(index);
-
-                  switch(action) {
-                      case MotionEvent.ACTION_DOWN:
-                      case MotionEvent.ACTION_POINTER_DOWN:
-                          if(tx < getWidth()/2) {
-                              joyActive = true;
-                              curJoyX = tx; curJoyY = ty;
-                          } else {
-                              atkActive = true;
-                          }
-                          break;
-                      case MotionEvent.ACTION_MOVE:
-                          for(int i=0; i<e.getPointerCount(); i++) {
-                              float x = e.getX(i);
-                              float y = e.getY(i);
-                              if(x < getWidth()/2) {
-                                  curJoyX = x; curJoyY = y;
-                              } else if(atkActive) {
-                                  // Механика прицела с лимитом 35 градусов
-                                  float targetAngle = (float)Math.atan2(y - (py+40), x - (px+40));
-                                  float diff = targetAngle - pAngle;
-                                  // Нормализация угла
-                                  while (diff > Math.PI) diff -= 2*Math.PI;
-                                  while (diff < -Math.PI) diff += 2*Math.PI;
-
-                                  float limit = (float)Math.toRadians(35);
-                                  if(Math.abs(diff) < limit) {
-                                      pAngle = targetAngle; // Позволяем вращать игрока в секторе
-                                  }
-                              }
-                          }
-                          break;
-                      case MotionEvent.ACTION_UP:
-                      case MotionEvent.ACTION_POINTER_UP:
-                          if(tx < getWidth()/2) joyActive = false; curJoyX = joyX; curJoyY = joyY;
-                          if(tx > getWidth()/2) atkActive = false;
-                          break;
-                  }
+                  mx = e.getX(); my = e.getY();
+                  pressed = (e.getAction() != MotionEvent.ACTION_UP);
                   return true;
               }
           }
@@ -192,14 +177,12 @@ jobs:
           import android.app.Activity;
           import android.os.Bundle;
           import android.view.View;
-          import android.widget.Button;
 
           public class MainActivity extends Activity {
               @Override protected void onCreate(Bundle b) {
                   super.onCreate(b);
                   setContentView(R.layout.activity_main);
-                  Button btn = findViewById(R.id.btnModes);
-                  btn.setOnClickListener(v -> {
+                  findViewById(R.id.btnStart).setOnClickListener(v -> {
                       setContentView(new GameView(this));
                   });
               }
@@ -209,7 +192,7 @@ jobs:
           cat > app/src/main/AndroidManifest.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="Cubic Battle" android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
+              <application android:label="Cubic Battle Lua" android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
                   <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="landscape">
                       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
                   </activity>
@@ -233,5 +216,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Cubic_Battle_Alpha
+          name: Cubic_Battle_Lua
           path: app/build/outputs/apk/debug/app-debug.apk
