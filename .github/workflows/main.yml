@@ -1,4 +1,4 @@
-name: JsAI_Hybrid_Studio
+name: Cubic_Battle_Game
 on: [push, workflow_dispatch]
 
 jobs:
@@ -8,275 +8,214 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Create Studio Structure
+      - name: Create Structure
         run: |
-          mkdir -p app/src/main/java/com/jsai/studio
+          mkdir -p app/src/main/java/com/cubic/battle
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
 
+          # --- CONFIG ---
           cat > settings.gradle << 'EOF'
-          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal(); } }
-          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral(); } }
           include ':app'
           EOF
           
           echo "android.useAndroidX=true" > gradle.properties
+
           cat > build.gradle << 'EOF'
-          plugins { id 'com.android.application' version '8.1.1' apply false }
+          buildscript {
+              repositories { google(); mavenCentral(); }
+              dependencies { classpath 'com.android.tools.build:gradle:8.1.1' }
+          }
           EOF
 
           cat > app/build.gradle << 'EOF'
-          plugins { id 'com.android.application' }
+          apply plugin: 'com.android.application'
           android {
-              namespace 'com.jsai.studio'
+              namespace 'com.cubic.battle'
               compileSdk 34
-              defaultConfig { applicationId "com.jsai.studio"; minSdk 26; targetSdk 34; versionCode 1; versionName "10.0" }
+              defaultConfig { applicationId "com.cubic.battle"; minSdk 26; targetSdk 34; versionCode 1; versionName "1.0" }
           }
-          dependencies {
-              implementation 'androidx.appcompat:appcompat:1.6.1'
-              implementation 'org.luaj:luaj-jse:3.0.1'
-          }
+          dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }
           EOF
 
-          # --- UI (Roblox Pro Style) ---
-          cat > app/src/main/res/layout/editor_main.xml << 'EOF'
-          <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#1B1B1B">
-              <LinearLayout android:id="@+id/toolbar" android:layout_width="match_parent" android:layout_height="38dp" android:background="#222" android:orientation="horizontal" android:gravity="center_vertical" android:paddingHorizontal="10dp">
-                  <Button android:id="@+id/btnAdd" android:layout_width="38dp" android:layout_height="32dp" android:text="+" android:backgroundTint="#FFF" android:textColor="#000" android:textSize="18sp" android:padding="0dp" android:insetTop="0dp" android:insetBottom="0dp"/>
-                  <Button android:id="@+id/btnPlay" android:layout_width="85dp" android:layout_height="32dp" android:text="ЗАПУСК" android:backgroundTint="#FFF" android:textColor="#000" android:textSize="10sp" android:layout_marginLeft="8dp" android:insetTop="0dp" android:insetBottom="0dp"/>
-                  <Space android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"/>
-                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="JsAI HYBRID ENGINE" android:textColor="#444" android:textSize="9sp"/>
+          # --- UI: MENU ---
+          cat > app/src/main/res/layout/activity_main.xml << 'EOF'
+          <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000">
+              <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:layout_centerInParent="true" android:gravity="center">
+                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="CUBIC BATTLE" android:textColor="#FFF" android:textSize="40sp" android:textStyle="bold" android:fontFamily="sans-serif-black"/>
+                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="В новых красках 🎨" android:textColor="#FF4444" android:textSize="18sp" android:layout_marginBottom="30dp"/>
+                  <Button android:id="@+id/btnModes" android:layout_width="250dp" android:layout_height="50dp" android:text="Режимы" android:backgroundTint="#8A2BE2" android:textColor="#FFF"/>
               </LinearLayout>
-              <LinearLayout android:id="@+id/sidebar" android:layout_width="170dp" android:layout_height="match_parent" android:layout_below="@id/toolbar" android:layout_alignParentRight="true" android:background="#252525" android:orientation="vertical">
-                  <TextView android:layout_width="match_parent" android:layout_height="22dp" android:text=" Explorer" android:textColor="#AAA" android:textSize="9sp" android:background="#2D2D2D" android:gravity="center_vertical" android:textStyle="bold"/>
-                  <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"><LinearLayout android:id="@+id/explorer" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"/></ScrollView>
-                  <TextView android:layout_width="match_parent" android:layout_height="22dp" android:text=" Properties" android:textColor="#AAA" android:textSize="9sp" android:background="#2D2D2D" android:gravity="center_vertical" android:textStyle="bold"/>
-                  <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1.3" android:background="#151515"><LinearLayout android:id="@+id/properties" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="5dp"/></ScrollView>
-              </LinearLayout>
-              <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent" android:layout_below="@id/toolbar" android:layout_toLeftOf="@id/sidebar">
-                  <com.jsai.studio.GameView android:id="@+id/gameView" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000"/>
-                  <EditText android:id="@+id/codeEditor" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#0A0A0A" android:textColor="#0F4" android:fontFamily="monospace" android:gravity="top" android:padding="12dp" android:visibility="gone" android:textSize="13sp" android:inputType="textMultiLine|textNoSuggestions"/>
-              </FrameLayout>
           </RelativeLayout>
           EOF
 
-          # --- ENGINE LOGIC ---
-          cat > app/src/main/java/com/jsai/studio/Instance.java << 'EOF'
-          package com.jsai.studio;
-          import java.util.*;
-          import org.luaj.vm2.LuaValue;
-          import org.luaj.vm2.Globals;
-          public class Instance {
-              public String name, type, code = "", text = "", lang = "Простой";
-              public float x=400, y=400, w=150, h=150, scale=1, rotation=0, vx=0, vy=0, grav=0;
-              public float sX, sY, sW, sH, sSc, sRot;
-              public int color = 0xFF00A2FF;
-              public Instance parent;
-              public List<Instance> children = new ArrayList<>();
-              public LuaValue loop = LuaValue.NIL, click = LuaValue.NIL;
-              public Globals env;
-
-              public Instance(String n, String t) { name=n; type=t; }
-              public void save() { sX=x; sY=y; sW=w; sH=h; sSc=scale; sRot=rotation; }
-              public void reset() { x=sX; y=sY; w=sW; h=sH; scale=sSc; rotation=sRot; vx=0; vy=0; loop=LuaValue.NIL; click=LuaValue.NIL; env=null; }
-              
-              // Pro API
-              public void setX(float v) { x=v; } public void setY(float v) { y=v; }
-              public void setRot(float v) { rotation=v; }
-              public void setVx(float v) { vx=v; } public void setVy(float v) { vy=v; }
-              public void setGrav(float v) { grav=v; }
-              public void setText(String v) { text=v; }
-              public boolean touches(String n) {
-                  for(Instance i : EngineCore.all()) {
-                      if(i.name.equals(n) && i != this) {
-                          if (x < i.x + i.w && x + w > i.x && y < i.y + i.h && y + h > i.y) return true;
-                      }
-                  }
-                  return false;
-              }
-          }
-          EOF
-
-          cat > app/src/main/java/com/jsai/studio/EngineCore.java << 'EOF'
-          package com.jsai.studio;
-          import java.util.*;
-          import org.luaj.vm2.*;
-          import org.luaj.vm2.lib.jse.*;
-
-          public class EngineCore {
-              public static List<Instance> root = new ArrayList<>();
-              public static boolean isPlaying = false;
-              public static float mx, my;
-
-              public static String translate(String s) {
-                  return s.replace("игра", "function loop(dt)")
-                          .replace("нажат", "function onClick()")
-                          .replace("конец", "end")
-                          .replace("я.", "self:")
-                          .replace("равно", "==");
-              }
-
-              public static void start() {
-                  isPlaying = true;
-                  for(Instance i : all()) {
-                      i.save();
-                      if(i.type.equals("Script") && i.parent != null) {
-                          Globals g = JsePlatform.standardGlobals();
-                          g.set("self", CoerceJavaToLua.coerce(i.parent));
-                          try {
-                              String finalCode = i.lang.equals("Простой") ? translate(i.code) : i.code;
-                              g.load(finalCode).call();
-                              i.parent.loop = g.get("loop");
-                              i.parent.click = g.get("onClick");
-                              i.parent.env = g;
-                          } catch(Exception e) {}
-                      }
-                  }
-              }
-
-              public static void stop() { isPlaying = false; for(Instance i : all()) i.reset(); }
-              public static List<Instance> all() { List<Instance> a = new ArrayList<>(); fill(root, a); return a; }
-              private static void fill(List<Instance> s, List<Instance> d) { for(Instance i:s){ d.add(i); fill(i.children, d); }}
-              
-              public static void update(float dt) {
-                  for(Instance i : all()) {
-                      i.vy += i.grav * 20 * dt; i.x += i.vx * dt; i.y += i.vy * dt;
-                      if(i.env != null && !i.loop.isnil()) {
-                          i.env.set("mx", LuaValue.valueOf(mx)); i.env.set("my", LuaValue.valueOf(my));
-                          try { i.loop.call(LuaValue.valueOf(dt)); } catch(Exception e) {}
-                      }
-                  }
-              }
-          }
-          EOF
-
-          cat > app/src/main/java/com/jsai/studio/GameView.java << 'EOF'
-          package com.jsai.studio;
+          # --- GAME ENGINE CODE ---
+          cat > app/src/main/java/com/cubic/battle/GameView.java << 'EOF'
+          package com.cubic.battle;
           import android.content.Context;
           import android.graphics.*;
-          import android.util.AttributeSet;
           import android.view.*;
+          import java.util.*;
+
           public class GameView extends View {
               private Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-              public GameView(Context c, AttributeSet a) { super(c, a); }
+              private float px=200, py=200, pAngle=0; // Игрок
+              private float joyX=200, joyY=800, curJoyX=200, curJoyY=800; // Джойстик
+              private boolean joyActive = false, atkActive = false;
+              private float atkX, atkY, aimAngle = 0;
+              
+              private List<PointF> enemies = new ArrayList<>();
+              private float score = 10079;
+
+              public GameView(Context c) {
+                  super(c);
+                  for(int i=0; i<5; i++) enemies.add(new PointF(600 + i*200, 300 + i*100));
+              }
+
               @Override protected void onDraw(Canvas canvas) {
-                  canvas.drawColor(Color.BLACK);
-                  if(EngineCore.isPlaying) EngineCore.update(0.016f);
-                  for(Instance i : EngineCore.all()) {
-                      if(i.type.equals("Блок") || i.type.equals("Шар")) {
-                          p.setColor(i.color);
-                          canvas.save();
-                          canvas.translate(i.x + i.w/2, i.y + i.h/2);
-                          canvas.rotate(i.rotation);
-                          if(i.type.equals("Блок")) canvas.drawRect(-i.w/2, -i.h/2, i.w/2, i.h/2, p);
-                          else canvas.drawCircle(0, 0, i.w/2, p);
-                          if(!i.text.isEmpty()) { p.setColor(Color.WHITE); p.setTextSize(40); p.setTextAlign(Paint.Align.CENTER); canvas.drawText(i.text, 0, 15, p); }
-                          canvas.restore();
-                      }
+                  // 1. Фон (Песок) - Исправлен баг черного фона
+                  canvas.drawColor(Color.parseColor("#D2B48C"));
+                  p.setColor(Color.parseColor("#C2A47C"));
+                  for(int i=0; i<2000; i+=100) canvas.drawLine(0, i, 2000, i, p);
+
+                  // 2. Отрисовка Врагов
+                  p.setColor(Color.BLACK);
+                  for(PointF e : enemies) {
+                      canvas.drawRect(e.x, e.y, e.x+80, e.y+80, p);
+                      p.setColor(Color.WHITE);
+                      canvas.drawRect(e.x+15, e.y+15, e.x+35, e.y+35, p);
+                      canvas.drawRect(e.x+45, e.y+15, e.x+65, e.y+35, p);
+                      p.setColor(Color.BLACK);
                   }
+
+                  // 3. Игрок
+                  canvas.save();
+                  canvas.translate(px+40, py+40);
+                  canvas.rotate((float)Math.toDegrees(pAngle));
+                  p.setColor(Color.BLACK);
+                  canvas.drawRect(-40, -40, 40, 40, p);
+                  p.setColor(Color.WHITE);
+                  canvas.drawRect(-25, -25, -5, -5, p);
+                  canvas.drawRect(5, -25, 25, -5, p);
+                  
+                  // Прицел (Линия)
+                  if(atkActive) {
+                      p.setColor(Color.RED);
+                      p.setStrokeWidth(5);
+                      canvas.drawLine(0, 0, 300, 0, p); // Линия направления
+                      canvas.drawCircle(300, 0, 10, p);
+                  }
+                  canvas.restore();
+
+                  // 4. Интерфейс (Джойстик и кнопки)
+                  p.setColor(Color.argb(100, 0, 0, 0));
+                  canvas.drawCircle(joyX, joyY, 100, p);
+                  canvas.drawCircle(curJoyX, curJoyY, 50, p);
+
+                  p.setColor(atkActive ? Color.RED : Color.parseColor("#8A2BE2"));
+                  canvas.drawCircle(getWidth()-200, getHeight()-200, 80, p); // Кнопка атаки
+                  p.setColor(Color.WHITE); p.setTextSize(30);
+                  canvas.drawText("АТАКА", getWidth()-250, getHeight()-190, p);
+
+                  // Текст сверху
+                  p.setColor(Color.BLACK); p.setTextSize(50);
+                  canvas.drawText("Счет: " + (int)score, 50, 80, p);
+
+                  update();
                   invalidate();
               }
-              @Override public boolean onTouchEvent(MotionEvent e) {
-                  EngineCore.mx = e.getX(); EngineCore.my = e.getY();
-                  if(e.getAction() == MotionEvent.ACTION_DOWN && EngineCore.isPlaying) {
-                      for(Instance i : EngineCore.all()) {
-                          if(!i.click.isnil() && e.getX() > i.x && e.getX() < i.x+i.w && e.getY() > i.y && e.getY() < i.y+i.h) {
-                              try { i.click.call(); } catch(Exception ex){}
-                          }
+
+              private void update() {
+                  if(joyActive) {
+                      float dx = curJoyX - joyX;
+                      float dy = curJoyY - joyY;
+                      float dist = (float)Math.sqrt(dx*dx + dy*dy);
+                      if(dist > 0) {
+                          float speed = 5;
+                          px += (dx/dist) * speed;
+                          py += (dy/dist) * speed;
+                          pAngle = (float)Math.atan2(dy, dx);
                       }
+                  }
+              }
+
+              @Override public boolean onTouchEvent(MotionEvent e) {
+                  int action = e.getActionMasked();
+                  int index = e.getActionIndex();
+                  float tx = e.getX(index);
+                  float ty = e.getY(index);
+
+                  switch(action) {
+                      case MotionEvent.ACTION_DOWN:
+                      case MotionEvent.ACTION_POINTER_DOWN:
+                          if(tx < getWidth()/2) {
+                              joyActive = true;
+                              curJoyX = tx; curJoyY = ty;
+                          } else {
+                              atkActive = true;
+                          }
+                          break;
+                      case MotionEvent.ACTION_MOVE:
+                          for(int i=0; i<e.getPointerCount(); i++) {
+                              float x = e.getX(i);
+                              float y = e.getY(i);
+                              if(x < getWidth()/2) {
+                                  curJoyX = x; curJoyY = y;
+                              } else if(atkActive) {
+                                  // Механика прицела с лимитом 35 градусов
+                                  float targetAngle = (float)Math.atan2(y - (py+40), x - (px+40));
+                                  float diff = targetAngle - pAngle;
+                                  // Нормализация угла
+                                  while (diff > Math.PI) diff -= 2*Math.PI;
+                                  while (diff < -Math.PI) diff += 2*Math.PI;
+
+                                  float limit = (float)Math.toRadians(35);
+                                  if(Math.abs(diff) < limit) {
+                                      pAngle = targetAngle; // Позволяем вращать игрока в секторе
+                                  }
+                              }
+                          }
+                          break;
+                      case MotionEvent.ACTION_UP:
+                      case MotionEvent.ACTION_POINTER_UP:
+                          if(tx < getWidth()/2) joyActive = false; curJoyX = joyX; curJoyY = joyY;
+                          if(tx > getWidth()/2) atkActive = false;
+                          break;
                   }
                   return true;
               }
           }
           EOF
 
-          cat > app/src/main/java/com/jsai/studio/EditorActivity.java << 'EOF'
-          package com.jsai.studio;
-          import android.app.*;
+          cat > app/src/main/java/com/cubic/battle/MainActivity.java << 'EOF'
+          package com.cubic.battle;
+          import android.app.Activity;
           import android.os.Bundle;
-          import android.view.*;
-          import android.view.inputmethod.InputMethodManager;
-          import android.widget.*;
-          import android.graphics.Color;
-          import java.util.*;
+          import android.view.View;
+          import android.widget.Button;
 
-          public class EditorActivity extends Activity {
-              LinearLayout exp, props; EditText ed; View gv; Instance sel;
-              protected void onCreate(Bundle b) {
-                  super.onCreate(b); requestWindowFeature(1); setContentView(R.layout.editor_main);
-                  exp=findViewById(R.id.explorer); props=findViewById(R.id.properties); ed=findViewById(R.id.codeEditor); gv=findViewById(R.id.gameView);
-                  findViewById(R.id.btnAdd).setOnClickListener(v -> {
-                      PopupMenu pm = new PopupMenu(this, v); pm.getMenu().add("Блок"); pm.getMenu().add("Шар"); pm.getMenu().add("Folder"); pm.getMenu().add("Script");
-                      pm.setOnMenuItemClickListener(item -> {
-                          Instance i = new Instance(item.getTitle().toString()+(int)(Math.random()*99), item.getTitle().toString());
-                          if(sel != null && sel.type.equals("Folder")) { i.parent = sel; sel.children.add(i); } else EngineCore.root.add(i);
-                          upd(); return true;
-                      }); pm.show();
-                  });
-                  findViewById(R.id.btnPlay).setOnClickListener(v -> {
-                      if(!EngineCore.isPlaying) { EngineCore.start(); ((Button)v).setText("СТОП"); }
-                      else { EngineCore.stop(); ((Button)v).setText("ЗАПУСК"); }
+          public class MainActivity extends Activity {
+              @Override protected void onCreate(Bundle b) {
+                  super.onCreate(b);
+                  setContentView(R.layout.activity_main);
+                  Button btn = findViewById(R.id.btnModes);
+                  btn.setOnClickListener(v -> {
+                      setContentView(new GameView(this));
                   });
               }
-              void upd() {
-                  exp.removeAllViews();
-                  for(Instance i : EngineCore.all()) {
-                      TextView t = new TextView(this); t.setText((i.parent!=null?" > ":"")+i.name);
-                      t.setTextColor(sel==i?Color.BLACK:Color.WHITE); t.setBackgroundColor(sel==i?Color.WHITE:0);
-                      t.setPadding(10, 10, 10, 10);
-                      t.setOnClickListener(v -> { sel=i; show(); upd(); hideKB(); });
-                      exp.addView(t);
-                  }
-              }
-              void show() {
-                  props.removeAllViews();
-                  boolean isS = sel.type.equals("Script");
-                  ed.setVisibility(isS?View.VISIBLE:View.GONE); gv.setVisibility(isS?View.GONE:View.VISIBLE);
-                  if(isS) {
-                      ed.setText(sel.code);
-                      Button langBtn = new Button(this); langBtn.setText("Язык: " + sel.lang);
-                      langBtn.setOnClickListener(v -> { sel.lang = sel.lang.equals("Простой") ? "Lua (Pro)" : "Простой"; langBtn.setText("Язык: " + sel.lang); });
-                      props.addView(langBtn);
-                      ed.addTextChangedListener(new android.text.TextWatcher() {
-                          public void afterTextChanged(android.text.Editable s) { sel.code = s.toString(); }
-                          public void beforeTextChanged(CharSequence s, int t, int c, int a) {} public void onTextChanged(CharSequence s, int t, int b, int c) {}
-                      });
-                  } else {
-                      addS("X", v->sel.x=v, (int)sel.x); addS("Y", v->sel.y=v, (int)sel.y);
-                      addS("Угол", v->sel.rotation=v, (int)sel.rotation);
-                      EditText c = new EditText(this); c.setHint("HEX Цвет"); c.setTextColor(-1);
-                      c.setOnEditorActionListener((v,a,e)->{ try{ sel.color=(int)Long.parseLong(v.getText().toString(), 16); }catch(Exception ex){} return true; });
-                      props.addView(c);
-                  }
-              }
-              void addS(String l, Upd u, int cur) {
-                  TextView t = new TextView(this); t.setText(l); t.setTextColor(Color.GRAY); props.addView(t);
-                  SeekBar s = new SeekBar(this); s.setMax(1500); s.setProgress(cur);
-                  s.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-                      public void onProgressChanged(SeekBar b, int p, boolean h) { u.u(p); }
-                      public void onStartTrackingTouch(SeekBar b) {} public void onStopTrackingTouch(SeekBar b) {}
-                  }); props.addView(s);
-              }
-              void hideKB() { InputMethodManager imm = (InputMethodManager)getSystemService(INPUT_METHOD_SERVICE); View f = getCurrentFocus(); if(f!=null) imm.hideSoftInputFromWindow(f.getWindowToken(), 0); }
-              interface Upd { void u(float v); }
           }
           EOF
 
           cat > app/src/main/AndroidManifest.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="JsAI Hybrid" android:theme="@android:style/Theme.NoTitleBar">
-                  <activity android:name=".EditorActivity" android:exported="true" android:screenOrientation="landscape" android:windowSoftInputMode="adjustPan">
+              <application android:label="Cubic Battle" android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
+                  <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="landscape">
                       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
                   </activity>
               </application>
           </manifest>
           EOF
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: 8.2
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -285,10 +224,14 @@ jobs:
           distribution: 'temurin'
 
       - name: Build APK
-        run: gradle assembleDebug --no-daemon
+        run: |
+          wget -q https://services.gradle.org/distributions/gradle-8.2-bin.zip
+          unzip -q gradle-8.2-bin.zip
+          export PATH="$PWD/gradle-8.2/bin:$PATH"
+          gradle assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: JsAI_Hybrid_Studio
+          name: Cubic_Battle_Alpha
           path: app/build/outputs/apk/debug/app-debug.apk
