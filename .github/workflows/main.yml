@@ -1,4 +1,4 @@
-name: JsAI_Raw_Studio
+name: JsAI_Raw_Studio_Fixed
 on: [push, workflow_dispatch]
 
 jobs:
@@ -30,7 +30,7 @@ jobs:
           android {
               namespace 'com.jsai.studio'
               compileSdk 34
-              defaultConfig { applicationId "com.jsai.studio"; minSdk 26; targetSdk 34; versionCode 1; versionName "1.0" }
+              defaultConfig { applicationId "com.jsai.studio"; minSdk 26; targetSdk 34; versionCode 1; versionName "1.1" }
           }
           dependencies {
               implementation 'androidx.appcompat:appcompat:1.6.1'
@@ -38,19 +38,16 @@ jobs:
           }
           EOF
 
-          # --- МИНИМАЛЬНЫЙ UI ---
           cat > app/src/main/res/layout/editor_main.xml << 'EOF'
           <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#111">
               <LinearLayout android:id="@+id/t" android:layout_width="match_parent" android:layout_height="35dp" android:background="#222" android:paddingHorizontal="5dp" android:gravity="center_vertical">
                   <Button android:id="@+id/add" android:layout_width="35dp" android:layout_height="30dp" android:text="+" android:backgroundTint="#FFF" android:textColor="#000" android:padding="0dp"/>
                   <Button android:id="@+id/play" android:layout_width="70dp" android:layout_height="30dp" android:text="ПУСК" android:backgroundTint="#FFF" android:textColor="#000" android:textSize="10sp" android:layout_marginLeft="5dp"/>
                   <Space android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"/>
-                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="RAW STUDIO" android:textColor="#444" android:textSize="10sp"/>
+                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="RAW v1.1" android:textColor="#444" android:textSize="10sp"/>
               </LinearLayout>
               <LinearLayout android:id="@+id/s" android:layout_width="150dp" android:layout_height="match_parent" android:layout_below="@id/t" android:layout_alignParentRight="true" android:background="#151515" android:orientation="vertical">
-                  <TextView android:layout_width="match_parent" android:layout_height="20dp" android:text=" ПРОВОДНИК" android:textColor="#666" android:textSize="8sp" android:background="#222"/>
                   <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"><LinearLayout android:id="@+id/exp" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"/></ScrollView>
-                  <TextView android:layout_width="match_parent" android:layout_height="20dp" android:text=" СВОЙСТВА" android:textColor="#666" android:textSize="8sp" android:background="#222"/>
                   <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"><LinearLayout android:id="@+id/props" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="5dp"/></ScrollView>
               </LinearLayout>
               <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent" android:layout_below="@id/t" android:layout_toLeftOf="@id/s">
@@ -60,22 +57,25 @@ jobs:
           </RelativeLayout>
           EOF
 
-          # --- CORE ENGINE ( RAW ) ---
+          # --- ENGINE CLASSES (FIXED IMPORTS) ---
           cat > app/src/main/java/com/jsai/studio/Instance.java << 'EOF'
           package com.jsai.studio;
           import java.util.*;
-          import org.luaj.vm2.LuaValue;
+          import org.luaj.vm2.*;
           public class Instance {
               public String name, type, code = "";
-              public float x=400, y=400, r=100, rot=0; // r - размер
-              public int c = 0xFFFFFFFF; // c - цвет
+              public float x=400, y=400, r=100;
+              public int c = 0xFFFFFFFF;
               public float sx, sy, sr;
-              public Instance p; // parent
+              public Instance p;
               public List<Instance> kids = new ArrayList<>();
               public LuaValue loop = LuaValue.NIL;
+              public Globals env; // Окружение скрипта
               public Instance(String n, String t) { name=n; type=t; }
               public void save() { sx=x; sy=y; sr=r; }
-              public void reset() { x=sx; y=sy; r=sr; loop=LuaValue.NIL; }
+              public void reset() { x=sx; y=sy; r=sr; loop=LuaValue.NIL; env=null; }
+              public void setX(float v) { x=v; } public void setY(float v) { y=v; }
+              public void setR(float v) { r=v; } public void setC(int v) { c=v; }
           }
           EOF
 
@@ -90,7 +90,8 @@ jobs:
               public static float mx, my;
               public static String compile(String s) {
                   return s.replace("игра", "function update()").replace("конец", "end")
-                          .replace("я.х", "я.x").replace("я.у", "я.y").replace("я.р", "я.r").replace("я.ц", "я.c")
+                          .replace("я.х", "я:setX").replace("я.у", "я:setY")
+                          .replace("я.р", "я:setR").replace("я.ц", "я:setC")
                           .replace("мх", "mx").replace("му", "my");
               }
               public static void start() {
@@ -100,7 +101,7 @@ jobs:
                       if(i.type.equals("Script") && i.p != null) {
                           Globals g = JsePlatform.standardGlobals();
                           g.set("я", CoerceJavaToLua.coerce(i.p));
-                          try { g.load(compile(i.code)).call(); i.p.loop = g.get("update"); } catch(Exception e){}
+                          try { g.load(compile(i.code)).call(); i.p.loop = g.get("update"); i.p.env = g; } catch(Exception e){}
                       }
                   }
               }
@@ -116,6 +117,7 @@ jobs:
           import android.graphics.*;
           import android.util.AttributeSet;
           import android.view.*;
+          import org.luaj.vm2.*;
           public class GameView extends View {
               Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
               public GameView(Context c, AttributeSet a) { super(c, a); }
@@ -123,9 +125,9 @@ jobs:
                   canvas.drawColor(Color.BLACK);
                   if(EngineCore.active) {
                       for(Instance i : EngineCore.all()) {
-                          if(!i.loop.isnil()) {
-                              Globals g = i.loop.getfenv();
-                              g.set("mx", LuaValue.valueOf(EngineCore.mx)); g.set("my", LuaValue.valueOf(EngineCore.my));
+                          if(i.env != null && !i.loop.isnil()) {
+                              i.env.set("mx", LuaValue.valueOf(EngineCore.mx));
+                              i.env.set("my", LuaValue.valueOf(EngineCore.my));
                               try { i.loop.call(); } catch(Exception e){}
                           }
                       }
@@ -190,8 +192,8 @@ jobs:
                       });
                   } else {
                       addS("X", v->sel.x=v); addS("Y", v->sel.y=v); addS("P", v->sel.r=v);
-                      EditText c = new EditText(this); c.setHint("HEX Цвет"); c.setTextColor(-1);
-                      c.setOnEditorActionListener((v,a,e)->{ try{ sel.c=(int)Long.parseLong(v.getText().toString().replace("#",""), 16); }catch(Exception ex){} return true; });
+                      EditText c = new EditText(this); c.setHint("Цвет HEX"); c.setTextColor(-1);
+                      c.setOnEditorActionListener((v,a,e)->{ try{ sel.c=(int)Long.parseLong(v.getText().toString(), 16); }catch(Exception ex){} return true; });
                       props.addView(c);
                   }
               }
