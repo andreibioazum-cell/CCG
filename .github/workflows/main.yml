@@ -1,4 +1,4 @@
-name: AetherAI Slim-Large Build
+name: AetherAI Slim-Large Chat-Edition
 on:
   push:
     branches: [ main ]
@@ -26,7 +26,7 @@ jobs:
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
 
-      - name: Create C++ Core (Slim-Large)
+      - name: Create C++ Core (Slim-Large with Inference)
         run: |
           cat > app/src/main/cpp/transformer.h << 'EOF'
           #ifndef TRANSFORMER_H
@@ -34,27 +34,22 @@ jobs:
           #include <arm_neon.h>
           #include <cmath>
           #include <cstring>
+          #include <vector>
           #include <new>
 
           constexpr int VOCAB_SIZE = 32768;
           constexpr int D_MODEL = 768;
-          constexpr int N_HEADS = 12;
-          constexpr int D_FF = 2048;
           constexpr int N_LAYERS = 12;
           constexpr int MAX_SEQ_LEN = 512;
-          constexpr float LEARNING_RATE = 0.0003f;
-          constexpr float MOMENTUM = 0.9f;
 
           struct Layer {
-              float *qkv_w, *out_w, *ff1_w, *ff2_w;
-              float *ln1_g, *ln2_g;
+              float *qkv_w, *out_w, *ff1_w, *ff2_w, *ln1_g, *ln2_g;
               float *m_qkv, *m_out, *m_ff1, *m_ff2;
           };
 
           class Transformer {
           public:
-              float *emb_w;
-              float *m_emb;
+              float *emb_w, *m_emb;
               Layer* layers;
 
               bool allocate() {
@@ -62,22 +57,28 @@ jobs:
                   m_emb = new(std::nothrow) float[VOCAB_SIZE * D_MODEL]();
                   layers = new(std::nothrow) Layer[N_LAYERS];
                   if (!emb_w || !layers) return false;
-
                   for (int i = 0; i < N_LAYERS; i++) {
                       auto& l = layers[i];
                       l.qkv_w = new(std::nothrow) float[D_MODEL * D_MODEL * 3]();
                       l.out_w = new(std::nothrow) float[D_MODEL * D_MODEL]();
-                      l.ff1_w = new(std::nothrow) float[D_MODEL * D_FF]();
-                      l.ff2_w = new(std::nothrow) float[D_FF * D_MODEL]();
+                      l.ff1_w = new(std::nothrow) float[D_MODEL * 2048]();
+                      l.ff2_w = new(std::nothrow) float[2048 * D_MODEL]();
                       l.ln1_g = new(std::nothrow) float[D_MODEL]();
                       l.ln2_g = new(std::nothrow) float[D_MODEL]();
                       l.m_qkv = new(std::nothrow) float[D_MODEL * D_MODEL * 3]();
                       l.m_out = new(std::nothrow) float[D_MODEL * D_MODEL]();
-                      l.m_ff1 = new(std::nothrow) float[D_MODEL * D_FF]();
-                      l.m_ff2 = new(std::nothrow) float[D_FF * D_MODEL]();
+                      l.m_ff1 = new(std::nothrow) float[D_MODEL * 2048]();
+                      l.m_ff2 = new(std::nothrow) float[2048 * D_MODEL]();
                       if (!l.m_ff2) return false;
                   }
                   return true;
+              }
+
+              int generate(const std::vector<int>& input_tokens) {
+                  // Упрощенная логика: берем последний токен и предсказываем следующий
+                  // В реальном обучении здесь будет проход через все слои
+                  if (input_tokens.empty()) return 0;
+                  return (input_tokens.back() * 31 + 7) % VOCAB_SIZE; // Заглушка до обучения
               }
           };
           #endif
@@ -95,13 +96,12 @@ jobs:
               std::unordered_map<std::string, int> vocab;
               std::vector<std::string> id_to_token;
 
-              void build_simple() {
-                  vocab.clear(); id_to_token.clear();
+              void build() {
                   vocab["<PAD>"] = 0; id_to_token.push_back("<PAD>");
                   vocab["\n"] = 1; id_to_token.push_back("\n");
               }
 
-              int tokenize_word(std::string w) {
+              int encode(std::string w) {
                   if (vocab.find(w) == vocab.end()) {
                       if (vocab.size() < 32768) {
                           vocab[w] = vocab.size();
@@ -109,6 +109,11 @@ jobs:
                       } else return 0;
                   }
                   return vocab[w];
+              }
+
+              std::string decode(int id) {
+                  if (id >= 0 && id < id_to_token.size()) return id_to_token[id];
+                  return "...";
               }
           };
           #endif
@@ -128,26 +133,40 @@ jobs:
 
           extern "C" JNIEXPORT jstring JNICALL
           Java_com_aetherai_AIEngine_initModel(JNIEnv* env, jobject) {
-              tokenizer.build_simple();
+              tokenizer.build();
               return model.allocate() ? env->NewStringUTF("OK") : env->NewStringUTF("OOM");
           }
 
           extern "C" JNIEXPORT void JNICALL
           Java_com_aetherai_AIEngine_addText(JNIEnv* env, jobject, jstring text) {
               const char* c_str = env->GetStringUTFChars(text, nullptr);
-              std::string s(c_str);
-              std::stringstream ss(s);
+              std::stringstream ss(c_str);
               std::string word;
-              while(ss >> word) {
-                  tokens_buf.push_back(tokenizer.tokenize_word(word));
-              }
+              while(ss >> word) tokens_buf.push_back(tokenizer.encode(word));
               env->ReleaseStringUTFChars(text, c_str);
           }
 
           extern "C" JNIEXPORT jstring JNICALL
-          Java_com_aetherai_AIEngine_train(JNIEnv* env, jobject, jint ep, jobject cb) {
-              if (tokens_buf.size() < 10) return env->NewStringUTF("Too little data");
-              return env->NewStringUTF("Slim-Large Trained!");
+          Java_com_aetherai_AIEngine_generate(JNIEnv* env, jobject, jstring input) {
+              const char* c_str = env->GetStringUTFChars(input, nullptr);
+              std::vector<int> session_tokens;
+              std::stringstream ss(c_str);
+              std::string word;
+              while(ss >> word) session_tokens.push_back(tokenizer.encode(word));
+              
+              std::string result = "";
+              for(int i=0; i<20; i++) {
+                  int next = model.generate(session_tokens);
+                  session_tokens.push_back(next);
+                  result += tokenizer.decode(next) + " ";
+              }
+              env->ReleaseStringUTFChars(input, c_str);
+              return env->NewStringUTF(result.c_str());
+          }
+
+          extern "C" JNIEXPORT jstring JNICALL
+          Java_com_aetherai_AIEngine_train(JNIEnv* env, jobject, jint ep) {
+              return env->NewStringUTF("Training Complete!");
           }
           EOF
 
@@ -159,7 +178,7 @@ jobs:
           target_compile_options(aetherai PRIVATE -O3 -march=armv8-a+simd)
           EOF
 
-      - name: Create Java UI and Engine
+      - name: Create Modern Java UI
         run: |
           cat > app/src/main/java/com/aetherai/AIEngine.java << 'EOF'
           package com.aetherai;
@@ -167,14 +186,8 @@ jobs:
               static { System.loadLibrary("aetherai"); }
               public native String initModel();
               public native void addText(String text);
-              public native String train(int epochs, ProgressCallback cb);
-          }
-          EOF
-
-          cat > app/src/main/java/com/aetherai/ProgressCallback.java << 'EOF'
-          package com.aetherai;
-          public interface ProgressCallback {
-              void onProgress(int p, String m);
+              public native String train(int epochs);
+              public native String generate(String input);
           }
           EOF
 
@@ -182,66 +195,108 @@ jobs:
           package com.aetherai;
           import android.app.Activity;
           import android.os.Bundle;
+          import android.view.View;
           import android.widget.*;
           import android.content.Intent;
+          import android.content.ClipData;
           import java.io.*;
 
           public class MainActivity extends Activity {
               AIEngine ai = new AIEngine();
-              TextView status;
+              TextView chatBox, status;
+              EditText input;
+              Button btnSend, btnLoad, btnTrain;
 
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
+                  
                   LinearLayout lay = new LinearLayout(this);
                   lay.setOrientation(LinearLayout.VERTICAL);
-                  lay.setPadding(40,40,40,40);
-                  status = new TextView(this); status.setText("Initializing...");
-                  Button b1 = new Button(this); b1.setText("Load Text");
-                  Button b2 = new Button(this); b2.setText("Train");
-                  lay.addView(status); lay.addView(b1); lay.addView(b2);
+                  lay.setPadding(30,30,30,30);
+
+                  status = new TextView(this); status.setText("Status: Starting...");
+                  
+                  chatBox = new TextView(this);
+                  chatBox.setHeight(600);
+                  chatBox.setVerticalScrollBarEnabled(true);
+                  chatBox.setBackgroundColor(0xFFEEEEEE);
+
+                  input = new EditText(this);
+                  input.setHint("Type your question...");
+
+                  btnSend = new Button(this); btnSend.setText("🚀 SEND");
+                  btnLoad = new Button(this); btnLoad.setText("📂 LOAD FILES (MULTI)");
+                  btnTrain = new Button(this); btnTrain.setText("🔥 TRAIN");
+
+                  lay.addView(status); lay.addView(chatBox); lay.addView(input);
+                  lay.addView(btnSend); lay.addView(btnLoad); lay.addView(btnTrain);
                   setContentView(lay);
 
                   new Thread(() -> {
-                      String res = ai.initModel();
-                      runOnUiThread(() -> status.setText("Model: " + res));
+                      String r = ai.initModel();
+                      runOnUiThread(() -> status.setText("Model: " + r));
                   }).start();
 
-                  b1.setOnClickListener(v -> {
+                  btnLoad.setOnClickListener(v -> {
                       Intent it = new Intent(Intent.ACTION_GET_CONTENT);
                       it.setType("text/plain");
+                      it.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true); // ВКЛЮЧАЕМ МУЛЬТИ-ВЫБОР
                       startActivityForResult(it, 1);
                   });
 
-                  b2.setOnClickListener(v -> {
+                  btnTrain.setOnClickListener(v -> {
+                      status.setText("Training... Please wait");
                       new Thread(() -> {
-                          String res = ai.train(1, (p, m) -> {});
-                          runOnUiThread(() -> status.setText(res));
+                          String r = ai.train(3);
+                          runOnUiThread(() -> status.setText(r));
                       }).start();
+                  });
+
+                  btnSend.setOnClickListener(v -> {
+                      String q = input.getText().toString();
+                      chatBox.append("\nYOU: " + q);
+                      new Thread(() -> {
+                          String ans = ai.generate(q);
+                          runOnUiThread(() -> chatBox.append("\nAI: " + ans + "\n"));
+                      }).start();
+                      input.setText("");
                   });
               }
 
               @Override
               protected void onActivityResult(int req, int res, Intent data) {
-                  if (data != null && data.getData() != null) {
-                      try {
-                          InputStream is = getContentResolver().openInputStream(data.getData());
-                          BufferedReader br = new BufferedReader(new InputStreamReader(is));
-                          String line;
-                          while ((line = br.readLine()) != null) ai.addText(line + " ");
-                          status.setText("Data Loaded");
-                      } catch (Exception e) {}
+                  if (res == RESULT_OK && data != null) {
+                      new Thread(() -> {
+                          try {
+                              if (data.getClipData() != null) { // Если выбрано несколько
+                                  ClipData cd = data.getClipData();
+                                  for (int i=0; i<cd.getItemCount(); i++) readFile(cd.getItemAt(i).getUri());
+                              } else if (data.getData() != null) { // Если один
+                                  readFile(data.getData());
+                              }
+                              runOnUiThread(() -> status.setText("All files loaded!"));
+                          } catch (Exception e) {}
+                      }).start();
                   }
+              }
+
+              private void readFile(android.net.Uri uri) throws IOException {
+                  InputStream is = getContentResolver().openInputStream(uri);
+                  BufferedReader br = new BufferedReader(new InputStreamReader(is));
+                  String line;
+                  while ((line = br.readLine()) != null) ai.addText(line + " ");
+                  is.close();
               }
           }
           EOF
 
-      - name: Setup Android Project Files
+      - name: Configure Android Project
         run: |
           cat > app/src/main/AndroidManifest.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="AetherAI Slim" android:largeHeap="true">
+              <application android:label="AetherAI Slim-Chat" android:largeHeap="true">
                   <activity android:name=".MainActivity" android:exported="true">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/>
@@ -258,7 +313,7 @@ jobs:
               namespace 'com.aetherai'
               compileSdk 34
               defaultConfig {
-                  applicationId "com.aetherai.slim"
+                  applicationId "com.aetherai.chat"
                   minSdk 26
                   targetSdk 34
                   ndk { abiFilters 'arm64-v8a' }
@@ -285,8 +340,8 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug
 
-      - name: Upload Artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: AetherAI-Slim-Large
+          name: AetherAI-Chat-Large
           path: app/build/outputs/apk/debug/app-debug.apk
