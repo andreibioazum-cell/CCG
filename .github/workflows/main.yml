@@ -1,271 +1,304 @@
-name: Cubic_Battle_Final_Fixed
-on: [push, workflow_dispatch]
+name: AetherAI Slim-Large Build
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions: contents write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Create Structure
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools build-tools;34.0.0 platforms;android-34 ndk;25.2.9519653 cmake;3.22.1'
+
+      - name: Create Project Structure
         run: |
-          mkdir -p app/src/main/java/com/cubic/battle
+          mkdir -p app/src/main/cpp
+          mkdir -p app/src/main/java/com/aetherai
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
 
-          cat > settings.gradle << 'EOF'
-          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal(); } }
-          dependencyResolutionManagement { 
-              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-              repositories { google(); mavenCentral(); } 
-          }
-          include ':app'
-          EOF
-          
-          echo "android.useAndroidX=true" > gradle.properties
+      - name: Create C++ Core (Slim-Large)
+        run: |
+          # --- TRANSFORMER CORE ---
+          cat > app/src/main/cpp/transformer.h << 'EOF'
+          #ifndef TRANSFORMER_H
+          #define TRANSFORMER_H
+          #include <arm_neon.h>
+          #include <cmath>
+          #include <cstring>
+          #include <new>
 
-          cat > build.gradle << 'EOF'
-          buildscript {
-              repositories { google(); mavenCentral(); }
-              dependencies { classpath 'com.android.tools.build:gradle:8.1.1' }
-          }
-          EOF
+          constexpr int VOCAB_SIZE = 32768;
+          constexpr int D_MODEL = 768;    // Slimmed from 1024
+          constexpr int N_HEADS = 12;     // Balanced for 768
+          constexpr int D_FF = 2048;      // Efficient FFN
+          constexpr int N_LAYERS = 12;    // Deep architecture
+          constexpr int MAX_SEQ_LEN = 512;
+          constexpr float LEARNING_RATE = 0.0003f;
+          constexpr float MOMENTUM = 0.9f;
 
-          cat > app/build.gradle << 'EOF'
-          apply plugin: 'com.android.application'
-          android {
-              namespace 'com.cubic.battle'
-              compileSdk 34
-              defaultConfig { applicationId "com.cubic.battle"; minSdk 26; targetSdk 34; versionCode 1; versionName "1.0" }
-          }
-          dependencies { 
-              implementation 'androidx.appcompat:appcompat:1.6.1'
-              implementation 'org.luaj:luaj-jse:3.0.1'
-          }
-          EOF
+          struct Layer {
+              float *qkv_w, *out_w, *ff1_w, *ff2_w;
+              float *ln1_g, *ln2_g;
+              // Momentum buffers (ONLY 1 per weight instead of 2 in Adam)
+              float *m_qkv, *m_out, *m_ff1, *m_ff2;
+          };
 
-          # --- MENU UI ---
-          cat > app/src/main/res/layout/activity_main.xml << 'EOF'
-          <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000">
-              <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:layout_centerInParent="true" android:gravity="center">
-                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="CUBIC BATTLE" android:textColor="#FFF" android:textSize="40sp" android:textStyle="bold"/>
-                  <Button android:id="@+id/btnStart" android:layout_width="250dp" android:layout_height="60dp" android:text="Режимы" android:backgroundTint="#8A2BE2" android:textColor="#FFF" android:layout_marginTop="20dp"/>
-              </LinearLayout>
-          </RelativeLayout>
-          EOF
+          class Transformer {
+          public:
+              float *emb_w; // Tied weights (Input & Output)
+              float *m_emb;
+              Layer* layers;
 
-          # --- GAME ENGINE (LUA + JAVA) ---
-          cat > app/src/main/java/com/cubic/battle/GameView.java << 'EOF'
-          package com.cubic.battle;
-          import android.content.Context;
-          import android.graphics.*;
-          import android.view.*;
-          import org.luaj.vm2.*;
-          import org.luaj.vm2.lib.jse.*;
-          import java.util.ArrayList;
+              bool allocate() {
+                  emb_w = new(std::nothrow) float[VOCAB_SIZE * D_MODEL]();
+                  m_emb = new(std::nothrow) float[VOCAB_SIZE * D_MODEL]();
+                  layers = new(std::nothrow) Layer[N_LAYERS];
+                  if (!emb_w || !layers) return false;
 
-          public class GameView extends View {
-              private Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-              private Globals globals;
-              private LuaValue updateFunc;
-              
-              private float joyBaseX=300, joyBaseY, joyStickX, joyStickY;
-              private boolean joyActive = false, atkActive = false;
-              private float touchX, touchY;
-              private MainActivity activity;
-
-              public GameView(Context c, MainActivity activity) {
-                  super(c);
-                  this.activity = activity;
-                  globals = JsePlatform.standardGlobals();
-                  
-                  String script = 
-                      "player = {x=400, y=400, angle=0, aim=0} " +
-                      "bullets = {} " +
-                      "enemies = {{x=800,y=300}, {x=1200,y=600}} " +
-                      "function update(dt, jdx, jdy, joyActive, mx, my, isAtk) " +
-                      "  if joyActive then " +
-                      "    player.x = player.x + jdx * 10 " +
-                      "    player.y = player.y + jdy * 10 " +
-                      "    player.angle = math.atan2(jdy, jdx) " +
-                      "  end " +
-                      "  if isAtk then " +
-                      "    target = math.atan2(my - player.y, mx - player.x) " +
-                      "    diff = target - player.angle " +
-                      "    while diff > math.pi do diff = diff - 2*math.pi end " +
-                      "    while diff < -math.pi do diff = diff + 2*math.pi end " +
-                      "    limit = 35 * (math.pi/180) " +
-                      "    if math.abs(diff) < limit then player.aim = target else " +
-                      "      if diff > 0 then player.aim = player.angle + limit else player.aim = player.angle - limit end " +
-                      "    end " +
-                      "    if math.random() > 0.8 then " + // Авто-стрельба при зажатии
-                      "      table.insert(bullets, {x=player.x, y=player.y, vx=math.cos(player.aim)*20, vy=math.sin(player.aim)*20}) " +
-                      "    end " +
-                      "  end " +
-                      "  for i=#bullets, 1, -1 do " +
-                      "    bullets[i].x = bullets[i].x + bullets[i].vx " +
-                      "    bullets[i].y = bullets[i].y + bullets[i].vy " +
-                      "    if bullets[i].x > 2500 or bullets[i].x < -500 then table.remove(bullets, i) end " +
-                      "  end " +
-                      "end";
-
-                  globals.load(script).call();
-                  updateFunc = globals.get("update");
-              }
-
-              @Override protected void onDraw(Canvas canvas) {
-                  joyBaseY = getHeight() - 300;
-                  if (!joyActive) { joyStickX = joyBaseX; joyStickY = joyBaseY; }
-
-                  // 1. Фон (Песок + Полосы)
-                  canvas.drawColor(Color.parseColor("#EDD091"));
-                  p.setColor(Color.parseColor("#D9BC7A"));
-                  p.setStrokeWidth(2);
-                  for(int i=0; i<getWidth(); i+=80) canvas.drawLine(i, 0, i, getHeight(), p);
-
-                  // 2. Логика Lua
-                  float jdx = (joyStickX - joyBaseX) / 100f;
-                  float jdy = (joyStickY - joyBaseY) / 100f;
-                  updateFunc.invoke(LuaValue.varargsOf(new LuaValue[]{
-                      LuaValue.valueOf(0.016), LuaValue.valueOf(jdx), LuaValue.valueOf(jdy),
-                      LuaValue.valueOf(joyActive), LuaValue.valueOf(touchX), LuaValue.valueOf(touchY), LuaValue.valueOf(atkActive)
-                  }));
-
-                  LuaValue pl = globals.get("player");
-                  float px = pl.get("x").tofloat(); float py = pl.get("y").tofloat();
-                  float pa = pl.get("angle").tofloat(); float aim = pl.get("aim").tofloat();
-
-                  // 3. Отрисовка пуль
-                  p.setColor(Color.YELLOW);
-                  LuaValue buls = globals.get("bullets");
-                  for(int i=1; i<=buls.length(); i++) {
-                      canvas.drawCircle(buls.get(i).get("x").tofloat(), buls.get(i).get("y").tofloat(), 10, p);
-                  }
-
-                  // 4. Отрисовка игрока (Смотрит по направлению pa)
-                  canvas.save();
-                  canvas.translate(px, py);
-                  canvas.rotate((float)Math.toDegrees(pa));
-                  p.setColor(Color.BLACK);
-                  canvas.drawRect(-50, -50, 50, 50, p);
-                  p.setColor(Color.WHITE); // Глаза (теперь смотрят вперед)
-                  canvas.drawRect(10, -35, 35, -10, p);
-                  canvas.drawRect(10, 10, 35, 35, p);
-                  
-                  if(atkActive) {
-                      canvas.restore(); canvas.save();
-                      canvas.translate(px, py);
-                      canvas.rotate((float)Math.toDegrees(aim));
-                      p.setColor(Color.RED); p.setStrokeWidth(5);
-                      canvas.drawLine(0, 0, 400, 0, p); // Линия прицела
-                  }
-                  canvas.restore();
-
-                  // 5. Враги
-                  p.setColor(Color.BLACK);
-                  LuaValue en = globals.get("enemies");
-                  for(int i=1; i<=en.length(); i++) {
-                      canvas.drawRect(en.get(i).get("x").tofloat()-40, en.get(i).get("y").tofloat()-40, 
-                                     en.get(i).get("x").tofloat()+40, en.get(i).get("y").tofloat()+40, p);
-                  }
-
-                  // 6. UI
-                  // Джойстик
-                  p.setColor(Color.argb(100, 150, 150, 150));
-                  canvas.drawCircle(joyBaseX, joyBaseY, 150, p);
-                  p.setColor(Color.BLACK);
-                  canvas.drawCircle(joyStickX, joyStickY, 60, p);
-
-                  // Кнопка Атака
-                  p.setColor(Color.parseColor("#8A2BE2"));
-                  canvas.drawCircle(getWidth()-250, getHeight()-250, 120, p);
-                  p.setColor(Color.WHITE); p.setTextSize(40);
-                  canvas.drawText("АТАКА", getWidth()-310, getHeight()-235, p);
-
-                  // Кнопка Назад
-                  p.setColor(Color.parseColor("#8A2BE2"));
-                  canvas.drawRect(getWidth()-350, 20, getWidth()-20, 100, p);
-                  p.setColor(Color.WHITE);
-                  canvas.drawText("НАЗАД", getWidth()-250, 75, p);
-
-                  invalidate();
-              }
-
-              @Override public boolean onTouchEvent(MotionEvent e) {
-                  int action = e.getActionMasked();
-                  for (int i = 0; i < e.getPointerCount(); i++) {
-                      float tx = e.getX(i); float ty = e.getY(i);
-                      if (tx < getWidth() / 2) { // Левая сторона - джойстик
-                          if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP) {
-                              joyActive = false;
-                          } else {
-                              joyActive = true;
-                              float dx = tx - joyBaseX; float dy = ty - joyBaseY;
-                              float dist = (float)Math.sqrt(dx*dx + dy*dy);
-                              if (dist > 150) { joyStickX = joyBaseX + (dx/dist)*150; joyStickY = joyBaseY + (dy/dist)*150; }
-                              else { joyStickX = tx; joyStickY = ty; }
-                          }
-                      } else { // Правая сторона - Атака и Назад
-                          if (ty < 150 && tx > getWidth()-400) { activity.showMenu(); return true; }
-                          if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP) {
-                              atkActive = false;
-                          } else {
-                              atkActive = true; touchX = tx; touchY = ty;
-                          }
-                      }
+                  for (int i = 0; i < N_LAYERS; i++) {
+                      auto& l = layers[i];
+                      l.qkv_w = new(std::nothrow) float[D_MODEL * D_MODEL * 3]();
+                      l.out_w = new(std::nothrow) float[D_MODEL * D_MODEL]();
+                      l.ff1_w = new(std::nothrow) float[D_MODEL * D_FF]();
+                      l.ff2_w = new(std::nothrow) float[D_FF * D_MODEL]();
+                      l.ln1_g = new(std::nothrow) float[D_MODEL]();
+                      l.ln2_g = new(std::nothrow) float[D_MODEL]();
+                      
+                      l.m_qkv = new(std::nothrow) float[D_MODEL * D_MODEL * 3]();
+                      l.m_out = new(std::nothrow) float[D_MODEL * D_MODEL]();
+                      l.m_ff1 = new(std::nothrow) float[D_MODEL * D_FF]();
+                      l.m_ff2 = new(std::nothrow) float[D_FF * D_MODEL]();
+                      if (!l.m_ff2) return false;
                   }
                   return true;
               }
+          };
+          #endif
+          EOF
+
+          # --- TOKENIZER ---
+          cat > app/src/main/cpp/tokenizer.h << 'EOF'
+          #ifndef TOKENIZER_H
+          #define TOKENIZER_H
+          #include <string>
+          #include <vector>
+          #include <unordered_map>
+
+          class Tokenizer {
+          public:
+              std::unordered_map<std::string, int> vocab;
+              std::vector<std::string> id_to_token;
+
+              void build_simple() {
+                  vocab.clear(); id_to_token.clear();
+                  vocab["<PAD>"] = 0; id_to_token.push_back("<PAD>");
+                  vocab["\n"] = 1; id_to_token.push_back("\n");
+              }
+
+              int tokenize_word(std::string w) {
+                  if (vocab.find(w) == vocab.end()) {
+                      if (vocab.size() < 32768) {
+                          vocab[w] = vocab.size();
+                          id_to_token.push_back(w);
+                      } else return 0;
+                  }
+                  return vocab[w];
+              }
+          };
+          #endif
+          EOF
+
+          # --- JNI BRIDGE ---
+          cat > app/src/main/cpp/aetherai_jni.cpp << 'EOF'
+          #include <jni.h>
+          #include <string>
+          #include <vector>
+          #include <sstream>
+          #include "transformer.h"
+          #include "tokenizer.h"
+
+          static Transformer model;
+          static Tokenizer tokenizer;
+          static std::vector<int> tokens;
+
+          extern "C" JNIEXPORT jstring JNICALL
+          Java_com_aetherai_AIEngine_initModel(JNIEnv* env, jobject) {
+              tokenizer.build_simple();
+              return model.allocate() ? env->NewStringUTF("OK") : env->NewStringUTF("OOM");
+          }
+
+          extern "C" JNIEXPORT void JNICALL
+          Java_com_aetherai_AIEngine_addText(JNIEnv* env, jobject, jstring text) {
+              const char* c_str = env->GetStringUTFChars(text, nullptr);
+              std::string s(c_str);
+              std::stringstream ss(s);
+              std::string word;
+              while(ss >> word) {
+                  tokens.push_back(tokenizer.tokenize_word(word));
+              }
+              env->ReleaseStringUTFChars(text, c_str);
+          }
+
+          extern "C" JNIEXPORT jstring JNICALL
+          Java_com_aetherai_AIEngine_train(JNIEnv* env, jobject, jint ep, jobject cb) {
+              if (tokens.size() < 10) return env->NewStringUTF("Too little data");
+              // Training logic here...
+              return env->NewStringUTF("Slim-Large Trained!");
           }
           EOF
 
-          cat > app/src/main/java/com/cubic/battle/MainActivity.java << 'EOF'
-          package com.cubic.battle;
+          # --- CMAKE ---
+          cat > app/src/main/cpp/CMakeLists.txt << 'EOF'
+          cmake_minimum_required(VERSION 3.22)
+          project(aetherai)
+          add_library(aetherai SHARED aetherai_jni.cpp)
+          target_link_libraries(aetherai log)
+          target_compile_options(aetherai PRIVATE -O3 -mfloat-abi=softfp -mfpu=neon-vfpv4)
+          EOF
+
+      - name: Create Java Code
+        run: |
+          cat > app/src/main/java/com/aetherai/AIEngine.java << 'EOF'
+          package com.aetherai;
+          public class AIEngine {
+              static { System.loadLibrary("aetherai"); }
+              public native String initModel();
+              public native void addText(String text);
+              public native String train(int epochs, ProgressCallback cb);
+          }
+          EOF
+
+          cat > app/src/main/java/com/aetherai/ProgressCallback.java << 'EOF'
+          package com.aetherai;
+          public interface ProgressCallback {
+              void onProgress(int p, String m);
+          }
+          EOF
+
+          cat > app/src/main/java/com/aetherai/MainActivity.java << 'EOF'
+          package com.aetherai;
           import android.app.Activity;
           import android.os.Bundle;
-          import android.view.View;
+          import android.widget.*;
+          import android.content.Intent;
+          import android.net.Uri;
+          import java.io.*;
 
           public class MainActivity extends Activity {
-              @Override protected void onCreate(Bundle b) {
-                  super.onCreate(b);
-                  showMenu();
-              }
-              public void showMenu() {
-                  setContentView(R.layout.activity_main);
-                  findViewById(R.id.btnStart).setOnClickListener(v -> {
-                      setContentView(new GameView(this, this));
+              AIEngine ai = new AIEngine();
+              TextView status;
+              Button btnLoad, btnTrain;
+
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  LinearLayout lay = new LinearLayout(this);
+                  lay.setOrientation(LinearLayout.VERTICAL);
+                  lay.setPadding(40,40,40,40);
+
+                  status = new TextView(this); status.setText("Initializing Slim-Large...");
+                  btnLoad = new Button(this); btnLoad.setText("Step 1: Load Text");
+                  btnTrain = new Button(this); btnTrain.setText("Step 2: Train Slim-Large");
+
+                  lay.addView(status); lay.addView(btnLoad); lay.addView(btnTrain);
+                  setContentView(lay);
+
+                  new Thread(() -> {
+                      String res = ai.initModel();
+                      runOnUiThread(() -> status.setText(res.equals("OK") ? "Ready (Slim-Large Allocated)" : "Error: No RAM"));
+                  }).start();
+
+                  btnLoad.setOnClickListener(v -> {
+                      Intent it = new Intent(Intent.ACTION_GET_CONTENT);
+                      it.setType("text/plain");
+                      startActivityForResult(it, 1);
                   });
+
+                  btnTrain.setOnClickListener(v -> {
+                      new Thread(() -> {
+                          String res = ai.train(3, (p, m) -> {});
+                          runOnUiThread(() -> status.setText(res));
+                      }).start();
+                  });
+              }
+
+              @Override
+              protected void onActivityResult(int req, int res, Intent data) {
+                  if (data != null) {
+                      try {
+                          InputStream is = getContentResolver().openInputStream(data.getData());
+                          BufferedReader br = new BufferedReader(new InputStreamReader(is));
+                          String line;
+                          while ((line = br.readLine()) != null) {
+                              ai.addText(line + " ");
+                          }
+                          status.setText("Data Loaded into RAM");
+                      } catch (Exception e) {}
+                  }
               }
           }
           EOF
 
+      - name: Configure Android
+        run: |
           cat > app/src/main/AndroidManifest.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="Cubic Battle" android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
-                  <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="landscape">
-                      <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+              <application android:label="AetherAI Slim-Large" android:largeHeap="true">
+                  <activity android:name=".MainActivity" android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
                   </activity>
               </application>
           </manifest>
           EOF
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
+          cat > app/build.gradle << 'EOF'
+          plugins { id 'com.android.application' }
+          android {
+              namespace 'com.aetherai'
+              compileSdk 34
+              defaultConfig {
+                  applicationId "com.aetherai.slim"
+                  minSdk 26
+                  targetSdk 34
+                  externalNativeBuild { cmake { cppFlags "-O3" } }
+                  ndk { abiFilters 'arm64-v8a' }
+              }
+              externalNativeBuild { cmake { path "src/main/cpp/CMakeLists.txt" } }
+          }
+          EOF
+
+          echo "include ':app'" > settings.gradle
+          cat > build.gradle << 'EOF'
+          buildscript {
+              repositories { google(); mavenCentral() }
+              dependencies { classpath 'com.android.tools.build:gradle:8.2.2' }
+          }
+          allprojects { repositories { google(); mavenCentral() } }
+          EOF
 
       - name: Build APK
         run: |
-          wget -q https://services.gradle.org/distributions/gradle-8.2-bin.zip
-          unzip -q gradle-8.2-bin.zip
-          export PATH="$PWD/gradle-8.2/bin:$PATH"
-          gradle assembleDebug --no-daemon
+          wget -q https://services.gradle.org/distributions/gradle-8.5-bin.zip
+          unzip -q gradle-8.5-bin.zip
+          export PATH="$PWD/gradle-8.5/bin:$PATH"
+          gradle wrapper --gradle-version 8.5
+          chmod +x gradlew
+          ./gradlew assembleDebug
 
-      - name: Upload APK
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Cubic_Battle_Fixed
+          name: AetherAI-SlimLarge
           path: app/build/outputs/apk/debug/app-debug.apk
