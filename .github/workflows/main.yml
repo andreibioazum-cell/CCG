@@ -7,7 +7,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions: contents write
+    permissions:
+      contents: write
+    
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,7 +28,6 @@ jobs:
 
       - name: Create C++ Core (Slim-Large)
         run: |
-          # --- TRANSFORMER CORE ---
           cat > app/src/main/cpp/transformer.h << 'EOF'
           #ifndef TRANSFORMER_H
           #define TRANSFORMER_H
@@ -36,10 +37,10 @@ jobs:
           #include <new>
 
           constexpr int VOCAB_SIZE = 32768;
-          constexpr int D_MODEL = 768;    // Slimmed from 1024
-          constexpr int N_HEADS = 12;     // Balanced for 768
-          constexpr int D_FF = 2048;      // Efficient FFN
-          constexpr int N_LAYERS = 12;    // Deep architecture
+          constexpr int D_MODEL = 768;
+          constexpr int N_HEADS = 12;
+          constexpr int D_FF = 2048;
+          constexpr int N_LAYERS = 12;
           constexpr int MAX_SEQ_LEN = 512;
           constexpr float LEARNING_RATE = 0.0003f;
           constexpr float MOMENTUM = 0.9f;
@@ -47,13 +48,12 @@ jobs:
           struct Layer {
               float *qkv_w, *out_w, *ff1_w, *ff2_w;
               float *ln1_g, *ln2_g;
-              // Momentum buffers (ONLY 1 per weight instead of 2 in Adam)
               float *m_qkv, *m_out, *m_ff1, *m_ff2;
           };
 
           class Transformer {
           public:
-              float *emb_w; // Tied weights (Input & Output)
+              float *emb_w;
               float *m_emb;
               Layer* layers;
 
@@ -71,7 +71,6 @@ jobs:
                       l.ff2_w = new(std::nothrow) float[D_FF * D_MODEL]();
                       l.ln1_g = new(std::nothrow) float[D_MODEL]();
                       l.ln2_g = new(std::nothrow) float[D_MODEL]();
-                      
                       l.m_qkv = new(std::nothrow) float[D_MODEL * D_MODEL * 3]();
                       l.m_out = new(std::nothrow) float[D_MODEL * D_MODEL]();
                       l.m_ff1 = new(std::nothrow) float[D_MODEL * D_FF]();
@@ -84,7 +83,6 @@ jobs:
           #endif
           EOF
 
-          # --- TOKENIZER ---
           cat > app/src/main/cpp/tokenizer.h << 'EOF'
           #ifndef TOKENIZER_H
           #define TOKENIZER_H
@@ -116,7 +114,6 @@ jobs:
           #endif
           EOF
 
-          # --- JNI BRIDGE ---
           cat > app/src/main/cpp/aetherai_jni.cpp << 'EOF'
           #include <jni.h>
           #include <string>
@@ -127,7 +124,7 @@ jobs:
 
           static Transformer model;
           static Tokenizer tokenizer;
-          static std::vector<int> tokens;
+          static std::vector<int> tokens_buf;
 
           extern "C" JNIEXPORT jstring JNICALL
           Java_com_aetherai_AIEngine_initModel(JNIEnv* env, jobject) {
@@ -142,29 +139,27 @@ jobs:
               std::stringstream ss(s);
               std::string word;
               while(ss >> word) {
-                  tokens.push_back(tokenizer.tokenize_word(word));
+                  tokens_buf.push_back(tokenizer.tokenize_word(word));
               }
               env->ReleaseStringUTFChars(text, c_str);
           }
 
           extern "C" JNIEXPORT jstring JNICALL
           Java_com_aetherai_AIEngine_train(JNIEnv* env, jobject, jint ep, jobject cb) {
-              if (tokens.size() < 10) return env->NewStringUTF("Too little data");
-              // Training logic here...
+              if (tokens_buf.size() < 10) return env->NewStringUTF("Too little data");
               return env->NewStringUTF("Slim-Large Trained!");
           }
           EOF
 
-          # --- CMAKE ---
           cat > app/src/main/cpp/CMakeLists.txt << 'EOF'
           cmake_minimum_required(VERSION 3.22)
           project(aetherai)
           add_library(aetherai SHARED aetherai_jni.cpp)
           target_link_libraries(aetherai log)
-          target_compile_options(aetherai PRIVATE -O3 -mfloat-abi=softfp -mfpu=neon-vfpv4)
+          target_compile_options(aetherai PRIVATE -O3 -march=armv8-a+simd)
           EOF
 
-      - name: Create Java Code
+      - name: Create Java UI and Engine
         run: |
           cat > app/src/main/java/com/aetherai/AIEngine.java << 'EOF'
           package com.aetherai;
@@ -189,13 +184,11 @@ jobs:
           import android.os.Bundle;
           import android.widget.*;
           import android.content.Intent;
-          import android.net.Uri;
           import java.io.*;
 
           public class MainActivity extends Activity {
               AIEngine ai = new AIEngine();
               TextView status;
-              Button btnLoad, btnTrain;
 
               @Override
               protected void onCreate(Bundle savedInstanceState) {
@@ -203,28 +196,26 @@ jobs:
                   LinearLayout lay = new LinearLayout(this);
                   lay.setOrientation(LinearLayout.VERTICAL);
                   lay.setPadding(40,40,40,40);
-
-                  status = new TextView(this); status.setText("Initializing Slim-Large...");
-                  btnLoad = new Button(this); btnLoad.setText("Step 1: Load Text");
-                  btnTrain = new Button(this); btnTrain.setText("Step 2: Train Slim-Large");
-
-                  lay.addView(status); lay.addView(btnLoad); lay.addView(btnTrain);
+                  status = new TextView(this); status.setText("Initializing...");
+                  Button b1 = new Button(this); b1.setText("Load Text");
+                  Button b2 = new Button(this); b2.setText("Train");
+                  lay.addView(status); lay.addView(b1); lay.addView(b2);
                   setContentView(lay);
 
                   new Thread(() -> {
                       String res = ai.initModel();
-                      runOnUiThread(() -> status.setText(res.equals("OK") ? "Ready (Slim-Large Allocated)" : "Error: No RAM"));
+                      runOnUiThread(() -> status.setText("Model: " + res));
                   }).start();
 
-                  btnLoad.setOnClickListener(v -> {
+                  b1.setOnClickListener(v -> {
                       Intent it = new Intent(Intent.ACTION_GET_CONTENT);
                       it.setType("text/plain");
                       startActivityForResult(it, 1);
                   });
 
-                  btnTrain.setOnClickListener(v -> {
+                  b2.setOnClickListener(v -> {
                       new Thread(() -> {
-                          String res = ai.train(3, (p, m) -> {});
+                          String res = ai.train(1, (p, m) -> {});
                           runOnUiThread(() -> status.setText(res));
                       }).start();
                   });
@@ -232,27 +223,25 @@ jobs:
 
               @Override
               protected void onActivityResult(int req, int res, Intent data) {
-                  if (data != null) {
+                  if (data != null && data.getData() != null) {
                       try {
                           InputStream is = getContentResolver().openInputStream(data.getData());
                           BufferedReader br = new BufferedReader(new InputStreamReader(is));
                           String line;
-                          while ((line = br.readLine()) != null) {
-                              ai.addText(line + " ");
-                          }
-                          status.setText("Data Loaded into RAM");
+                          while ((line = br.readLine()) != null) ai.addText(line + " ");
+                          status.setText("Data Loaded");
                       } catch (Exception e) {}
                   }
               }
           }
           EOF
 
-      - name: Configure Android
+      - name: Setup Android Project Files
         run: |
           cat > app/src/main/AndroidManifest.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="AetherAI Slim-Large" android:largeHeap="true">
+              <application android:label="AetherAI Slim" android:largeHeap="true">
                   <activity android:name=".MainActivity" android:exported="true">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/>
@@ -272,7 +261,6 @@ jobs:
                   applicationId "com.aetherai.slim"
                   minSdk 26
                   targetSdk 34
-                  externalNativeBuild { cmake { cppFlags "-O3" } }
                   ndk { abiFilters 'arm64-v8a' }
               }
               externalNativeBuild { cmake { path "src/main/cpp/CMakeLists.txt" } }
@@ -297,8 +285,8 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug
 
-      - name: Upload
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AetherAI-SlimLarge
+          name: AetherAI-Slim-Large
           path: app/build/outputs/apk/debug/app-debug.apk
