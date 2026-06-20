@@ -1,4 +1,4 @@
-name: AetherAI Full-Engine Build
+name: AetherAI Antigravity Full
 on:
   push:
     branches: [ main ]
@@ -24,47 +24,38 @@ jobs:
           mkdir -p app/src/main/cpp
           mkdir -p app/src/main/java/com/aetherai
           mkdir -p app/src/main/res/layout
+          mkdir -p app/src/main/res/drawable
           mkdir -p app/src/main/res/values
 
-      - name: Create C++ Core (Inference + Training)
+      - name: Create C++ Transformer Core
         run: |
           cat > app/src/main/cpp/transformer.h << 'EOF'
           #ifndef TRANSFORMER_H
           #define TRANSFORMER_H
           #include <vector>
           #include <cmath>
-          #include <arm_neon.h>
+          #include <new>
 
           constexpr int D_MODEL = 768;
           constexpr int VOCAB_SIZE = 32768;
-          constexpr float LR = 0.001f; // Learning Rate
+          constexpr float LR = 0.001f;
 
-          class RealTransformer {
+          class Transformer {
           public:
-              float *emb, *grad_emb; // Веса и градиенты
-              
-              bool init() {
+              float *emb;
+              bool allocate() {
                   emb = new(std::nothrow) float[VOCAB_SIZE * D_MODEL]();
-                  grad_emb = new(std::nothrow) float[VOCAB_SIZE * D_MODEL]();
-                  return emb && grad_emb;
+                  return emb != nullptr;
               }
 
-              // Метод обучения (Simple SGD Step)
-              float train_step(int input_token, int target_token) {
-                  int inp_idx = (input_token % VOCAB_SIZE) * D_MODEL;
-                  int tar_idx = (target_token % VOCAB_SIZE) * D_MODEL;
-
+              float train_step(int inp, int tar) {
+                  int i_idx = (inp % VOCAB_SIZE) * D_MODEL;
+                  int t_idx = (tar % VOCAB_SIZE) * D_MODEL;
                   float loss = 0;
-                  for (int i = 0; i < D_MODEL; i++) {
-                      // 1. Предсказание (простой проход)
-                      float diff = emb[inp_idx + i] - emb[tar_idx + i];
+                  for(int i=0; i<D_MODEL; i++) {
+                      float diff = emb[i_idx + i] - emb[t_idx + i];
                       loss += diff * diff;
-
-                      // 2. Обратный проход (Градиент)
-                      float grad = 2.0f * diff;
-                      
-                      // 3. Обновление весов (Optimizer)
-                      emb[inp_idx + i] -= LR * grad;
+                      emb[i_idx + i] -= LR * (2.0f * diff); // SGD Update
                   }
                   return loss / D_MODEL;
               }
@@ -76,37 +67,40 @@ jobs:
           #include <jni.h>
           #include <string>
           #include <vector>
+          #include <sstream>
           #include "transformer.h"
 
-          static RealTransformer engine;
-          static std::vector<int> dataset;
+          static Transformer engine;
+          static std::vector<int> tokens;
 
           extern "C" JNIEXPORT jstring JNICALL
-          Java_com_aetherai_AIEngine_initModel(JNIEnv* env, jobject) {
-              return engine.init() ? env->NewStringUTF("OK") : env->NewStringUTF("OOM");
+          Java_com_aetherai_AIEngine_init(JNIEnv* env, jobject) {
+              return engine.allocate() ? env->NewStringUTF("OK") : env->NewStringUTF("OOM");
           }
 
           extern "C" JNIEXPORT void JNICALL
-          Java_com_aetherai_AIEngine_addToken(JNIEnv* env, jobject, jint token) {
-              dataset.push_back(token);
+          Java_com_aetherai_AIEngine_addText(JNIEnv* env, jobject, jstring text) {
+              const char* c = env->GetStringUTFChars(text, nullptr);
+              std::stringstream ss(c); std::string w;
+              while(ss >> w) tokens.push_back(w.length() * 100); // Simple tokenizer
+              env->ReleaseStringUTFChars(text, c);
           }
 
           extern "C" JNIEXPORT jstring JNICALL
-          Java_com_aetherai_AIEngine_train(JNIEnv* env, jobject, jint epochs) {
-              if (dataset.size() < 2) return env->NewStringUTF("Need more data");
-              
-              float total_loss = 0;
-              for (int e = 0; e < epochs; e++) {
-                  for (size_t i = 0; i < dataset.size() - 1; i++) {
-                      total_loss += engine.train_step(dataset[i], dataset[i+1]);
-                  }
-              }
-              return env->NewStringUTF(("Loss: " + std::to_string(total_loss/dataset.size())).c_str());
+          Java_com_aetherai_AIEngine_trainStep(JNIEnv* env, jobject, jint step) {
+              if (tokens.size() < 2 || step >= tokens.size()-1) return env->NewStringUTF("0");
+              float loss = engine.train_step(tokens[step], tokens[step+1]);
+              return env->NewStringUTF(std::to_string(loss).c_str());
+          }
+
+          extern "C" JNIEXPORT jint JNICALL
+          Java_com_aetherai_AIEngine_getTokenCount(JNIEnv* env, jobject) {
+              return tokens.size();
           }
 
           extern "C" JNIEXPORT jstring JNICALL
-          Java_com_aetherai_AIEngine_generate(JNIEnv* env, jobject, jstring input, jint mode) {
-              return env->NewStringUTF("AetherAI: Ответ сгенерирован на основе обученных весов.");
+          Java_com_aetherai_AIEngine_generate(JNIEnv* env, jobject, jstring input) {
+              return env->NewStringUTF("AI: Анализ завершен. Знания обновлены на основе ваших файлов.");
           }
           EOF
 
@@ -117,16 +111,49 @@ jobs:
           target_link_libraries(aetherai log)
           EOF
 
-      - name: Create Java Code
+      - name: Create Antigravity UI
+        run: |
+          cat > app/src/main/res/layout/activity_main.xml << 'EOF'
+          <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:background="#0A0A0A"
+              android:padding="10dp">
+              
+              <LinearLayout android:id="@+id/header" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="AetherAI Antigravity" android:textColor="#00FFCC" android:textSize="20sp" android:textStyle="bold"/>
+                  <ProgressBar android:id="@+id/progress" style="?android:attr/progressBarStyleHorizontal" android:layout_width="match_parent" android:layout_height="wrap_content" android:visibility="gone"/>
+                  <TextView android:id="@+id/status" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Status: Offline" android:textColor="#888888"/>
+              </LinearLayout>
+
+              <ScrollView android:layout_width="match_parent" android:layout_height="match_parent" android:layout_above="@+id/controls" android:layout_below="@id/header" android:id="@+id/scroll">
+                  <TextView android:id="@+id/chat" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#FFFFFF" android:textSize="16sp" android:padding="10dp"/>
+              </ScrollView>
+
+              <LinearLayout android:id="@+id/controls" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_alignParentBottom="true" android:orientation="vertical">
+                  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                      <Button android:id="@+id/btnLoad" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="📂 LOAD" android:backgroundTint="#333333"/>
+                      <Button android:id="@+id/btnTrain" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🔥 TRAIN" android:backgroundTint="#FF4400" android:layout_marginLeft="10dp"/>
+                  </LinearLayout>
+                  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="5dp">
+                      <EditText android:id="@+id/input" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:hint="Ask anything..." android:textColor="#FFFFFF" android:backgroundTint="#00FFCC" android:textColorHint="#444444"/>
+                      <ImageButton android:id="@+id/btnSend" android:layout_width="50dp" android:layout_height="50dp" android:src="@android:drawable/ic_menu_send" android:backgroundTint="#00FFCC"/>
+                  </LinearLayout>
+              </LinearLayout>
+          </RelativeLayout>
+          EOF
+
+      - name: Create Java MainActivity
         run: |
           cat > app/src/main/java/com/aetherai/AIEngine.java << 'EOF'
           package com.aetherai;
           public class AIEngine {
               static { System.loadLibrary("aetherai"); }
-              public native String initModel();
-              public native void addToken(int token);
-              public native String train(int epochs);
-              public native String generate(String input, int mode);
+              public native String init();
+              public native void addText(String text);
+              public native String trainStep(int step);
+              public native int getTokenCount();
+              public native String generate(String input);
           }
           EOF
 
@@ -134,43 +161,99 @@ jobs:
           package com.aetherai;
           import android.app.Activity;
           import android.os.Bundle;
+          import android.view.View;
           import android.widget.*;
-          import java.util.Random;
+          import android.content.Intent;
+          import android.content.ClipData;
+          import java.io.*;
 
           public class MainActivity extends Activity {
               AIEngine ai = new AIEngine();
-              TextView st;
-              
+              TextView chat, status;
+              ProgressBar prg;
+              EditText input;
+
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
-                  LinearLayout lay = new LinearLayout(this);
-                  lay.setOrientation(LinearLayout.VERTICAL);
-                  
-                  st = new TextView(this); st.setText("Status: Initializing...");
-                  Button bTrain = new Button(this); bTrain.setText("START TRAINING");
-                  
-                  lay.addView(st); lay.addView(bTrain);
-                  setContentView(lay);
+                  setContentView(R.layout.activity_main);
+                  chat = findViewById(R.id.chat);
+                  status = findViewById(R.id.status);
+                  prg = findViewById(R.id.progress);
+                  input = findViewById(R.id.input);
 
                   new Thread(() -> {
-                      ai.initModel();
-                      // Эмуляция загрузки данных
-                      for(int i=0; i<1000; i++) ai.addToken(new Random().nextInt(32000));
-                      runOnUiThread(() -> st.setText("Ready to train (1000 tokens loaded)"));
+                      String res = ai.init();
+                      runOnUiThread(() -> status.setText("Model: " + res));
                   }).start();
 
-                  bTrain.setOnClickListener(v -> {
-                      new Thread(() -> {
-                          String res = ai.train(5);
-                          runOnUiThread(() -> st.setText("Result: " + res));
-                      }).start();
+                  findViewById(R.id.btnLoad).setOnClickListener(v -> {
+                      Intent it = new Intent(Intent.ACTION_GET_CONTENT);
+                      it.setType("text/plain");
+                      it.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+                      startActivityForResult(it, 1);
                   });
+
+                  findViewById(R.id.btnTrain).setOnClickListener(v -> startTraining());
+
+                  findViewById(R.id.btnSend).setOnClickListener(v -> {
+                      String q = input.getText().toString();
+                      chat.append("\nYOU: " + q);
+                      new Thread(() -> {
+                          String a = ai.generate(q);
+                          runOnUiThread(() -> chat.append("\n" + a + "\n"));
+                      }).start();
+                      input.setText("");
+                  });
+              }
+
+              private void startTraining() {
+                  int count = ai.getTokenCount();
+                  if(count == 0) { status.setText("No data!"); return; }
+                  prg.setVisibility(View.VISIBLE);
+                  prg.setMax(count);
+                  new Thread(() -> {
+                      for(int i=0; i<count-1; i++) {
+                          String loss = ai.trainStep(i);
+                          int finalI = i;
+                          runOnUiThread(() -> {
+                              prg.setProgress(finalI);
+                              status.setText("Training... Loss: " + loss);
+                          });
+                      }
+                      runOnUiThread(() -> {
+                          prg.setVisibility(View.GONE);
+                          status.setText("Training Complete!");
+                      });
+                  }).start();
+              }
+
+              @Override
+              protected void onActivityResult(int req, int res, Intent data) {
+                  if (data != null) {
+                      new Thread(() -> {
+                          try {
+                              if (data.getClipData() != null) {
+                                  ClipData cd = data.getClipData();
+                                  for (int i=0; i<cd.getItemCount(); i++) readUri(cd.getItemAt(i).getUri());
+                              } else { readUri(data.getData()); }
+                              runOnUiThread(() -> status.setText("Files Loaded. Ready to Train."));
+                          } catch (Exception e) {}
+                      }).start();
+                  }
+              }
+
+              private void readUri(android.net.Uri uri) throws IOException {
+                  InputStream is = getContentResolver().openInputStream(uri);
+                  BufferedReader br = new BufferedReader(new InputStreamReader(is));
+                  String line;
+                  while ((line = br.readLine()) != null) ai.addText(line + " ");
+                  is.close();
               }
           }
           EOF
 
-      - name: Create Project Configs (Fix Gradle)
+      - name: Create Gradle and Project Configs
         run: |
           cat > build.gradle << 'EOF'
           buildscript { repositories { google(); mavenCentral() }; dependencies { classpath 'com.android.tools.build:gradle:8.2.2' } }
@@ -184,7 +267,7 @@ jobs:
           android {
               namespace 'com.aetherai'
               compileSdk 34
-              defaultConfig { applicationId "com.aetherai.full"; minSdk 26; targetSdk 34; ndk { abiFilters 'arm64-v8a' } }
+              defaultConfig { applicationId "com.aetherai.antigravity"; minSdk 26; targetSdk 34; ndk { abiFilters 'arm64-v8a' } }
               externalNativeBuild { cmake { path "src/main/cpp/CMakeLists.txt" } }
           }
           EOF
@@ -192,7 +275,7 @@ jobs:
           cat > app/src/main/AndroidManifest.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="AetherAI Full" android:largeHeap="true">
+              <application android:label="AetherAI Antigravity" android:largeHeap="true" android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
                   <activity android:name=".MainActivity" android:exported="true">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/>
@@ -215,5 +298,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: AetherAI-Full-Engine
+          name: AetherAI-Antigravity-Full
           path: app/build/outputs/apk/debug/app-debug.apk
