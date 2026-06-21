@@ -1,4 +1,4 @@
-name: TasksAI Antigravity Pro
+name: TasksAI Antigravity Pro Fixed
 on:
   push:
     branches: [ main ]
@@ -66,12 +66,12 @@ jobs:
               std::string generate_answer() {
                   if (id_to_word.empty()) return "Я не обучен.";
                   int curr_id = -1;
-                  for(int i=0; i<id_to_word.size(); i++) if(id_to_word[i] == "a:") { curr_id = i; break; }
+                  for(int i=0; i<(int)id_to_word.size(); i++) if(id_to_word[i] == "a:") { curr_id = i; break; }
                   if(curr_id == -1) return "Ошибка датасета.";
                   std::string result = "";
                   for (int step = 0; step < 40; step++) {
                       int best_id = -1; float max_sim = -1e10;
-                      for (int next = 0; next < id_to_word.size(); next++) {
+                      for (int next = 0; next < (int)id_to_word.size(); next++) {
                           if (next == curr_id || id_to_word[next] == "u:" || id_to_word[next] == "a:") continue;
                           float sim = 0;
                           for(int d=0; d<256; d++) sim += emb[curr_id*256+d] * emb[next*256+d];
@@ -109,7 +109,7 @@ jobs:
               s = std::regex_replace(s, re, " $1 ");
               std::stringstream ss(s); std::string w;
               while(ss >> w) {
-                  for(char &ch : w) ch = tolower(ch);
+                  for(char &ch : w) ch = (char)tolower(ch);
                   tokens.push_back(engine.get_id(w));
               }
               env->ReleaseStringUTFChars(text, c);
@@ -254,7 +254,7 @@ jobs:
 
               private void addMessage(String sender, String text, boolean isUser) {
                   TextView tv = new TextView(this);
-                  tv.setText(text); tv.setTextSize(16sp); tv.setTextColor(0xFFFFFFFF);
+                  tv.setText(text); tv.setTextSize(16); tv.setTextColor(0xFFFFFFFF);
                   tv.setPadding(35, 20, 35, 20);
                   
                   LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -280,7 +280,9 @@ jobs:
                           try {
                               if (data.getClipData() != null) {
                                   for (int i=0; i<data.getClipData().getItemCount(); i++) readUri(data.getClipData().getItemAt(i).getUri());
-                              } else readUri(data.getData());
+                              } else if (data.getData() != null) {
+                                  readUri(data.getData());
+                              }
                               runOnUiThread(() -> addMessage("AI", "Файлы загружены. Нажми 'Обучить'.", false));
                           } catch (Exception e) {}
                       }).start();
@@ -338,5 +340,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: TasksAI-Pro-Design
+          name: TasksAI-Pro-Fixed
           path: app/build/outputs/apk/debug/app-debug.apk
