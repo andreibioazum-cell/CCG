@@ -1,4 +1,4 @@
-name: AetherAI Real-Vector-Engine
+name: AetherAI Real-QA Antigravity
 on:
   push:
     branches: [ main ]
@@ -19,14 +19,11 @@ jobs:
         with:
           packages: 'platform-tools build-tools;34.0.0 platforms;android-34 ndk;25.2.9519653 cmake;3.22.1'
 
-      - name: Create Project Structure
+      - name: Project Structure
         run: |
-          mkdir -p app/src/main/cpp
-          mkdir -p app/src/main/java/com/aetherai
-          mkdir -p app/src/main/res/layout
-          mkdir -p app/src/main/res/values
+          mkdir -p app/src/main/cpp app/src/main/java/com/aetherai app/src/main/res/layout app/src/main/res/values
 
-      - name: Create C++ Vector Engine
+      - name: Create C++ QA-Engine
         run: |
           cat > app/src/main/cpp/transformer.h << 'EOF'
           #ifndef TRANSFORMER_H
@@ -37,62 +34,66 @@ jobs:
           #include <cmath>
           #include <random>
 
-          constexpr int D_MODEL = 256; // Уменьшим для скорости поиска на мобилках
-          constexpr int MAX_VOCAB = 10000;
-          constexpr float LR = 0.01f;
-
-          class VectorEngine {
+          class QAEngine {
           public:
               float *emb;
               std::map<std::string, int> word_to_id;
               std::vector<std::string> id_to_word;
+              std::mt19937 gen;
+
+              QAEngine() : gen(42) {}
 
               bool allocate() {
-                  emb = new(std::nothrow) float[MAX_VOCAB * D_MODEL];
-                  if (!emb) return false;
+                  emb = new(std::nothrow) float[20000 * 256]();
+                  return emb != nullptr;
+              }
+
+              int get_id(std::string w) {
+                  if (word_to_id.count(w)) return word_to_id[w];
+                  int id = id_to_word.size();
+                  word_to_id[w] = id;
+                  id_to_word.push_back(w);
+                  return id;
+              }
+
+              void train(int inp, int tar) {
+                  float lr = 0.05f;
+                  for(int i=0; i<256; i++) {
+                      float diff = emb[inp*256+i] - emb[tar*256+i];
+                      emb[inp*256+i] -= lr * diff; // Сближаем векторы слов
+                  }
+              }
+
+              std::string generate_answer(std::string prompt) {
+                  if (id_to_word.empty()) return "Загрузи файлы и обучи меня.";
                   
-                  // Инициализация случайными весами (ВАЖНО!)
-                  std::mt19937 gen(42);
-                  std::uniform_real_distribution<float> dist(-0.1f, 0.1f);
-                  for(int i=0; i < MAX_VOCAB * D_MODEL; i++) emb[i] = dist(gen);
-                  return true;
-              }
+                  // Принудительно начинаем с тега ответа, если он есть
+                  std::string current_w = "A:";
+                  if (!word_to_id.count(current_w)) current_w = id_to_word[0];
+                  
+                  std::string result = "";
+                  int curr_id = word_to_id[current_w];
 
-              int get_id(std::string word) {
-                  if (word_to_id.count(word)) return word_to_id[word];
-                  if (id_to_word.size() >= MAX_VOCAB) return 0;
-                  int new_id = id_to_word.size();
-                  word_to_id[word] = new_id;
-                  id_to_word.push_back(word);
-                  return new_id;
-              }
-
-              float train_step(int inp, int tar) {
-                  int i_ptr = inp * D_MODEL;
-                  int t_ptr = tar * D_MODEL;
-                  float loss = 0;
-                  for(int i=0; i<D_MODEL; i++) {
-                      float diff = emb[i_ptr + i] - emb[t_ptr + i];
-                      loss += diff * diff;
-                      emb[i_ptr + i] -= LR * diff; // Двигаем вектор входа к вектору цели
+                  for (int i = 0; i < 20; i++) {
+                      int best_id = -1;
+                      float max_sim = -1e10;
+                      
+                      for (int next = 0; next < id_to_word.size(); next++) {
+                          if (next == curr_id) continue;
+                          float sim = 0;
+                          for(int d=0; d<256; d++) sim += emb[curr_id*256+d] * emb[next*256+d];
+                          
+                          if (sim > max_sim) {
+                              max_sim = sim;
+                              best_id = next;
+                          }
+                      }
+                      
+                      if (best_id == -1 || id_to_word[best_id] == "U:") break; // Стоп, если ИИ захотел "стать пользователем"
+                      curr_id = best_id;
+                      result += id_to_word[curr_id] + " ";
                   }
-                  return loss / D_MODEL;
-              }
-
-              std::string predict(std::string word) {
-                  if (!word_to_id.count(word)) return "...";
-                  int id = word_to_id[word];
-                  int best_id = 0;
-                  float max_sim = -1e10;
-
-                  // Поиск ближайшего вектора (Inference)
-                  for(int i=0; i < (int)id_to_word.size(); i++) {
-                      if (i == id) continue;
-                      float sim = 0;
-                      for(int d=0; d<D_MODEL; d++) sim += emb[id*D_MODEL+d] * emb[i*D_MODEL+d];
-                      if (sim > max_sim) { max_sim = sim; best_id = i; }
-                  }
-                  return id_to_word[best_id];
+                  return result;
               }
           };
           #endif
@@ -105,7 +106,7 @@ jobs:
           #include <sstream>
           #include "transformer.h"
 
-          static VectorEngine engine;
+          static QAEngine engine;
           static std::vector<int> tokens;
 
           extern "C" JNIEXPORT jstring JNICALL
@@ -123,22 +124,19 @@ jobs:
 
           extern "C" JNIEXPORT jstring JNICALL
           Java_com_aetherai_AIEngine_trainStep(JNIEnv* env, jobject, jint step) {
-              if (tokens.size() < 2 || step >= tokens.size()-1) return env->NewStringUTF("0.0");
-              float loss = engine.train_step(tokens[step], tokens[step+1]);
-              return env->NewStringUTF(std::to_string(loss).c_str());
+              engine.train(tokens[step], tokens[step+1]);
+              return env->NewStringUTF("OK");
           }
 
           extern "C" JNIEXPORT jint JNICALL
           Java_com_aetherai_AIEngine_getTokenCount(JNIEnv* env, jobject) {
-              return (jint)tokens.size();
+              return tokens.size();
           }
 
           extern "C" JNIEXPORT jstring JNICALL
           Java_com_aetherai_AIEngine_generate(JNIEnv* env, jobject, jstring input) {
               const char* c = env->GetStringUTFChars(input, nullptr);
-              std::stringstream ss(c); std::string w; std::string last_w;
-              while(ss >> last_w);
-              std::string res = engine.predict(last_w);
+              std::string res = engine.generate_answer(c);
               env->ReleaseStringUTFChars(input, c);
               return env->NewStringUTF(res.c_str());
           }
@@ -151,31 +149,29 @@ jobs:
           target_link_libraries(aetherai log)
           EOF
 
-      - name: Create Antigravity UI
+      - name: Create UI
         run: |
           cat > app/src/main/res/layout/activity_main.xml << 'EOF'
           <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:layout_width="match_parent" android:layout_height="match_parent"
-              android:background="#050505" android:padding="10dp">
-              <TextView android:id="@+id/st" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="AetherAI: Vector Engine" android:textColor="#00FFCC"/>
-              <ProgressBar android:id="@+id/pb" style="?android:attr/progressBarStyleHorizontal" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_below="@id/st" android:visibility="gone"/>
-              <ScrollView android:layout_width="match_parent" android:layout_height="match_parent" android:layout_above="@+id/inputArea" android:layout_below="@id/pb">
-                  <TextView android:id="@+id/chat" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#FFFFFF" android:padding="10dp"/>
+              android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000" android:padding="10dp">
+              <TextView android:id="@+id/status" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Status: Waiting" android:textColor="#00FFCC"/>
+              <ScrollView android:layout_width="match_parent" android:layout_height="match_parent" android:layout_above="@+id/inputArea" android:layout_below="@id/status">
+                  <TextView android:id="@+id/chat" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#FFF" android:textSize="18sp"/>
               </ScrollView>
-              <LinearLayout android:id="@+id/inputArea" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_alignParentBottom="true" android:orientation="vertical">
+              <LinearLayout android:id="@+id/inputArea" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_alignParentBottom="true" android:orientation="vertical" android:background="#111">
                   <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content">
-                      <Button android:id="@+id/load" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="LOAD" android:backgroundTint="#222"/>
+                      <Button android:id="@+id/load" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="LOAD"/>
                       <Button android:id="@+id/train" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="TRAIN" android:backgroundTint="#FF4400" android:layout_marginLeft="10dp"/>
                   </LinearLayout>
                   <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content">
-                      <EditText android:id="@+id/input" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:hint="Input..." android:textColor="#FFF" android:backgroundTint="#00FFCC"/>
-                      <Button android:id="@+id/send" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text=">" android:backgroundTint="#00FFCC"/>
+                      <EditText android:id="@+id/input" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:hint="Ask something..." android:textColor="#FFF"/>
+                      <Button android:id="@+id/send" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text=">"/>
                   </LinearLayout>
               </LinearLayout>
           </RelativeLayout>
           EOF
 
-      - name: Create Java Code
+      - name: Create Java Bridge
         run: |
           cat > app/src/main/java/com/aetherai/AIEngine.java << 'EOF'
           package com.aetherai;
@@ -199,15 +195,13 @@ jobs:
 
           public class MainActivity extends Activity {
               AIEngine ai = new AIEngine();
-              TextView chat, st; ProgressBar pb; EditText input;
+              TextView chat, status; EditText input;
 
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
                   setContentView(R.layout.activity_main);
-                  chat = findViewById(R.id.chat); st = findViewById(R.id.st);
-                  pb = findViewById(R.id.pb); input = findViewById(R.id.input);
-
+                  chat = findViewById(R.id.chat); status = findViewById(R.id.status); input = findViewById(R.id.input);
                   new Thread(() -> ai.init()).start();
 
                   findViewById(R.id.load).setOnClickListener(v -> {
@@ -218,16 +212,11 @@ jobs:
 
                   findViewById(R.id.train).setOnClickListener(v -> {
                       int count = ai.getTokenCount();
-                      if(count < 2) return;
-                      pb.setVisibility(android.view.View.VISIBLE);
-                      pb.setMax(count);
                       new Thread(() -> {
-                          for(int i=0; i<count-1; i++) {
-                              String loss = ai.trainStep(i);
-                              int finalI = i;
-                              runOnUiThread(() -> { pb.setProgress(finalI); st.setText("Loss: " + loss); });
+                          for(int e=0; e<10; e++) { // 10 эпох для лучшего понимания QA
+                              for(int i=0; i<count-1; i++) ai.trainStep(i);
                           }
-                          runOnUiThread(() -> { pb.setVisibility(android.view.View.GONE); st.setText("Trained!"); });
+                          runOnUiThread(() -> status.setText("AetherAI: Trained and Ready."));
                       }).start();
                   });
 
@@ -250,7 +239,7 @@ jobs:
                               if (data.getClipData() != null) {
                                   for (int i=0; i<data.getClipData().getItemCount(); i++) readUri(data.getClipData().getItemAt(i).getUri());
                               } else readUri(data.getData());
-                              runOnUiThread(() -> st.setText("Files Loaded."));
+                              runOnUiThread(() -> status.setText("Data Loaded. Press Train."));
                           } catch (Exception e) {}
                       }).start();
                   }
@@ -265,7 +254,7 @@ jobs:
           }
           EOF
 
-      - name: Project Configs (Gradle)
+      - name: Gradle Configs
         run: |
           cat > build.gradle << 'EOF'
           buildscript { repositories { google(); mavenCentral() }; dependencies { classpath 'com.android.tools.build:gradle:8.2.2' } }
@@ -277,14 +266,14 @@ jobs:
           android {
               namespace 'com.aetherai'
               compileSdk 34
-              defaultConfig { applicationId "com.aetherai.vector"; minSdk 26; targetSdk 34; ndk { abiFilters 'arm64-v8a' } }
+              defaultConfig { applicationId "com.aetherai.qa"; minSdk 26; targetSdk 34; ndk { abiFilters 'arm64-v8a' } }
               externalNativeBuild { cmake { path "src/main/cpp/CMakeLists.txt" } }
           }
           EOF
           cat > app/src/main/AndroidManifest.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="AetherAI Vector" android:largeHeap="true">
+              <application android:label="AetherAI QA" android:largeHeap="true">
                   <activity android:name=".MainActivity" android:exported="true">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/>
@@ -307,5 +296,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: AetherAI-Vector-Engine
+          name: AetherAI-QA-Engine
           path: app/build/outputs/apk/debug/app-debug.apk
