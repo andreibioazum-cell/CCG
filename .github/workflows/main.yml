@@ -1,4 +1,4 @@
-name: AetherAI Real-QA Antigravity
+name: TasksAI Antigravity Pro
 on:
   push:
     branches: [ main ]
@@ -21,9 +21,9 @@ jobs:
 
       - name: Project Structure
         run: |
-          mkdir -p app/src/main/cpp app/src/main/java/com/aetherai app/src/main/res/layout app/src/main/res/values
+          mkdir -p app/src/main/cpp app/src/main/java/com/aetherai app/src/main/res/layout app/src/main/res/drawable app/src/main/res/values
 
-      - name: Create C++ QA-Engine
+      - name: Create C++ Engine (Real-QA)
         run: |
           cat > app/src/main/cpp/transformer.h << 'EOF'
           #ifndef TRANSFORMER_H
@@ -32,19 +32,16 @@ jobs:
           #include <string>
           #include <map>
           #include <cmath>
-          #include <random>
+          #include <algorithm>
 
           class QAEngine {
           public:
               float *emb;
               std::map<std::string, int> word_to_id;
               std::vector<std::string> id_to_word;
-              std::mt19937 gen;
-
-              QAEngine() : gen(42) {}
 
               bool allocate() {
-                  emb = new(std::nothrow) float[20000 * 256]();
+                  emb = new(std::nothrow) float[25000 * 256]();
                   return emb != nullptr;
               }
 
@@ -58,40 +55,32 @@ jobs:
 
               void train(int inp, int tar) {
                   float lr = 0.05f;
+                  int i_ptr = inp * 256;
+                  int t_ptr = tar * 256;
                   for(int i=0; i<256; i++) {
-                      float diff = emb[inp*256+i] - emb[tar*256+i];
-                      emb[inp*256+i] -= lr * diff; // Сближаем векторы слов
+                      float diff = emb[i_ptr + i] - emb[t_ptr + i];
+                      emb[i_ptr + i] -= lr * diff; 
                   }
               }
 
-              std::string generate_answer(std::string prompt) {
-                  if (id_to_word.empty()) return "Загрузи файлы и обучи меня.";
-                  
-                  // Принудительно начинаем с тега ответа, если он есть
-                  std::string current_w = "A:";
-                  if (!word_to_id.count(current_w)) current_w = id_to_word[0];
-                  
+              std::string generate_answer() {
+                  if (id_to_word.empty()) return "Я не обучен.";
+                  int curr_id = -1;
+                  for(int i=0; i<id_to_word.size(); i++) if(id_to_word[i] == "a:") { curr_id = i; break; }
+                  if(curr_id == -1) return "Ошибка датасета.";
                   std::string result = "";
-                  int curr_id = word_to_id[current_w];
-
-                  for (int i = 0; i < 20; i++) {
-                      int best_id = -1;
-                      float max_sim = -1e10;
-                      
+                  for (int step = 0; step < 40; step++) {
+                      int best_id = -1; float max_sim = -1e10;
                       for (int next = 0; next < id_to_word.size(); next++) {
-                          if (next == curr_id) continue;
+                          if (next == curr_id || id_to_word[next] == "u:" || id_to_word[next] == "a:") continue;
                           float sim = 0;
                           for(int d=0; d<256; d++) sim += emb[curr_id*256+d] * emb[next*256+d];
-                          
-                          if (sim > max_sim) {
-                              max_sim = sim;
-                              best_id = next;
-                          }
+                          if (sim > max_sim) { max_sim = sim; best_id = next; }
                       }
-                      
-                      if (best_id == -1 || id_to_word[best_id] == "U:") break; // Стоп, если ИИ захотел "стать пользователем"
+                      if (best_id == -1) break;
                       curr_id = best_id;
                       result += id_to_word[curr_id] + " ";
+                      if (id_to_word[curr_id] == "." || id_to_word[curr_id] == "?") break;
                   }
                   return result;
               }
@@ -104,41 +93,35 @@ jobs:
           #include <string>
           #include <vector>
           #include <sstream>
+          #include <regex>
           #include "transformer.h"
 
           static QAEngine engine;
           static std::vector<int> tokens;
 
-          extern "C" JNIEXPORT jstring JNICALL
-          Java_com_aetherai_AIEngine_init(JNIEnv* env, jobject) {
+          extern "C" JNIEXPORT jstring JNICALL Java_com_aetherai_AIEngine_init(JNIEnv* env, jobject) {
               return engine.allocate() ? env->NewStringUTF("OK") : env->NewStringUTF("OOM");
           }
-
-          extern "C" JNIEXPORT void JNICALL
-          Java_com_aetherai_AIEngine_addText(JNIEnv* env, jobject, jstring text) {
+          extern "C" JNIEXPORT void JNICALL Java_com_aetherai_AIEngine_addText(JNIEnv* env, jobject, jstring text) {
               const char* c = env->GetStringUTFChars(text, nullptr);
-              std::stringstream ss(c); std::string w;
-              while(ss >> w) tokens.push_back(engine.get_id(w));
+              std::string s(c);
+              std::regex re("([.,!?():;—])");
+              s = std::regex_replace(s, re, " $1 ");
+              std::stringstream ss(s); std::string w;
+              while(ss >> w) {
+                  for(char &ch : w) ch = tolower(ch);
+                  tokens.push_back(engine.get_id(w));
+              }
               env->ReleaseStringUTFChars(text, c);
           }
-
-          extern "C" JNIEXPORT jstring JNICALL
-          Java_com_aetherai_AIEngine_trainStep(JNIEnv* env, jobject, jint step) {
-              engine.train(tokens[step], tokens[step+1]);
-              return env->NewStringUTF("OK");
+          extern "C" JNIEXPORT void JNICALL Java_com_aetherai_AIEngine_trainStep(JNIEnv* env, jobject, jint i) {
+              engine.train(tokens[i], tokens[i+1]);
           }
-
-          extern "C" JNIEXPORT jint JNICALL
-          Java_com_aetherai_AIEngine_getTokenCount(JNIEnv* env, jobject) {
+          extern "C" JNIEXPORT jint JNICALL Java_com_aetherai_AIEngine_getTokenCount(JNIEnv* env, jobject) {
               return tokens.size();
           }
-
-          extern "C" JNIEXPORT jstring JNICALL
-          Java_com_aetherai_AIEngine_generate(JNIEnv* env, jobject, jstring input) {
-              const char* c = env->GetStringUTFChars(input, nullptr);
-              std::string res = engine.generate_answer(c);
-              env->ReleaseStringUTFChars(input, c);
-              return env->NewStringUTF(res.c_str());
+          extern "C" JNIEXPORT jstring JNICALL Java_com_aetherai_AIEngine_generate(JNIEnv* env, jobject) {
+              return env->NewStringUTF(engine.generate_answer().c_str());
           }
           EOF
 
@@ -149,29 +132,61 @@ jobs:
           target_link_libraries(aetherai log)
           EOF
 
-      - name: Create UI
+      - name: Create Antigravity Drawables
+        run: |
+          cat > app/src/main/res/drawable/bg_message_user.xml << 'EOF'
+          <shape xmlns:android="http://schemas.android.com/apk/res/android">
+              <solid android:color="#2b5ff1"/>
+              <corners android:radius="18dp" android:bottomRightRadius="2dp"/>
+          </shape>
+          EOF
+
+          cat > app/src/main/res/drawable/bg_message_ai.xml << 'EOF'
+          <shape xmlns:android="http://schemas.android.com/apk/res/android">
+              <solid android:color="#2c2c2e"/>
+              <corners android:radius="18dp" android:bottomLeftRadius="2dp"/>
+          </shape>
+          EOF
+
+          cat > app/src/main/res/drawable/bg_input.xml << 'EOF'
+          <shape xmlns:android="http://schemas.android.com/apk/res/android">
+              <solid android:color="#1c1c1e"/>
+              <corners android:radius="24dp"/>
+              <stroke android:width="1dp" android:color="#3a3a3c"/>
+          </shape>
+          EOF
+
+      - name: Create Antigravity UI
         run: |
           cat > app/src/main/res/layout/activity_main.xml << 'EOF'
           <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000" android:padding="10dp">
-              <TextView android:id="@+id/status" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Status: Waiting" android:textColor="#00FFCC"/>
-              <ScrollView android:layout_width="match_parent" android:layout_height="match_parent" android:layout_above="@+id/inputArea" android:layout_below="@id/status">
-                  <TextView android:id="@+id/chat" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#FFF" android:textSize="18sp"/>
+              android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000000">
+              
+              <LinearLayout android:id="@+id/header" android:layout_width="match_parent" android:layout_height="wrap_content" 
+                  android:orientation="horizontal" android:padding="12dp" android:background="#121212" android:gravity="center">
+                  <Button android:id="@+id/btnTrain" android:layout_width="wrap_content" android:layout_height="40dp" 
+                      android:text="ОБУЧИТЬ" android:textSize="12sp" android:backgroundTint="#FF3B30" android:textColor="#FFF"/>
+                  <Button android:id="@+id/btnLoad" android:layout_width="wrap_content" android:layout_height="40dp" 
+                      android:text="ЗАГРУЗИТЬ" android:textSize="12sp" android:backgroundTint="#3A3A3C" android:textColor="#FFF" android:layout_marginStart="10dp"/>
+              </LinearLayout>
+
+              <ScrollView android:id="@+id/scroll" android:layout_width="match_parent" android:layout_height="match_parent" 
+                  android:layout_below="@id/header" android:layout_above="@+id/inputArea" android:padding="10dp">
+                  <LinearLayout android:id="@+id/chatLayout" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"/>
               </ScrollView>
-              <LinearLayout android:id="@+id/inputArea" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_alignParentBottom="true" android:orientation="vertical" android:background="#111">
-                  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content">
-                      <Button android:id="@+id/load" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="LOAD"/>
-                      <Button android:id="@+id/train" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="TRAIN" android:backgroundTint="#FF4400" android:layout_marginLeft="10dp"/>
-                  </LinearLayout>
-                  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content">
-                      <EditText android:id="@+id/input" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:hint="Ask something..." android:textColor="#FFF"/>
-                      <Button android:id="@+id/send" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text=">"/>
-                  </LinearLayout>
+
+              <LinearLayout android:id="@+id/inputArea" android:layout_width="match_parent" android:layout_height="wrap_content" 
+                  android:layout_alignParentBottom="true" android:padding="10dp" android:orientation="horizontal" android:gravity="center_vertical">
+                  <EditText android:id="@+id/input" android:layout_width="0dp" android:layout_height="wrap_content" 
+                      android:layout_weight="1" android:hint="Спроси TasksAI..." android:textColor="#FFF" android:padding="12dp"
+                      android:background="@drawable/bg_input" android:textColorHint="#8E8E93"/>
+                  <ImageButton android:id="@+id/send" android:layout_width="48dp" android:layout_height="48dp" 
+                      android:src="@android:drawable/ic_menu_send" android:backgroundTint="#007AFF" android:layout_marginStart="8dp" android:tint="#FFF"/>
               </LinearLayout>
           </RelativeLayout>
           EOF
 
-      - name: Create Java Bridge
+      - name: Create Java MainActivity
         run: |
           cat > app/src/main/java/com/aetherai/AIEngine.java << 'EOF'
           package com.aetherai;
@@ -179,9 +194,9 @@ jobs:
               static { System.loadLibrary("aetherai"); }
               public native String init();
               public native void addText(String text);
-              public native String trainStep(int step);
+              public native void trainStep(int i);
               public native int getTokenCount();
-              public native String generate(String input);
+              public native String generate();
           }
           EOF
 
@@ -189,46 +204,73 @@ jobs:
           package com.aetherai;
           import android.app.Activity;
           import android.os.Bundle;
+          import android.view.Gravity;
           import android.widget.*;
           import android.content.Intent;
+          import android.view.View;
+          import android.view.ViewGroup;
           import java.io.*;
 
           public class MainActivity extends Activity {
               AIEngine ai = new AIEngine();
-              TextView chat, status; EditText input;
+              LinearLayout chatLayout; EditText input; ScrollView scroll;
 
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
                   setContentView(R.layout.activity_main);
-                  chat = findViewById(R.id.chat); status = findViewById(R.id.status); input = findViewById(R.id.input);
+                  chatLayout = findViewById(R.id.chatLayout);
+                  input = findViewById(R.id.input);
+                  scroll = findViewById(R.id.scroll);
+
                   new Thread(() -> ai.init()).start();
 
-                  findViewById(R.id.load).setOnClickListener(v -> {
+                  findViewById(R.id.btnLoad).setOnClickListener(v -> {
                       Intent it = new Intent(Intent.ACTION_GET_CONTENT);
                       it.setType("text/plain"); it.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
                       startActivityForResult(it, 1);
                   });
 
-                  findViewById(R.id.train).setOnClickListener(v -> {
+                  findViewById(R.id.btnTrain).setOnClickListener(v -> {
                       int count = ai.getTokenCount();
+                      if(count == 0) return;
                       new Thread(() -> {
-                          for(int e=0; e<10; e++) { // 10 эпох для лучшего понимания QA
-                              for(int i=0; i<count-1; i++) ai.trainStep(i);
-                          }
-                          runOnUiThread(() -> status.setText("AetherAI: Trained and Ready."));
+                          for(int e=0; e<30; e++) for(int i=0; i<count-1; i++) ai.trainStep(i);
+                          runOnUiThread(() -> addMessage("AI", "Обучение завершено. Я готов!", false));
                       }).start();
                   });
 
                   findViewById(R.id.send).setOnClickListener(v -> {
                       String q = input.getText().toString();
-                      chat.append("\nYou: " + q);
+                      if(q.isEmpty()) return;
+                      addMessage("User", q, true);
                       new Thread(() -> {
-                          String a = ai.generate(q);
-                          runOnUiThread(() -> chat.append("\nAI: " + a));
+                          String a = ai.generate();
+                          runOnUiThread(() -> addMessage("AI", a, false));
                       }).start();
                       input.setText("");
                   });
+              }
+
+              private void addMessage(String sender, String text, boolean isUser) {
+                  TextView tv = new TextView(this);
+                  tv.setText(text); tv.setTextSize(16sp); tv.setTextColor(0xFFFFFFFF);
+                  tv.setPadding(35, 20, 35, 20);
+                  
+                  LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                  lp.setMargins(0, 10, 0, 10);
+                  
+                  if(isUser) {
+                      lp.gravity = Gravity.END;
+                      tv.setBackgroundResource(R.drawable.bg_message_user);
+                  } else {
+                      lp.gravity = Gravity.START;
+                      tv.setBackgroundResource(R.drawable.bg_message_ai);
+                  }
+                  
+                  tv.setLayoutParams(lp);
+                  chatLayout.addView(tv);
+                  scroll.post(() -> scroll.fullScroll(View.FOCUS_DOWN));
               }
 
               @Override
@@ -239,7 +281,7 @@ jobs:
                               if (data.getClipData() != null) {
                                   for (int i=0; i<data.getClipData().getItemCount(); i++) readUri(data.getClipData().getItemAt(i).getUri());
                               } else readUri(data.getData());
-                              runOnUiThread(() -> status.setText("Data Loaded. Press Train."));
+                              runOnUiThread(() -> addMessage("AI", "Файлы загружены. Нажми 'Обучить'.", false));
                           } catch (Exception e) {}
                       }).start();
                   }
@@ -254,7 +296,7 @@ jobs:
           }
           EOF
 
-      - name: Gradle Configs
+      - name: Project Configs
         run: |
           cat > build.gradle << 'EOF'
           buildscript { repositories { google(); mavenCentral() }; dependencies { classpath 'com.android.tools.build:gradle:8.2.2' } }
@@ -266,14 +308,14 @@ jobs:
           android {
               namespace 'com.aetherai'
               compileSdk 34
-              defaultConfig { applicationId "com.aetherai.qa"; minSdk 26; targetSdk 34; ndk { abiFilters 'arm64-v8a' } }
+              defaultConfig { applicationId "com.tasksai.pro"; minSdk 26; targetSdk 34; ndk { abiFilters 'arm64-v8a' } }
               externalNativeBuild { cmake { path "src/main/cpp/CMakeLists.txt" } }
           }
           EOF
           cat > app/src/main/AndroidManifest.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="AetherAI QA" android:largeHeap="true">
+              <application android:label="TasksAI Pro" android:largeHeap="true" android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
                   <activity android:name=".MainActivity" android:exported="true">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/>
@@ -296,5 +338,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: AetherAI-QA-Engine
+          name: TasksAI-Pro-Design
           path: app/build/outputs/apk/debug/app-debug.apk
